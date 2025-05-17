@@ -4,6 +4,8 @@ const authRouter = require("./routes/auth");
 const suppliersRouter = require("./routes/suppliers");
 const customersRouter = require("./routes/customers");
 const productsRouter = require("./routes/products");
+const inventoryRouter = require("./routes/inventory");
+const salesRouter = require("./routes/salesOrders");
 const categoriesRouter = require("./routes/categories");
 const purchaseOrdersRouter = require("./routes/purchaseOrders");
 const purchaseOrderItemsRouter = require("./routes/purchaseOrderItems");
@@ -53,8 +55,10 @@ app.use("/api/suppliers", verifyToken, suppliersRouter);
 app.use("/api/customers", verifyToken, customersRouter);
 app.use("/api/products", verifyToken, productsRouter);
 app.use("/api/categories", verifyToken, categoriesRouter);
-app.use("/api/purchase/items", verifyToken, purchaseOrderItemsRouter); // Add this line to include the purchase order item routes
+// app.use("/api/purchase/items", verifyToken, purchaseOrderItemsRouter); // Add this line to include the purchase order item routes
 app.use("/api/purchase", verifyToken, purchaseOrdersRouter); // Add this line to include the purchase order routes
+app.use("/api/inventory", verifyToken, inventoryRouter);
+app.use("/api/sales", verifyToken, salesRouter);
 
 app.use("/", (req, res) => {
   res.send("Hello World!");

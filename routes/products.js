@@ -1,9 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const productsController = require("../controllers/products");
-const { verifyToken } = require("../utils/jwt");
 
-router.get("/list", verifyToken, productsController.getAll);
+router.get("/list", productsController.getAll);
 router.get("/:id", productsController.get);
 router.get("/", productsController.getPaginated);
 router.post("/", productsController.create);

@@ -79,6 +79,39 @@ const purchaseOrderSchema = Joi.object({
     }),
 }).required();
 
+const salesOrderStatusSchema = Joi.object({
+  status: Joi.string()
+    .valid("PENDING", "COMPLETED", "CANCELLED")
+    .default("COMPLETED"),
+}).required();
+
+const salesOrderItemSchema = salesOrderStatusSchema
+  .keys({
+    inventoryId: Joi.number().required(),
+    quantity: Joi.number().required(),
+    unitPrice: Joi.number().required(),
+    discount: Joi.number().optional().allow(null),
+    inventory: Joi.object().strip(),
+  })
+  .required();
+
+const salesOrderSchema = Joi.object({
+  customer: Joi.string().required(),
+  orderDate: Joi.date().required(),
+  deliveryDate: Joi.date().required(),
+  receivedDate: Joi.date().optional(),
+  notes: Joi.string().optional().allow(null),
+  salesOrderItems: Joi.array().items(salesOrderItemSchema).required().messages({
+    "array.includesRequiredUnknowns":
+      "Purchase order must include at least one product.",
+  }),
+}).required();
+
+const inventorySchema = Joi.object({
+  productId: Joi.number().required(),
+  quantity: Joi.number().required(),
+}).required();
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -90,4 +123,8 @@ module.exports = {
   purchaseOrderSchema,
   purchaseOrderItemSchema,
   purchaseOrderStatusSchema,
+  salesOrderSchema,
+  salesOrderItemSchema,
+  salesOrderStatusSchema,
+  inventorySchema,
 };

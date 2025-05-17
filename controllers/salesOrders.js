@@ -1,76 +1,82 @@
 const db = require("../models");
 const {
-  PurchaseOrder,
-  PurchaseOrderItem,
+  User,
+  SalesOrder,
+  SalesOrderItem,
   Product,
   Inventory,
   InventoryTransaction,
 } = db;
 const {
-  purchaseOrderSchema,
-  purchaseOrderStatusSchema,
+  salesOrderSchema,
+  salesOrderStatusSchema,
 } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
-const { Op, where } = require("sequelize");
+const { Op } = require("sequelize");
 const { getCurrentUser } = require("../utils/jwt");
 const {
   ORDER_STATUS,
   INVENTORY_TRANSACTION_TYPE,
 } = require("../utils/definitions");
 
-const PurchaseOrderController = {
+const SalesOrderController = {
   async get(req, res) {
     const { id } = req.params;
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, {
+      const salesOrder = await SalesOrder.findByPk(id, {
         include: [
           {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
+            model: SalesOrderItem,
+            as: "salesOrderItems",
             where: { orderId: id },
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
               {
-                model: Product,
-                as: "product",
-                include: [
-                  { model: db.Category, as: "category", attributes: ["name"] },
-                ],
+                model: Inventory,
+                as: "inventory",
                 attributes: { exclude: ["createdAt", "updatedAt"] },
+                include: [
+                  {
+                    model: Product,
+                    as: "product",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    include: [
+                      {
+                        model: db.Category,
+                        as: "category",
+                        attributes: ["name"],
+                      },
+                    ],
+                  },
+                ],
               },
             ],
-          },
-          {
-            model: db.Supplier,
-            as: "supplier",
           },
           {
             model: db.User,
             as: "orderByUser",
           },
-          {
-            model: db.User,
-            as: "receivedByUser",
-          },
         ],
         // raw: true,
         nest: true,
       });
-      if (!purchaseOrder) {
+      if (!salesOrder) {
         return res.status(404).json({
           error: {
-            message: "PurchaseOrder not found",
+            message: "SalesOrder not found",
           },
         });
       }
-      return res.status(200).json(purchaseOrder);
+      return res.status(200).json(salesOrder);
     } catch (error) {
+      console.log(error);
+
       return res.status(500).json(formatErrors(error));
     }
   },
   async create(req, res, next) {
     const user = await getCurrentUser(req, res, next);
-    const { error } = purchaseOrderSchema.validate(req.body, {
+    const { error } = salesOrderSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
@@ -79,23 +85,43 @@ const PurchaseOrderController = {
 
     try {
       const {
-        supplierId,
+        customer,
         orderDate,
         status,
         deliveryDate,
         receivedDate,
         notes,
-        purchaseOrderItems,
+        salesOrderItems,
       } = req.body;
 
-      const totalAmount = purchaseOrderItems.reduce(
+      const totalAmount = salesOrderItems.reduce(
         (total, item) => total + item.unitPrice * item.quantity,
         0
       );
 
-      const result = await PurchaseOrder.create(
+      salesOrderItems.map(async (item) => {
+        const inventory = await Inventory.findOne({
+          where: {
+            id: item.inventoryId,
+          },
+        });
+        if (!inventory) {
+          return res
+            .status(404)
+            .json({ message: `${item.inventory.product.name} not found` });
+        }
+        if (inventory.quantity < item.quantity) {
+          return res.status(400).json({
+            message: `${item.inventory.product.name} quantity is not enough`,
+          });
+        }
+        inventory.quantity -= item.quantity;
+        await inventory.save();
+      });
+
+      const result = await SalesOrder.create(
         {
-          supplierId,
+          customer,
           orderDate,
           status,
           deliveryDate,
@@ -103,13 +129,13 @@ const PurchaseOrderController = {
           totalAmount,
           orderBy: user.id,
           notes,
-          purchaseOrderItems,
+          salesOrderItems,
         },
         {
           include: [
             {
-              model: PurchaseOrderItem,
-              as: "purchaseOrderItems",
+              model: SalesOrderItem,
+              as: "salesOrderItems",
             },
           ],
         }
@@ -117,17 +143,19 @@ const PurchaseOrderController = {
 
       return res.status(201).json(result);
     } catch (error) {
+      console.log(error);
+
       return res.status(500).json(formatErrors(error));
     }
   },
 
   async getAll(req, res) {
     try {
-      const result = await PurchaseOrder.findAll({
+      const result = await SalesOrder.findAll({
         include: [
           {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
+            model: SalesOrderItem,
+            as: "salesOrderItems",
             include: [
               {
                 model: Product,
@@ -147,19 +175,19 @@ const PurchaseOrderController = {
 
   async update(req, res) {
     const { id } = req.params;
-    const { error } = purchaseOrderSchema.validate(req.body, {
+    const { error } = salesOrderSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
       return res.status(400).json(formatErrors(error));
     }
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id);
-      if (!purchaseOrder) {
-        return res.status(404).json({ message: "PurchaseOrder not found" });
+      const salesOrder = await SalesOrder.findByPk(id);
+      if (!salesOrder) {
+        return res.status(404).json({ message: "SalesOrder not found" });
       }
-      await purchaseOrder.update(req.body);
-      return res.status(200).json(purchaseOrder);
+      await salesOrder.update(req.body);
+      return res.status(200).json(salesOrder);
     } catch (error) {
       return res.status(500).json(formatErrors(error));
     }
@@ -167,11 +195,11 @@ const PurchaseOrderController = {
   async delete(req, res) {
     const { id } = req.params;
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id);
-      if (!purchaseOrder) {
-        return res.status(404).json({ message: "PurchaseOrder not found" });
+      const salesOrder = await SalesOrder.findByPk(id);
+      if (!salesOrder) {
+        return res.status(404).json({ message: "SalesOrder not found" });
       }
-      await purchaseOrder.destroy();
+      await salesOrder.destroy();
       return res.status(204).send();
     } catch (error) {
       return res.status(500).json(formatErrors(error));
@@ -191,7 +219,7 @@ const PurchaseOrderController = {
         // order.push(["id", "ASC"]); // Default sort
       }
 
-      const { count, rows } = await PurchaseOrder.findAndCountAll({
+      const { count, rows } = await SalesOrder.findAndCountAll({
         limit,
         offset,
         order,
@@ -199,32 +227,18 @@ const PurchaseOrderController = {
         nest: true,
         include: [
           {
-            model: db.PurchaseOrderItem,
-            as: "purchaseOrderItems",
+            model: SalesOrderItem,
+            as: "salesOrderItems",
             include: [
               {
-                model: db.Product,
+                model: Product,
                 as: "product",
-                include: [
-                  {
-                    model: db.Category,
-                    as: "category",
-                  },
-                ],
               },
             ],
           },
           {
             model: db.User,
-            as: "receivedByUser",
-          },
-          {
-            model: db.User,
             as: "orderByUser",
-          },
-          {
-            model: db.Supplier,
-            as: "supplier",
           },
         ],
       });
@@ -235,32 +249,34 @@ const PurchaseOrderController = {
         currentPage: page,
       });
     } catch (error) {
+      console.log(error);
+
       return res.status(500).json(formatErrors(error));
     }
   },
 
   async updateStatus(req, res) {
     const { id } = req.params;
-    const { error } = purchaseOrderStatusSchema.validate(req.body, {
+    const { error } = salesOrderStatusSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
       return res.status(400).json(formatErrors(error));
     }
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, {
+      const salesOrder = await SalesOrder.findByPk(id, {
         include: [
           {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
+            model: SalesOrderItem,
+            as: "salesOrderItems",
           },
         ],
       });
-      if (!purchaseOrder) {
-        return res.status(404).json({ message: "PurchaseOrder not found" });
+      if (!salesOrder) {
+        return res.status(404).json({ message: "SalesOrder not found" });
       }
-      if (purchaseOrder.status === ORDER_STATUS.PENDING) {
-        purchaseOrder.purchaseOrderItems.map(async (item) => {
+      if (salesOrder.status === ORDER_STATUS.PENDING) {
+        salesOrder.salesOrderItems.map(async (item) => {
           const [inventory, created] = await Inventory.findOrCreate({
             where: {
               productId: item.productId,
@@ -276,18 +292,18 @@ const PurchaseOrderController = {
             previousQuantity: inventory.quantity,
             newQuantity: inventory.quantity + item.quantity,
             transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-            orderId: purchaseOrder.id,
+            orderId: salesOrder.id,
           });
           inventory.quantity += item.quantity;
           inventory.save();
         });
 
-        await purchaseOrder.update(req.body);
+        await salesOrder.update(req.body);
       } else {
         return res.status(500).json({ error: "Order status is not pending" });
       }
 
-      return res.status(200).json(purchaseOrder);
+      return res.status(200).json(salesOrder);
     } catch (error) {
       console.log(111111111, error);
 
@@ -296,4 +312,4 @@ const PurchaseOrderController = {
   },
 };
 
-module.exports = PurchaseOrderController;
+module.exports = SalesOrderController;
