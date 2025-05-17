@@ -35,14 +35,11 @@ const CustomerController = {
       });
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
       return res.status(500).json(formatErrors(error));
     }
   },
 
   async getAll(req, res) {
-    console.log(req.params);
-
     try {
       const result = await Customer.findAll();
       return res.status(200).json(result);

@@ -39,8 +39,6 @@ const UserController = {
   },
 
   async getAll(req, res) {
-    console.log(req.params);
-
     try {
       const result = await User.findAll();
       return res.status(200).json(result);

@@ -32,8 +32,6 @@ const PurchaseOrderItemController = {
     }
   },
   async create(req, res) {
-    console.log(1243);
-
     const { error } = purchaseOrderItemSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -51,7 +49,6 @@ const PurchaseOrderItemController = {
       });
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
       return res.status(500).json(formatErrors(error));
     }
   },

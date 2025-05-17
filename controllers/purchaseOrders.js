@@ -1,10 +1,13 @@
 const db = require("../models");
 const { PurchaseOrder, PurchaseOrderItem, Product } = db;
-
-const { purchaseOrderSchema } = require("../utils/validations");
+const {
+  purchaseOrderSchema,
+  purchaseOrderStatusSchema,
+} = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
-const { Op, where } = require("sequelize");
-const { raw } = require("body-parser");
+const { Op } = require("sequelize");
+const { getCurrentUser } = require("../utils/jwt");
+const { ORDER_STATUS } = require("../utils/definitions");
 
 const PurchaseOrderController = {
   async get(req, res) {
@@ -16,10 +19,15 @@ const PurchaseOrderController = {
             model: PurchaseOrderItem,
             as: "purchaseOrderItems",
             where: { orderId: id },
+            attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
               {
                 model: Product,
                 as: "product",
+                include: [
+                  { model: db.Category, as: "category", attributes: ["name"] },
+                ],
+                attributes: { exclude: ["createdAt", "updatedAt"] },
               },
             ],
           },
@@ -47,26 +55,55 @@ const PurchaseOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res) {
+  async create(req, res, next) {
+    const user = await getCurrentUser(req, res, next);
     const { error } = purchaseOrderSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
       return res.status(400).json(formatErrors(error));
     }
+
     try {
-      const { supplierId, orderDate, totalAmount, orderBy, receivedBy } =
-        req.body;
-      const result = await PurchaseOrder.create({
+      const {
         supplierId,
         orderDate,
-        totalAmount,
-        orderBy,
-        receivedBy,
-      });
+        status,
+        deliveryDate,
+        receivedDate,
+        notes,
+        purchaseOrderItems,
+      } = req.body;
+
+      const totalAmount = purchaseOrderItems.reduce(
+        (total, item) => total + item.unitPrice * item.quantity,
+        0
+      );
+
+      const result = await PurchaseOrder.create(
+        {
+          supplierId,
+          orderDate,
+          status,
+          deliveryDate,
+          receivedDate,
+          totalAmount,
+          orderBy: user.id,
+          notes,
+          purchaseOrderItems,
+        },
+        {
+          include: [
+            {
+              model: PurchaseOrderItem,
+              as: "purchaseOrderItems",
+            },
+          ],
+        }
+      );
+
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
       return res.status(500).json(formatErrors(error));
     }
   },
@@ -145,8 +182,38 @@ const PurchaseOrderController = {
         limit,
         offset,
         order,
-        raw: true,
         where,
+        nest: true,
+        include: [
+          {
+            model: db.PurchaseOrderItem,
+            as: "purchaseOrderItems",
+            include: [
+              {
+                model: db.Product,
+                as: "product",
+                include: [
+                  {
+                    model: db.Category,
+                    as: "category",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            model: db.User,
+            as: "receivedByUser",
+          },
+          {
+            model: db.User,
+            as: "orderByUser",
+          },
+          {
+            model: db.Supplier,
+            as: "supplier",
+          },
+        ],
       });
       return res.status(200).json({
         data: rows,
@@ -155,7 +222,32 @@ const PurchaseOrderController = {
         currentPage: page,
       });
     } catch (error) {
-      console.log(error);
+      return res.status(500).json(formatErrors(error));
+    }
+  },
+
+  async updateStatus(req, res) {
+    const { id } = req.params;
+    const { error } = purchaseOrderStatusSchema.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json(formatErrors(error));
+    }
+    try {
+      const purchaseOrder = await PurchaseOrder.findByPk(id);
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "PurchaseOrder not found" });
+      }
+      if (purchaseOrder.status === ORDER_STATUS.PENDING) {
+        await purchaseOrder.update(req.body);
+      } else {
+        return res.status(500).json({ error: "Order status is not pending" });
+      }
+
+      return res.status(200).json(purchaseOrder);
+    } catch (error) {
+      console.log(111111111, error);
 
       return res.status(500).json(formatErrors(error));
     }

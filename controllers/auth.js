@@ -14,8 +14,6 @@ const login = async (req, res, next) => {
   }
 
   passport.authenticate("local", { session: false }, (err, user, info) => {
-    console.log("userqwe", user);
-
     if (err || !user) {
       return res.status(400).json({ error: "Invalid username or password" });
     }
@@ -26,10 +24,18 @@ const login = async (req, res, next) => {
 };
 
 const me = async (req, res, next) => {
-  const token = req.headers["x-access-token"];
-  const { id } = decodeToken(token);
-  const user = await User.findByPk(id, { raw: true });
-  return res.status(200).json(user);
+  try {
+    const token = req.headers["x-access-token"];
+    const { id } = decodeToken(token);
+    const user = await User.findByPk(id, { raw: true });
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    return res.status(500).json(formatErrors(error));
+  }
 };
 
 module.exports = { login, me, generateToken };

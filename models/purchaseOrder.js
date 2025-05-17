@@ -31,10 +31,35 @@ module.exports = (sequelize) => {
         defaultValue: "Pending",
       },
       deliveryDate: { type: DataTypes.DATE },
-      receivedDate: { type: DataTypes.DATE },
+      receivedDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        validate: {
+          conditionalRequired(value) {
+            if (this.status === "COMPLETED" && !value) {
+              throw new Error(
+                "receivedDate is required when status is completed"
+              );
+            }
+          },
+        },
+      },
       totalAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       orderBy: { type: DataTypes.INTEGER, allowNull: false },
-      receivedBy: { type: DataTypes.INTEGER, allowNull: false },
+      receivedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+          conditionalRequired(value) {
+            if (this.status === "COMPLETED" && !value) {
+              throw new Error(
+                "receivedBy is required when status is completed"
+              );
+            }
+          },
+        },
+      },
       notes: { type: DataTypes.TEXT },
     },
     {

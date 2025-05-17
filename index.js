@@ -14,6 +14,7 @@ const LocalStrategy = require("passport-local").Strategy;
 const dotenv = require("dotenv");
 const { User } = require("./models"); // Adjust the path to your models
 const purchaseOrder = require("./models/purchaseOrder");
+const { verifyToken } = require("./utils/jwt");
 dotenv.config();
 
 const app = express();
@@ -47,13 +48,13 @@ passport.use(
 
 app.use(passport.initialize());
 app.use("/api/auth", authRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/suppliers", suppliersRouter);
-app.use("/api/customers", customersRouter);
-app.use("/api/products", productsRouter);
-app.use("/api/categories", categoriesRouter);
-app.use("/api/purchase/items", purchaseOrderItemsRouter); // Add this line to include the purchase order item routes
-app.use("/api/purchase", purchaseOrdersRouter); // Add this line to include the purchase order routes
+app.use("/api/users", verifyToken, usersRouter);
+app.use("/api/suppliers", verifyToken, suppliersRouter);
+app.use("/api/customers", verifyToken, customersRouter);
+app.use("/api/products", verifyToken, productsRouter);
+app.use("/api/categories", verifyToken, categoriesRouter);
+app.use("/api/purchase/items", verifyToken, purchaseOrderItemsRouter); // Add this line to include the purchase order item routes
+app.use("/api/purchase", verifyToken, purchaseOrdersRouter); // Add this line to include the purchase order routes
 
 app.use("/", (req, res) => {
   res.send("Hello World!");

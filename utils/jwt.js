@@ -1,4 +1,6 @@
 const jwt = require("jsonwebtoken");
+const db = require("../models");
+const { User } = db;
 
 const generateToken = (user) => {
   return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
@@ -25,4 +27,11 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-module.exports = { generateToken, decodeToken, verifyToken };
+const getCurrentUser = async (req) => {
+  const token = req.headers["x-access-token"];
+  const { id } = decodeToken(token);
+  const user = await User.findByPk(id, { raw: true });
+  return user;
+};
+
+module.exports = { generateToken, decodeToken, verifyToken, getCurrentUser };

@@ -33,7 +33,6 @@ const CategoriesController = {
       });
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
       return res.status(500).json(formatErrors(error));
     }
   },
@@ -112,8 +111,6 @@ const CategoriesController = {
         currentPage: page,
       });
     } catch (error) {
-      console.log(error);
-
       return res.status(500).json(formatErrors(error));
     }
   },

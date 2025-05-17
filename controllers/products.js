@@ -39,17 +39,15 @@ const ProductController = {
       });
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
       return res.status(500).json(formatErrors(error));
     }
   },
 
   async getAll(req, res) {
-    console.log(req.params);
-
     try {
       const result = await Product.findAll({
         include: [{ model: Category, as: "category", attributes: ["name"] }],
+        order: [["name", "ASC"]],
         raw: true,
         nest: true,
       });
@@ -121,8 +119,6 @@ const ProductController = {
         currentPage: page,
       });
     } catch (error) {
-      console.log(error);
-
       return res.status(500).json(formatErrors(error));
     }
   },

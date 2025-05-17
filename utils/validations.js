@@ -48,26 +48,35 @@ const categorySchema = Joi.object({
   description: Joi.string().optional(),
 }).required();
 
+const purchaseOrderStatusSchema = Joi.object({
+  status: Joi.string()
+    .valid("PENDING", "COMPLETED", "CANCELLED")
+    .default("PENDING"),
+}).required();
+
+const purchaseOrderItemSchema = purchaseOrderStatusSchema
+  .keys({
+    productId: Joi.number().required(),
+    quantity: Joi.number().required(),
+    unitPrice: Joi.number().required(),
+    discount: Joi.number().optional().allow(null),
+    product: Joi.object().strip(),
+  })
+  .required();
+
 const purchaseOrderSchema = Joi.object({
   supplierId: Joi.number().required(),
   orderDate: Joi.date().required(),
   deliveryDate: Joi.date().required(),
   receivedDate: Joi.date().optional(),
-  orderBy: Joi.number().required(),
-  receivedBy: Joi.number().required(),
-  notes: Joi.string().optional(),
-  status: Joi.string()
-    .valid("pending", "completed", "cancelled")
-    .default("pending"),
-  totalAmount: Joi.number().required(),
-}).required();
-
-const purchaseOrderItemSchema = Joi.object({
-  orderId: Joi.number().required(),
-  productId: Joi.number().required(),
-  quantity: Joi.number().required(),
-  unitPrice: Joi.number().required(),
-  discount: Joi.number().optional(),
+  notes: Joi.string().optional().allow(null),
+  purchaseOrderItems: Joi.array()
+    .items(purchaseOrderItemSchema)
+    .required()
+    .messages({
+      "array.includesRequiredUnknowns":
+        "Purchase order must include at least one product.",
+    }),
 }).required();
 
 module.exports = {
@@ -80,4 +89,5 @@ module.exports = {
   categorySchema,
   purchaseOrderSchema,
   purchaseOrderItemSchema,
+  purchaseOrderStatusSchema,
 };

@@ -36,19 +36,22 @@ const SupplierController = {
       });
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
-
       return res.status(500).json(formatErrors(error));
     }
   },
 
   async getAll(req, res) {
-    console.log(req.params);
+    // const { query } = req.query;
+    // if (!query || query.length < 2) {
+    //   return res.json([]);
+    // }
+    // const where = query ? { name: { [Op.like]: `%${query}%` } } : null;
 
     try {
       const result = await Supplier.findAll({
         raw: true,
         order: [["name", "ASC"]],
+        // where,
       });
       return res.status(200).json(result);
     } catch (error) {
@@ -116,8 +119,6 @@ const SupplierController = {
         currentPage: page,
       });
     } catch (error) {
-      console.log(error);
-
       return res.status(500).json(formatErrors(error));
     }
   },
