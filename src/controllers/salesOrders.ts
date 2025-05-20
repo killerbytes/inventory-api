@@ -1,3 +1,7 @@
+import { NextFunction, Request, Response } from "express";
+import { Transaction } from "sequelize";
+import ApiError from "../services/ApiError";
+
 const db = require("../models");
 const UserService = require("../services/UserService");
 const {
@@ -18,10 +22,9 @@ const {
   ORDER_STATUS,
   INVENTORY_TRANSACTION_TYPE,
 } = require("../utils/definitions");
-const ApiError = require("../utils/formatErrors");
 
 const SalesOrderController = {
-  async get(req, res) {
+  async get(req: Request, res: Response) {
     const { id } = req.params;
     try {
       console.log(id);
@@ -61,12 +64,13 @@ const SalesOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res, next) {
+  async create(req: Request, res: Response, next: NextFunction) {
     const { error } = salesOrderSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
-      return res.status(400).json(formatErrors(error));
+      const err = ApiError.sequelizeError(error);
+      return res.status(400).json(err);
     }
 
     try {
@@ -75,11 +79,11 @@ const SalesOrderController = {
         req.body;
 
       const totalAmount = salesOrderItems.reduce(
-        (total, item) => total + item.unitPrice * item.quantity,
+        (total: number, item: any) => total + item.unitPrice * item.quantity,
         0
       );
 
-      const result = await db.sequelize.transaction(async (t) => {
+      const result = await db.sequelize.transaction(async (t: Transaction) => {
         const result = await SalesOrder.create(
           {
             customer,
@@ -106,18 +110,14 @@ const SalesOrderController = {
         return result;
       });
       return res.status(201).json(result);
-    } catch (error) {
-      next(
-        new ApiError(
-          "DATABASE_ERROR",
-          "Failed to process request",
-          error.message
-        )
-      );
+    } catch (error: any) {
+      console.log(34343, error.message);
+
+      return res.status(500).json(ApiError.badRequest(error.message));
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req: Request, res: Response) {
     try {
       const result = await SalesOrder.findAll({
         include: [
@@ -141,7 +141,7 @@ const SalesOrderController = {
     }
   },
 
-  async update(req, res) {
+  async update(req: Request, res: Response) {
     const { id } = req.params;
     const { error } = salesOrderSchema.validate(req.body, {
       abortEarly: false,
@@ -160,7 +160,7 @@ const SalesOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async delete(req, res) {
+  async delete(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const salesOrder = await SalesOrder.findByPk(id);
@@ -173,9 +173,10 @@ const SalesOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async getPaginated(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
+  async getPaginated(req: Request, res: Response) {
+    const { query } = req;
+    const limit = parseInt(query.limit as string) || 10;
+    const page = parseInt(query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;
@@ -222,62 +223,6 @@ const SalesOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-
-  // async updateStatus(req, res) {
-  //   const { id } = req.params;
-  //   const { error } = salesOrderStatusSchema.validate(req.body, {
-  //     abortEarly: false,
-  //   });
-  //   if (error) {
-  //     return res.status(400).json(formatErrors(error));
-  //   }
-  //   try {
-  //     const salesOrder = await SalesOrder.findByPk(id, {
-  //       include: [
-  //         {
-  //           model: SalesOrderItem,
-  //           as: "salesOrderItems",
-  //         },
-  //       ],
-  //     });
-  //     if (!salesOrder) {
-  //       return res.status(404).json({ message: "SalesOrder not found" });
-  //     }
-  //     if (salesOrder.status === ORDER_STATUS.PENDING) {
-  //       salesOrder.salesOrderItems.map(async (item) => {
-  //         const [inventory, created] = await Inventory.findOrCreate({
-  //           where: {
-  //             productId: item.productId,
-  //           },
-  //           defaults: {
-  //             productId: item.productId,
-  //             quantity: 0,
-  //           },
-  //         });
-
-  //         InventoryTransaction.create({
-  //           inventoryId: inventory.id,
-  //           previousQuantity: inventory.quantity,
-  //           newQuantity: inventory.quantity + item.quantity,
-  //           transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-  //           orderId: salesOrder.id,
-  //         });
-  //         inventory.quantity += item.quantity;
-  //         inventory.save();
-  //       });
-
-  //       await salesOrder.update(req.body);
-  //     } else {
-  //       return res.status(500).json({ error: "Order status is not pending" });
-  //     }
-
-  //     return res.status(200).json(salesOrder);
-  //   } catch (error) {
-  //     console.log(111111111, error);
-
-  //     return res.status(500).json(formatErrors(error));
-  //   }
-  // },
 };
 
 module.exports = SalesOrderController;

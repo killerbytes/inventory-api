@@ -1,4 +1,5 @@
 const express = require("express");
+import { Request, Response, NextFunction } from "express";
 const usersRouter = require("./routes/users");
 const authRouter = require("./routes/auth");
 const suppliersRouter = require("./routes/suppliers");
@@ -32,7 +33,7 @@ app.use(express.json()); // Middleware to parse JSON bodies
 passport.use(
   new LocalStrategy(
     { usernameField: "username", passwordField: "password" },
-    async (username, password, done) => {
+    async (username: string, password: string, done: any) => {
       try {
         const user = await User.scope("withPassword").findOne({
           where: { username },
@@ -61,24 +62,26 @@ app.use("/api/purchase", verifyToken, purchaseOrdersRouter); // Add this line to
 app.use("/api/inventory", verifyToken, inventoryRouter);
 app.use("/api/sales", verifyToken, salesRouter);
 
-app.use("/", (req, res) => {
+app.use("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
-app.use((err, req, res, next) => {
-  if (err instanceof ApiError) {
-    return res.status(err.statusCode).json(err.toJSON());
-  }
+// app.use((err: any, req: Request, res: Response) => {
+//   console.log(7777, err);
 
-  // Handle non-ApiError errors
-  const apiError = new ApiError(
-    "INTERNAL_SERVER_ERROR",
-    "An unexpected error occurred",
-    process.env.NODE_ENV === "development" ? err.message : undefined
-  );
+//   if (err instanceof ApiError) {
+//     return res.status(err.statusCode).json(err.toJSON());
+//   }
 
-  res.status(500).json(apiError.toJSON());
-});
+//   // Handle non-ApiError errors
+//   const apiError = new ApiError(
+//     "INTERNAL_SERVER_ERROR",
+//     "An unexpected error occurred",
+//     process.env.NODE_ENV === "development" ? err.message : undefined
+//   );
+
+//   res.status(500).json(apiError.toJSON());
+// });
 
 // Start server
 app.listen(port, () => {
