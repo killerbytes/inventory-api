@@ -91,7 +91,7 @@ const salesOrderItemSchema = salesOrderStatusSchema
     quantity: Joi.number().required(),
     unitPrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
-    inventory: Joi.object().strip(),
+    inventory: Joi.object(),
   })
   .required();
 

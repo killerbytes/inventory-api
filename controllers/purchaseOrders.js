@@ -260,29 +260,9 @@ const PurchaseOrderController = {
         return res.status(404).json({ message: "PurchaseOrder not found" });
       }
       if (purchaseOrder.status === ORDER_STATUS.PENDING) {
-        purchaseOrder.purchaseOrderItems.map(async (item) => {
-          const [inventory, created] = await Inventory.findOrCreate({
-            where: {
-              productId: item.productId,
-            },
-            defaults: {
-              productId: item.productId,
-              quantity: 0,
-            },
-          });
-
-          InventoryTransaction.create({
-            inventoryId: inventory.id,
-            previousQuantity: inventory.quantity,
-            newQuantity: inventory.quantity + item.quantity,
-            transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-            orderId: purchaseOrder.id,
-          });
-          inventory.quantity += item.quantity;
-          inventory.save();
+        await db.sequelize.transaction(async (transaction) => {
+          await purchaseOrder.update(req.body, { transaction });
         });
-
-        await purchaseOrder.update(req.body);
       } else {
         return res.status(500).json({ error: "Order status is not pending" });
       }

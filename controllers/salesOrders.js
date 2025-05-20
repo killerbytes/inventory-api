@@ -1,4 +1,5 @@
 const db = require("../models");
+const UserService = require("../services/UserService");
 const {
   User,
   SalesOrder,
@@ -13,51 +14,37 @@ const {
 } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
-const { getCurrentUser } = require("../utils/jwt");
 const {
   ORDER_STATUS,
   INVENTORY_TRANSACTION_TYPE,
 } = require("../utils/definitions");
+const ApiError = require("../utils/formatErrors");
 
 const SalesOrderController = {
   async get(req, res) {
     const { id } = req.params;
     try {
+      console.log(id);
+
       const salesOrder = await SalesOrder.findByPk(id, {
         include: [
           {
             model: SalesOrderItem,
             as: "salesOrderItems",
-            where: { orderId: id },
-            attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
               {
                 model: Inventory,
                 as: "inventory",
-                attributes: { exclude: ["createdAt", "updatedAt"] },
                 include: [
                   {
                     model: Product,
                     as: "product",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                    include: [
-                      {
-                        model: db.Category,
-                        as: "category",
-                        attributes: ["name"],
-                      },
-                    ],
                   },
                 ],
               },
             ],
           },
-          {
-            model: db.User,
-            as: "orderByUser",
-          },
         ],
-        // raw: true,
         nest: true,
       });
       if (!salesOrder) {
@@ -75,7 +62,6 @@ const SalesOrderController = {
     }
   },
   async create(req, res, next) {
-    const user = await getCurrentUser(req, res, next);
     const { error } = salesOrderSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -84,68 +70,50 @@ const SalesOrderController = {
     }
 
     try {
-      const {
-        customer,
-        orderDate,
-        status,
-        deliveryDate,
-        receivedDate,
-        notes,
-        salesOrderItems,
-      } = req.body;
+      const user = await UserService.getCurrent(req);
+      const { customer, orderDate, deliveryDate, notes, salesOrderItems } =
+        req.body;
 
       const totalAmount = salesOrderItems.reduce(
         (total, item) => total + item.unitPrice * item.quantity,
         0
       );
 
-      salesOrderItems.map(async (item) => {
-        const inventory = await Inventory.findOne({
-          where: {
-            id: item.inventoryId,
+      const result = await db.sequelize.transaction(async (t) => {
+        const result = await SalesOrder.create(
+          {
+            customer,
+            orderDate,
+            status: ORDER_STATUS.COMPLETED,
+            deliveryDate,
+            receivedDate: new Date(),
+            totalAmount,
+            receivedBy: user.id,
+            notes,
+            salesOrderItems,
           },
-        });
-        if (!inventory) {
-          return res
-            .status(404)
-            .json({ message: `${item.inventory.product.name} not found` });
-        }
-        if (inventory.quantity < item.quantity) {
-          return res.status(400).json({
-            message: `${item.inventory.product.name} quantity is not enough`,
-          });
-        }
-        inventory.quantity -= item.quantity;
-        await inventory.save();
+          {
+            transaction: t,
+            include: [
+              {
+                model: SalesOrderItem,
+                as: "salesOrderItems",
+              },
+            ],
+          }
+        );
+
+        return result;
       });
-
-      const result = await SalesOrder.create(
-        {
-          customer,
-          orderDate,
-          status,
-          deliveryDate,
-          receivedDate,
-          totalAmount,
-          orderBy: user.id,
-          notes,
-          salesOrderItems,
-        },
-        {
-          include: [
-            {
-              model: SalesOrderItem,
-              as: "salesOrderItems",
-            },
-          ],
-        }
-      );
-
       return res.status(201).json(result);
     } catch (error) {
-      console.log(error);
-
-      return res.status(500).json(formatErrors(error));
+      next(
+        new ApiError(
+          "DATABASE_ERROR",
+          "Failed to process request",
+          error.message
+        )
+      );
     }
   },
 
@@ -231,14 +199,14 @@ const SalesOrderController = {
             as: "salesOrderItems",
             include: [
               {
-                model: Product,
-                as: "product",
+                model: Inventory,
+                as: "inventory",
               },
             ],
           },
           {
             model: db.User,
-            as: "orderByUser",
+            as: "receivedByUser",
           },
         ],
       });
@@ -255,61 +223,61 @@ const SalesOrderController = {
     }
   },
 
-  async updateStatus(req, res) {
-    const { id } = req.params;
-    const { error } = salesOrderStatusSchema.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      return res.status(400).json(formatErrors(error));
-    }
-    try {
-      const salesOrder = await SalesOrder.findByPk(id, {
-        include: [
-          {
-            model: SalesOrderItem,
-            as: "salesOrderItems",
-          },
-        ],
-      });
-      if (!salesOrder) {
-        return res.status(404).json({ message: "SalesOrder not found" });
-      }
-      if (salesOrder.status === ORDER_STATUS.PENDING) {
-        salesOrder.salesOrderItems.map(async (item) => {
-          const [inventory, created] = await Inventory.findOrCreate({
-            where: {
-              productId: item.productId,
-            },
-            defaults: {
-              productId: item.productId,
-              quantity: 0,
-            },
-          });
+  // async updateStatus(req, res) {
+  //   const { id } = req.params;
+  //   const { error } = salesOrderStatusSchema.validate(req.body, {
+  //     abortEarly: false,
+  //   });
+  //   if (error) {
+  //     return res.status(400).json(formatErrors(error));
+  //   }
+  //   try {
+  //     const salesOrder = await SalesOrder.findByPk(id, {
+  //       include: [
+  //         {
+  //           model: SalesOrderItem,
+  //           as: "salesOrderItems",
+  //         },
+  //       ],
+  //     });
+  //     if (!salesOrder) {
+  //       return res.status(404).json({ message: "SalesOrder not found" });
+  //     }
+  //     if (salesOrder.status === ORDER_STATUS.PENDING) {
+  //       salesOrder.salesOrderItems.map(async (item) => {
+  //         const [inventory, created] = await Inventory.findOrCreate({
+  //           where: {
+  //             productId: item.productId,
+  //           },
+  //           defaults: {
+  //             productId: item.productId,
+  //             quantity: 0,
+  //           },
+  //         });
 
-          InventoryTransaction.create({
-            inventoryId: inventory.id,
-            previousQuantity: inventory.quantity,
-            newQuantity: inventory.quantity + item.quantity,
-            transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-            orderId: salesOrder.id,
-          });
-          inventory.quantity += item.quantity;
-          inventory.save();
-        });
+  //         InventoryTransaction.create({
+  //           inventoryId: inventory.id,
+  //           previousQuantity: inventory.quantity,
+  //           newQuantity: inventory.quantity + item.quantity,
+  //           transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
+  //           orderId: salesOrder.id,
+  //         });
+  //         inventory.quantity += item.quantity;
+  //         inventory.save();
+  //       });
 
-        await salesOrder.update(req.body);
-      } else {
-        return res.status(500).json({ error: "Order status is not pending" });
-      }
+  //       await salesOrder.update(req.body);
+  //     } else {
+  //       return res.status(500).json({ error: "Order status is not pending" });
+  //     }
 
-      return res.status(200).json(salesOrder);
-    } catch (error) {
-      console.log(111111111, error);
+  //     return res.status(200).json(salesOrder);
+  //   } catch (error) {
+  //     console.log(111111111, error);
 
-      return res.status(500).json(formatErrors(error));
-    }
-  },
+  //     return res.status(500).json(formatErrors(error));
+  //   }
+  // },
 };
 
 module.exports = SalesOrderController;

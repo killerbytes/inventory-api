@@ -16,7 +16,8 @@ const LocalStrategy = require("passport-local").Strategy;
 const dotenv = require("dotenv");
 const { User } = require("./models"); // Adjust the path to your models
 const purchaseOrder = require("./models/purchaseOrder");
-const { verifyToken } = require("./utils/jwt");
+const { verifyToken, errHandler } = require("./utils/jwt");
+const ApiError = require("./utils/formatErrors");
 dotenv.config();
 
 const app = express();
@@ -62,6 +63,21 @@ app.use("/api/sales", verifyToken, salesRouter);
 
 app.use("/", (req, res) => {
   res.send("Hello World!");
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json(err.toJSON());
+  }
+
+  // Handle non-ApiError errors
+  const apiError = new ApiError(
+    "INTERNAL_SERVER_ERROR",
+    "An unexpected error occurred",
+    process.env.NODE_ENV === "development" ? err.message : undefined
+  );
+
+  res.status(500).json(apiError.toJSON());
 });
 
 // Start server

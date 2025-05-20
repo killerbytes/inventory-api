@@ -7,11 +7,6 @@ class SalesOrderItem extends Model {
       as: "salesOrder",
     });
 
-    SalesOrderItem.belongsTo(models.Product, {
-      foreignKey: "productId",
-      as: "product",
-    });
-
     SalesOrderItem.belongsTo(models.Inventory, {
       foreignKey: "inventoryId",
       as: "inventory",

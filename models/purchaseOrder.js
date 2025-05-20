@@ -1,4 +1,8 @@
 const { Model, DataTypes } = require("sequelize");
+const {
+  INVENTORY_TRANSACTION_TYPE,
+  ORDER_STATUS,
+} = require("../utils/definitions");
 
 class PurchaseOrder extends Model {
   static associate(models) {
@@ -65,6 +69,37 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "PurchaseOrder",
+      hooks: {
+        afterUpdate: async (purchaseOrder) => {
+          try {
+            if (purchaseOrder.status === ORDER_STATUS.COMPLETED) {
+              purchaseOrder.purchaseOrderItems.map(async (item) => {
+                const [inventory] =
+                  await sequelize.models.Inventory.findOrCreate({
+                    where: {
+                      productId: item.productId,
+                    },
+                    defaults: {
+                      productId: item.productId,
+                      quantity: 0,
+                    },
+                  });
+                sequelize.models.InventoryTransaction.create({
+                  inventoryId: inventory.id,
+                  previousQuantity: inventory.quantity,
+                  newQuantity: inventory.quantity + item.quantity,
+                  transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
+                  orderId: purchaseOrder.id,
+                });
+                inventory.quantity += item.quantity;
+                inventory.save();
+              });
+            }
+          } catch (error) {
+            throw error;
+          }
+        },
+      },
     }
   );
 
