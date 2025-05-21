@@ -47,6 +47,10 @@ const SalesOrderController = {
               },
             ],
           },
+          {
+            model: db.User,
+            as: "receivedByUser",
+          },
         ],
         nest: true,
       });

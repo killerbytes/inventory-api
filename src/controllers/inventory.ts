@@ -1,25 +1,28 @@
-const db = require("../models");
-const { Category: Categories } = db;
+import { Request, Response } from "express";
 
-const { categorySchema } = require("../utils/validations");
+const db = require("../models");
+const { Inventory, Product } = db;
+
+const { inventorySchema } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
 
-const CategoriesController = {
-  async get(req, res) {
+const InventoryController = {
+  async get(req: Request, res: Response) {
     const { id } = req.params;
     try {
-      const categories = await Categories.findByPk(id, { raw: true });
-      if (!categories) {
-        return res.status(404).json({ message: "Categories not found" });
+      const inventories = await Inventory.findByPk(id, { raw: true });
+
+      if (!inventories) {
+        return res.status(404).json({ message: "Inventory not found" });
       }
-      return res.status(200).json(categories);
+      return res.status(200).json(inventories);
     } catch (error) {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res) {
-    const { error } = categorySchema.validate(req.body, {
+  async create(req: Request, res: Response) {
+    const { error } = inventorySchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
@@ -27,7 +30,7 @@ const CategoriesController = {
     }
     try {
       const { name, description } = req.body;
-      const result = await Categories.create({
+      const result = await Inventory.create({
         name,
         description,
       });
@@ -37,11 +40,12 @@ const CategoriesController = {
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req: Request, res: Response) {
     try {
-      const result = await Categories.findAll({
+      const result = await Inventory.findAll({
         raw: true,
-        order: [["name", "ASC"]],
+        nest: true,
+        include: [{ model: Product, as: "product", attributes: ["name"] }],
       });
 
       return res.status(200).json(result);
@@ -50,41 +54,41 @@ const CategoriesController = {
     }
   },
 
-  async update(req, res) {
+  async update(req: Request, res: Response) {
     const { id } = req.params;
-    const { error } = categorySchema.validate(req.body, {
+    const { error } = inventorySchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
       return res.status(400).json(formatErrors(error));
     }
     try {
-      const categories = await Categories.findByPk(id);
-      if (!categories) {
-        return res.status(404).json({ message: "Categories not found" });
+      const inventories = await Inventory.findByPk(id);
+      if (!inventories) {
+        return res.status(404).json({ message: "Inventory not found" });
       }
-      await categories.update(req.body);
-      return res.status(200).json(categories);
+      await inventories.update(req.body);
+      return res.status(200).json(inventories);
     } catch (error) {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async delete(req, res) {
+  async delete(req: Request, res: Response) {
     const { id } = req.params;
     try {
-      const categories = await Categories.findByPk(id);
-      if (!categories) {
-        return res.status(404).json({ message: "Categories not found" });
+      const inventories = await Inventory.findByPk(id);
+      if (!inventories) {
+        return res.status(404).json({ message: "Inventory not found" });
       }
-      await categories.destroy();
+      await inventories.destroy();
       return res.status(204).send();
     } catch (error) {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async getPaginated(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
+  async getPaginated(req: Request, res: Response) {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;
@@ -96,13 +100,14 @@ const CategoriesController = {
         order.push(["name", "ASC"]); // Default sort
       }
 
-      const { count, rows } = await Categories.findAndCountAll({
+      const { count, rows } = await Inventory.findAndCountAll({
         limit,
         offset,
-        order,
+        // order,
         raw: true,
-        where,
+        // where,
         nest: true,
+        include: [{ model: Product, as: "product", attributes: ["name"] }],
       });
       return res.status(200).json({
         data: rows,
@@ -111,9 +116,11 @@ const CategoriesController = {
         currentPage: page,
       });
     } catch (error) {
+      console.log(error);
+
       return res.status(500).json(formatErrors(error));
     }
   },
 };
 
-module.exports = CategoriesController;
+module.exports = InventoryController;

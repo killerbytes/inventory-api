@@ -1,16 +1,14 @@
-const { User } = require("../models");
-const { decodeToken } = require("../utils/jwt");
+const db = require("../models");
+const { User } = db;
+const { Op } = require("sequelize");
 
 class UserService {
-  async create(data) {
-    return data;
-  }
-  async getCurrent(req) {
-    const token = req.headers["x-access-token"];
-
-    const { id } = decodeToken(token);
-    const user = await User.findByPk(id, { raw: true });
-    return user;
+  async getAll() {
+    return await User.findAll({
+      attributes: ["id", "email", "name"],
+      raw: true,
+      nest: true,
+    });
   }
 }
 

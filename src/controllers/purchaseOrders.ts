@@ -1,3 +1,6 @@
+import { NextFunction, Request, Response } from "express";
+import { Transaction } from "sequelize";
+
 const db = require("../models");
 const {
   PurchaseOrder,
@@ -12,14 +15,15 @@ const {
 } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
 const { Op, where } = require("sequelize");
-const { getCurrentUser } = require("../utils/jwt");
 const {
   ORDER_STATUS,
   INVENTORY_TRANSACTION_TYPE,
 } = require("../utils/definitions");
 
+const { getCurrentUser } = require("../services/AuthService");
+
 const PurchaseOrderController = {
-  async get(req, res) {
+  async get(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id, {
@@ -68,8 +72,8 @@ const PurchaseOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res, next) {
-    const user = await getCurrentUser(req, res, next);
+  async create(req: Request, res: Response, next: NextFunction) {
+    const user = await getCurrentUser(req);
     const { error } = purchaseOrderSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -89,7 +93,7 @@ const PurchaseOrderController = {
       } = req.body;
 
       const totalAmount = purchaseOrderItems.reduce(
-        (total, item) => total + item.unitPrice * item.quantity,
+        (total: number, item: any) => total + item.unitPrice * item.quantity,
         0
       );
 
@@ -121,7 +125,7 @@ const PurchaseOrderController = {
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req: Request, res: Response) {
     try {
       const result = await PurchaseOrder.findAll({
         include: [
@@ -145,7 +149,7 @@ const PurchaseOrderController = {
     }
   },
 
-  async update(req, res) {
+  async update(req: Request, res: Response) {
     const { id } = req.params;
     const { error } = purchaseOrderSchema.validate(req.body, {
       abortEarly: false,
@@ -164,7 +168,7 @@ const PurchaseOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async delete(req, res) {
+  async delete(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id);
@@ -177,9 +181,9 @@ const PurchaseOrderController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async getPaginated(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
+  async getPaginated(req: Request, res: Response) {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;
@@ -239,7 +243,7 @@ const PurchaseOrderController = {
     }
   },
 
-  async updateStatus(req, res) {
+  async updateStatus(req: Request, res: Response) {
     const { id } = req.params;
     const { error } = purchaseOrderStatusSchema.validate(req.body, {
       abortEarly: false,
@@ -247,6 +251,9 @@ const PurchaseOrderController = {
     if (error) {
       return res.status(400).json(formatErrors(error));
     }
+
+    const user = await getCurrentUser(req);
+
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id, {
         include: [
@@ -260,8 +267,14 @@ const PurchaseOrderController = {
         return res.status(404).json({ message: "PurchaseOrder not found" });
       }
       if (purchaseOrder.status === ORDER_STATUS.PENDING) {
-        await db.sequelize.transaction(async (transaction) => {
-          await purchaseOrder.update(req.body, { transaction });
+        await db.sequelize.transaction(async (transaction: Transaction) => {
+          await purchaseOrder.update(
+            {
+              status: ORDER_STATUS.COMPLETED,
+              receivedBy: user.id,
+            },
+            { transaction }
+          );
         });
       } else {
         return res.status(500).json({ error: "Order status is not pending" });
@@ -269,8 +282,6 @@ const PurchaseOrderController = {
 
       return res.status(200).json(purchaseOrder);
     } catch (error) {
-      console.log(111111111, error);
-
       return res.status(500).json(formatErrors(error));
     }
   },

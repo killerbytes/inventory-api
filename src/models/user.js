@@ -11,6 +11,10 @@ class User extends Model {
       foreignKey: "receivedBy",
       as: "receivedPurchaseOrders",
     });
+    User.hasMany(models.SalesOrder, {
+      foreignKey: "receivedBy",
+      as: "receivedSalesOrders",
+    });
   }
   static generateHash(password) {
     return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);

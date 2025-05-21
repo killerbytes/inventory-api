@@ -1,3 +1,5 @@
+import { Request, Response } from "express";
+
 const db = require("../models");
 const { Supplier } = db;
 
@@ -6,7 +8,7 @@ const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
 
 const SupplierController = {
-  async get(req, res) {
+  async get(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const supplier = await Supplier.findByPk(id, { raw: true });
@@ -18,7 +20,7 @@ const SupplierController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res) {
+  async create(req: Request, res: Response) {
     const { error } = supplierSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -40,7 +42,7 @@ const SupplierController = {
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req: Request, res: Response) {
     // const { query } = req.query;
     // if (!query || query.length < 2) {
     //   return res.json([]);
@@ -59,7 +61,7 @@ const SupplierController = {
     }
   },
 
-  async update(req, res) {
+  async update(req: Request, res: Response) {
     const { id } = req.params;
     const { error } = supplierSchema.validate(req.body, {
       abortEarly: false,
@@ -78,7 +80,7 @@ const SupplierController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async delete(req, res) {
+  async delete(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const supplier = await Supplier.findByPk(id);
@@ -91,9 +93,9 @@ const SupplierController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async getPaginated(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
+  async getPaginated(req: Request, res: Response) {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;

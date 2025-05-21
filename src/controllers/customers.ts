@@ -1,3 +1,5 @@
+import { Request, Response } from "express";
+
 const db = require("../models");
 const { Customer } = db;
 const { customerSchema } = require("../utils/validations");
@@ -5,7 +7,7 @@ const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
 
 const CustomerController = {
-  async get(req, res) {
+  async get(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const customer = await Customer.findByPk(id, { raw: true });
@@ -17,7 +19,7 @@ const CustomerController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async create(req, res) {
+  async create(req: Request, res: Response) {
     const { error } = customerSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -39,7 +41,7 @@ const CustomerController = {
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req: Request, res: Response) {
     try {
       const result = await Customer.findAll();
       return res.status(200).json(result);
@@ -48,7 +50,7 @@ const CustomerController = {
     }
   },
 
-  async update(req, res) {
+  async update(req: Request, res: Response) {
     const { id } = req.params;
     const { error } = customerSchema.validate(req.body, {
       abortEarly: false,
@@ -67,7 +69,7 @@ const CustomerController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async delete(req, res) {
+  async delete(req: Request, res: Response) {
     const { id } = req.params;
     try {
       const customer = await Customer.findByPk(id);
@@ -80,9 +82,9 @@ const CustomerController = {
       return res.status(500).json(formatErrors(error));
     }
   },
-  async getPaginated(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
+  async getPaginated(req: Request, res: Response) {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;
