@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-
+const { PAGINATION } = require("../utils/definitions");
 const { userSchema, userBaseSchema } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
@@ -82,17 +82,18 @@ const UserController = {
     }
   },
   async getPaginated(req: Request, res: Response) {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
     const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
     const offset = (page - 1) * limit;
+    const sort = req.query.sort || "isActive";
     try {
       const order = [];
       if (req.query.sort) {
         order.push([req.query.sort, req.query.order || "ASC"]);
       } else {
-        order.push(["createdAt", "DESC"]); // Default sort
+        order.push(["isActive", "DESC"]); // Default sort
       }
 
       const { count, rows } = await User.findAndCountAll({
@@ -101,6 +102,7 @@ const UserController = {
         order,
         raw: true,
         where,
+        sort,
       });
       return res.status(200).json({
         data: rows,

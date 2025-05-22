@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-
+const { PAGINATION } = require("../utils/definitions");
 const db = require("../models");
 const { Inventory, Product } = db;
 
@@ -87,7 +87,7 @@ const InventoryController = {
     }
   },
   async getPaginated(req: Request, res: Response) {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
     const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
     const where = q ? { name: { [Op.like]: `%${q}%` } } : null;

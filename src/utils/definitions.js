@@ -14,3 +14,8 @@ export const INVENTORY_TRANSACTION_TYPE = {
   EXPIRY: "EXPIRY",
   CANCELLATION: "CANCELLATION",
 };
+
+export const PAGINATION = {
+  LIMIT: 25,
+  PAGE: 1,
+};
