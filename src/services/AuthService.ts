@@ -1,3 +1,4 @@
+import { where } from "sequelize";
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const { User } = db;
@@ -8,8 +9,15 @@ class AuthService {
 
     if (!token) throw new Error("No token provided");
     const { id } = jwt.decode(token);
-    const user = await User.findByPk(id, { raw: true });
-    return user;
+    try {
+      const user = await User.findByPk(id, {
+        raw: true,
+        where: { isActive: true },
+      });
+      return user;
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

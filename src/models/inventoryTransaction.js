@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       inventoryId: { type: DataTypes.INTEGER, allowNull: false },
       previousQuantity: { type: DataTypes.INTEGER, allowNull: false },
       newQuantity: { type: DataTypes.INTEGER, allowNull: false },
+      quantity: { type: DataTypes.INTEGER, allowNull: false },
       transactionType: { type: DataTypes.STRING, allowNull: false },
       orderId: { type: DataTypes.INTEGER, allowNull: true },
     },

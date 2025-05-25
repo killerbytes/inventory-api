@@ -1,6 +1,6 @@
 // sync.js
-const sequelize = require("./db");
-const db = require("./models"); // Adjust the path to your models
+const db = require("./src/models");
+const { sequelize } = db;
 
 (async () => {
   try {

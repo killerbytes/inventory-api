@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { where } from "sequelize";
 const { PAGINATION } = require("../utils/definitions");
 const db = require("../models");
 const { Inventory, Product } = db;
@@ -90,7 +91,7 @@ const InventoryController = {
     const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
     const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
-    const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
+    const where = q ? { name: { [Op.like]: `%${q}%` } } : {};
     const offset = (page - 1) * limit;
     try {
       const order = [];
@@ -105,9 +106,8 @@ const InventoryController = {
         offset,
         // order,
         raw: true,
-        // where,
         nest: true,
-        include: [{ model: Product, as: "product", attributes: ["name"] }],
+        include: [{ model: Product, as: "product", where }],
       });
       return res.status(200).json({
         data: rows,
@@ -118,6 +118,18 @@ const InventoryController = {
     } catch (error) {
       console.log(error);
 
+      return res.status(500).json(formatErrors(error));
+    }
+  },
+  async getReorderList(req: Request, res: Response) {
+    try {
+      const inventories = await Inventory.findAll({
+        raw: true,
+        nest: true,
+      });
+
+      return res.status(200).json(inventories);
+    } catch (error) {
       return res.status(500).json(formatErrors(error));
     }
   },

@@ -5,7 +5,6 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Inventory extends Model {
     static associate(models) {
-      // Make sure to reference models through the db object
       Inventory.belongsTo(models.Product, {
         foreignKey: "productId",
         as: "product",

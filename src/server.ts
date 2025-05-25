@@ -1,5 +1,6 @@
 const express = require("express");
 import { Request, Response, NextFunction } from "express";
+import ApiError from "./services/ApiError";
 const usersRouter = require("./routes/users");
 const authRouter = require("./routes/auth");
 const suppliersRouter = require("./routes/suppliers");
@@ -18,7 +19,6 @@ const dotenv = require("dotenv");
 const { User } = require("./models"); // Adjust the path to your models
 const purchaseOrder = require("./models/purchaseOrder");
 const { verifyToken, errHandler } = require("./utils/jwt");
-const ApiError = require("./utils/formatErrors");
 dotenv.config();
 
 const app = express();
@@ -36,11 +36,12 @@ passport.use(
     async (username: string, password: string, done: any) => {
       try {
         const user = await User.scope("withPassword").findOne({
-          where: { username },
+          where: { username, isActive: true },
         });
 
         if (!user || !User.validatePassword(password, user.password)) {
-          return done(null, false, { message: "Invalid username or password" });
+          // return done(null, false, { message: "Invalid username or password" });
+          throw ApiError.badRequest("Invalid username or password");
         }
         return done(null, user); // If the user is found, return the user object
       } catch (error) {

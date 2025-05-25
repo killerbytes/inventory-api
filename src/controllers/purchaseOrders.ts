@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { Transaction } from "sequelize";
+import ApiError from "../services/ApiError";
 const { PAGINATION } = require("../utils/definitions");
 const db = require("../models");
 const {
@@ -185,21 +186,52 @@ const PurchaseOrderController = {
     const limit = parseInt(req.query.limit as string) || PAGINATION.LIMIT;
     const page = parseInt(req.query.page as string) || 1;
     const q = req.query.q || null;
-    const where = q ? { name: { [Op.like]: `%${q}%` } } : null;
+    const { startDate, endDate, status } = req.query;
+    const where: any = {};
+
+    // Build the where clause
+
+    // Search by name if query exists
+    if (q) {
+      where.name = { [Op.like]: `%${q}%` };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    // Add date filtering if dates are provided
+    if (startDate || endDate) {
+      where.updatedAt = {};
+
+      if (startDate) {
+        const start = new Date(startDate as string);
+        start.setHours(0, 0, 0, 0);
+        where.updatedAt[Op.gte] = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt[Op.lte] = end;
+      }
+    }
+
     const offset = (page - 1) * limit;
+
     try {
       const order = [];
       if (req.query.sort) {
-        order.push([req.query.sort, req.query.order || "ASC"]);
-      } else {
-        // order.push(["id", "ASC"]); // Default sort
+        order.push([
+          req.query.sort as string,
+          (req.query.order as string) || "ASC",
+        ]);
       }
+      console.log(123213, where);
 
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,
         order,
-        where,
+        where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
         include: [
           {
@@ -232,6 +264,7 @@ const PurchaseOrderController = {
           },
         ],
       });
+
       return res.status(200).json({
         data: rows,
         total: count,
@@ -266,23 +299,29 @@ const PurchaseOrderController = {
       if (!purchaseOrder) {
         return res.status(404).json({ message: "PurchaseOrder not found" });
       }
-      if (purchaseOrder.status === ORDER_STATUS.PENDING) {
+      if (
+        purchaseOrder.status === ORDER_STATUS.PENDING ||
+        purchaseOrder.status === ORDER_STATUS.COMPLETED
+      ) {
         await db.sequelize.transaction(async (transaction: Transaction) => {
+          const status =
+            purchaseOrder.status === ORDER_STATUS.PENDING
+              ? ORDER_STATUS.COMPLETED
+              : ORDER_STATUS.CANCELLED;
           await purchaseOrder.update(
             {
-              status: ORDER_STATUS.COMPLETED,
+              status,
               receivedBy: user.id,
+              receivedDate: new Date(),
             },
             { transaction }
           );
         });
-      } else {
-        return res.status(500).json({ error: "Order status is not pending" });
       }
 
       return res.status(200).json(purchaseOrder);
-    } catch (error) {
-      return res.status(500).json(formatErrors(error));
+    } catch (error: any) {
+      return res.status(500).json(ApiError.badRequest(error.message));
     }
   },
 };

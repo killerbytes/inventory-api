@@ -27,11 +27,4 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-const getCurrentUser = async (req) => {
-  const token = req.headers["x-access-token"];
-  const { id } = decodeToken(token);
-  const user = await User.findByPk(id, { raw: true });
-  return user;
-};
-
-module.exports = { generateToken, decodeToken, verifyToken, getCurrentUser };
+module.exports = { generateToken, decodeToken, verifyToken };

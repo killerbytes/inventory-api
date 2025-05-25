@@ -5,6 +5,7 @@ const inventoryTransactionsController = require("../controllers/inventoryTransac
 
 router.get("/", inventoryController.getPaginated);
 router.post("/", inventoryController.create);
+router.get("/reorders", inventoryController.getReorderList);
 router.get("/list", inventoryController.getAll);
 router.get("/transactions", inventoryTransactionsController.getPaginated);
 router.get("/:id", inventoryController.get);

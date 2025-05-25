@@ -1,6 +1,9 @@
 const { Model, DataTypes } = require("sequelize");
 const Inventory = require("./inventory");
-const { INVENTORY_TRANSACTION_TYPE } = require("../utils/definitions");
+const {
+  INVENTORY_TRANSACTION_TYPE,
+  ORDER_STATUS,
+} = require("../utils/definitions");
 
 class SalesOrder extends Model {
   static associate(models) {
@@ -67,57 +70,121 @@ module.exports = (sequelize) => {
           if (!options.transaction) {
             throw new Error("This operation requires a transaction");
           }
+          const { transaction } = options;
 
           try {
-            // Use Promise.all to properly handle async operations in map
-            await Promise.all(
-              salesOrder.salesOrderItems.map(async (item) => {
-                // 1. Find inventory with transaction option
-                const inventory = await sequelize.models.Inventory.findOne({
-                  where: { id: item.inventoryId },
-                  transaction: options.transaction, // Moved inside findOne options
-                });
-
-                if (!inventory) {
-                  throw new Error(`${item.inventoryId} not found in inventory`);
-                }
-
-                if (inventory.quantity < item.quantity) {
-                  throw new Error(
-                    `Insufficient quantity for inventory ${inventory.id}. ` +
-                      `Available: ${inventory.quantity}, Requested: ${item.quantity}`
-                  );
-                }
-
-                // 2. Create transaction record with await and transaction option
-                await sequelize.models.InventoryTransaction.create(
+            const orderWithItems = await sequelize.models.SalesOrder.findByPk(
+              salesOrder.id,
+              {
+                include: [
                   {
-                    inventoryId: inventory.id,
-                    previousQuantity: inventory.quantity,
-                    newQuantity: inventory.quantity - item.quantity,
-                    transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
-                    orderId: salesOrder.id,
+                    association: "salesOrderItems",
+                    include: ["inventory"],
                   },
-                  { transaction: options.transaction }
-                );
-
-                // 3. Update inventory with transaction option
-                await inventory.update(
-                  {
-                    quantity: sequelize.literal(`quantity - ${item.quantity}`),
-                  },
-                  { transaction: options.transaction }
-                );
-              })
+                ],
+                transaction,
+              }
             );
+
+            console.log(22333, orderWithItems);
+
+            if (orderWithItems.status === ORDER_STATUS.COMPLETED) {
+              await Promise.all(
+                orderWithItems.salesOrderItems.map(async (item) => {
+                  console.log(11, item);
+
+                  const [inventory] =
+                    await sequelize.models.Inventory.findOrCreate({
+                      where: { productId: item.inventory.productId },
+                      defaults: {
+                        productId: item.inventory.productId,
+                        quantity: 0,
+                      },
+                      transaction,
+                    });
+
+                  await sequelize.models.InventoryTransaction.create(
+                    {
+                      inventoryId: inventory.id,
+                      previousQuantity: inventory.quantity,
+                      newQuantity: inventory.quantity - item.quantity,
+                      quantity: item.quantity,
+                      transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
+                      orderId: orderWithItems.id,
+                    },
+                    { transaction }
+                  );
+
+                  await inventory.update(
+                    {
+                      quantity: inventory.quantity - item.quantity,
+                    },
+                    { transaction }
+                  );
+                })
+              );
+            }
           } catch (error) {
             console.error("Error in afterCreate hook:", error);
             throw error; // This will trigger transaction rollback
           }
         },
+        afterUpdate: async (salesOrder, options) => {
+          if (!options.transaction) {
+            throw new Error("This operation requires a transaction");
+          }
+          const { transaction } = options;
+
+          try {
+            const orderWithItems = await sequelize.models.SalesOrder.findByPk(
+              salesOrder.id,
+              {
+                include: [
+                  {
+                    association: "salesOrderItems",
+                    include: ["inventory"],
+                  },
+                ],
+                transaction,
+              }
+            );
+            await Promise.all(
+              orderWithItems.salesOrderItems.map(async (item) => {
+                console.log(43455, item.inventory);
+
+                const [inventory] =
+                  await sequelize.models.Inventory.findOrCreate({
+                    where: { productId: item.inventory.productId },
+                    defaults: { productId: item.inventoryId, quantity: 0 },
+                    transaction,
+                  });
+
+                await sequelize.models.InventoryTransaction.create(
+                  {
+                    inventoryId: inventory.id,
+                    previousQuantity: inventory.quantity,
+                    newQuantity: inventory.quantity + item.quantity,
+                    quantity: item.quantity,
+                    transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
+                    orderId: orderWithItems.id,
+                  },
+                  { transaction }
+                );
+
+                await inventory.update(
+                  {
+                    quantity: inventory.quantity + item.quantity,
+                  },
+                  { transaction }
+                );
+              })
+            );
+          } catch (error) {
+            throw error;
+          }
+        },
       },
     }
   );
-
   return SalesOrder;
 };

@@ -1,6 +1,6 @@
 "use strict";
 
-const db = require("../models");
+const db = require("../src/models");
 const { User } = db;
 
 /** @type {import('sequelize-cli').Migration} */
@@ -23,6 +23,7 @@ module.exports = {
           username: "killerbytes",
           email: "azid@azid.com",
           password: User.generateHash("1234"),
+          isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

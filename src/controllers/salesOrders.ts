@@ -3,25 +3,15 @@ import { Transaction } from "sequelize";
 import ApiError from "../services/ApiError";
 
 const db = require("../models");
-const UserService = require("../services/UserService");
-const {
-  User,
-  SalesOrder,
-  SalesOrderItem,
-  Product,
-  Inventory,
-  InventoryTransaction,
-} = db;
+const { SalesOrder, SalesOrderItem, Product, Inventory } = db;
 const {
   salesOrderSchema,
   salesOrderStatusSchema,
 } = require("../utils/validations");
 const formatErrors = require("../utils/formatErrors");
 const { Op } = require("sequelize");
-const {
-  ORDER_STATUS,
-  INVENTORY_TRANSACTION_TYPE,
-} = require("../utils/definitions");
+const { ORDER_STATUS } = require("../utils/definitions");
+const { getCurrentUser } = require("../services/AuthService");
 
 const SalesOrderController = {
   async get(req: Request, res: Response) {
@@ -78,7 +68,8 @@ const SalesOrderController = {
     }
 
     try {
-      const user = await UserService.getCurrent(req);
+      const user = await getCurrentUser(req);
+
       const { customer, orderDate, deliveryDate, notes, salesOrderItems } =
         req.body;
 
@@ -115,8 +106,6 @@ const SalesOrderController = {
       });
       return res.status(201).json(result);
     } catch (error: any) {
-      console.log(34343, error.message);
-
       return res.status(500).json(ApiError.badRequest(error.message));
     }
   },
@@ -225,6 +214,66 @@ const SalesOrderController = {
       console.log(error);
 
       return res.status(500).json(formatErrors(error));
+    }
+  },
+
+  async updateStatus(req: Request, res: Response) {
+    const { id } = req.params;
+    const { error } = salesOrderStatusSchema.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json(formatErrors(error));
+    }
+
+    const user = await getCurrentUser(req);
+
+    try {
+      const salesOrder = await SalesOrder.findByPk(id, {
+        include: [
+          {
+            model: SalesOrderItem,
+            as: "salesOrderItems",
+            include: [
+              {
+                model: Inventory,
+                as: "inventory",
+                include: [
+                  {
+                    model: Product,
+                    as: "product",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      if (!salesOrder) {
+        return res.status(404).json({ message: "Sales Order not found" });
+      }
+
+      if (salesOrder.status === ORDER_STATUS.COMPLETED) {
+        await db.sequelize.transaction(async (transaction: Transaction) => {
+          const status = ORDER_STATUS.CANCELLED;
+          await salesOrder.update(
+            {
+              status,
+              receivedBy: user.id,
+              receivedDate: new Date(),
+            },
+            {
+              transaction,
+            }
+          );
+        });
+      }
+
+      return res.status(200).json(salesOrder);
+    } catch (error: any) {
+      console.log(222, error);
+
+      return res.status(500).json(ApiError.badRequest(error.message));
     }
   },
 };

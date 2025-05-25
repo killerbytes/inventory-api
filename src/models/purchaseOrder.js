@@ -70,30 +70,73 @@ module.exports = (sequelize) => {
       sequelize,
       modelName: "PurchaseOrder",
       hooks: {
-        afterUpdate: async (purchaseOrder) => {
+        afterUpdate: async (purchaseOrder, options) => {
+          if (!options.transaction) {
+            throw new Error("This operation requires a transaction");
+          }
+
           try {
+            const { transaction } = options;
             if (purchaseOrder.status === ORDER_STATUS.COMPLETED) {
-              purchaseOrder.purchaseOrderItems.map(async (item) => {
-                const [inventory] =
-                  await sequelize.models.Inventory.findOrCreate({
-                    where: {
-                      productId: item.productId,
+              await Promise.all(
+                purchaseOrder.purchaseOrderItems.map(async (item) => {
+                  const [inventory] =
+                    await sequelize.models.Inventory.findOrCreate({
+                      where: { productId: item.productId },
+                      defaults: { productId: item.productId, quantity: 0 },
+                      transaction,
+                    });
+
+                  await sequelize.models.InventoryTransaction.create(
+                    {
+                      inventoryId: inventory.id,
+                      previousQuantity: inventory.quantity,
+                      newQuantity: inventory.quantity + item.quantity,
+                      quantity: item.quantity,
+                      transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
+                      orderId: purchaseOrder.id,
                     },
-                    defaults: {
-                      productId: item.productId,
-                      quantity: 0,
+                    { transaction }
+                  );
+
+                  await inventory.update(
+                    {
+                      quantity: inventory.quantity + item.quantity,
                     },
-                  });
-                sequelize.models.InventoryTransaction.create({
-                  inventoryId: inventory.id,
-                  previousQuantity: inventory.quantity,
-                  newQuantity: inventory.quantity + item.quantity,
-                  transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE, //: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-                  orderId: purchaseOrder.id,
-                });
-                inventory.quantity += item.quantity;
-                inventory.save();
-              });
+                    { transaction }
+                  );
+                })
+              );
+            } else if (purchaseOrder.status === ORDER_STATUS.CANCELLED) {
+              await Promise.all(
+                purchaseOrder.purchaseOrderItems.map(async (item) => {
+                  const [inventory] =
+                    await sequelize.models.Inventory.findOrCreate({
+                      where: { productId: item.productId },
+                      defaults: { productId: item.productId, quantity: 0 },
+                      transaction,
+                    });
+
+                  await sequelize.models.InventoryTransaction.create(
+                    {
+                      inventoryId: inventory.id,
+                      previousQuantity: inventory.quantity,
+                      newQuantity: inventory.quantity - item.quantity,
+                      quantity: item.quantity,
+                      transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
+                      orderId: purchaseOrder.id,
+                    },
+                    { transaction }
+                  );
+
+                  await inventory.update(
+                    {
+                      quantity: inventory.quantity - item.quantity,
+                    },
+                    { transaction }
+                  );
+                })
+              );
             }
           } catch (error) {
             throw error;
