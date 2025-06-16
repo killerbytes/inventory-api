@@ -2,9 +2,15 @@ import { Transaction } from "sequelize";
 import ApiError from "./ApiError";
 import db from "../models";
 import { purchaseOrderSchema } from "../schema";
-import { PURCHASE_ORDER_STATUS, PAGINATION } from "../definitions.js";
+import {
+  INVENTORY_TRANSACTION_TYPE,
+  ORDER_TYPE,
+  PURCHASE_ORDER_STATUS,
+  PAGINATION,
+} from "../definitions.js";
 import { Op } from "sequelize";
 import { purchaseOrderStatusSchema } from "../schema";
+import authService from "./auth.service";
 const { PurchaseOrder, PurchaseOrderItem, Product } = db;
 
 const purchaseOrderService = {
@@ -278,14 +284,25 @@ const purchaseOrderService = {
             purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING
               ? PURCHASE_ORDER_STATUS.COMPLETED
               : PURCHASE_ORDER_STATUS.CANCELLED;
-          await purchaseOrder.update(
-            {
-              status,
-              receivedBy: user.id,
-              receivedDate: new Date(),
-            },
-            { transaction }
-          );
+          try {
+            await purchaseOrder.update(
+              {
+                status,
+                receivedBy: user.id,
+                receivedDate: new Date(),
+              },
+              { transaction }
+            );
+          } catch (error) {
+            throw new Error("Error in updatePurchaseOrder");
+          }
+          try {
+            await processInventoryUpdates(purchaseOrder, transaction);
+          } catch (error) {
+            console.log(error);
+
+            throw new Error("Error in processInventoryUpdates");
+          }
         });
       }
 
@@ -294,6 +311,102 @@ const purchaseOrderService = {
       throw error;
     }
   },
+};
+
+const processInventoryUpdates = async (purchaseOrder, transaction) => {
+  const { status, purchaseOrderItems, id } = purchaseOrder;
+  const user = await authService.getCurrent();
+  if (status === PURCHASE_ORDER_STATUS.COMPLETED) {
+    await handleCompletedOrder(
+      purchaseOrder.sequelize,
+      purchaseOrderItems,
+      id,
+      user.id,
+      transaction
+    );
+  } else if (status === PURCHASE_ORDER_STATUS.CANCELLED) {
+    await handleCancelledOrder(
+      purchaseOrder.sequelize,
+      purchaseOrderItems,
+      id,
+      user.id,
+      transaction
+    );
+  }
+};
+
+const handleCompletedOrder = async (
+  sequelize,
+  items,
+  orderId,
+  userId,
+  transaction
+) => {
+  await Promise.all(
+    items.map(async (item) => {
+      const [inventory] = await sequelize.models.Inventory.findOrCreate({
+        where: { productId: item.productId },
+        defaults: { productId: item.productId, quantity: 0 },
+        transaction,
+      });
+
+      await sequelize.models.InventoryTransaction.create(
+        {
+          inventoryId: inventory.id,
+          previousValue: inventory.quantity,
+          newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
+          value: item.quantity,
+          transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
+          orderId,
+          orderType: ORDER_TYPE.PURCHASE,
+          userId,
+        },
+        { transaction }
+      );
+
+      await inventory.update(
+        { quantity: inventory.quantity + item.quantity },
+        { transaction }
+      );
+    })
+  );
+};
+
+const handleCancelledOrder = async (
+  sequelize,
+  items,
+  orderId,
+  userId,
+  transaction
+) => {
+  await Promise.all(
+    items.map(async (item) => {
+      const [inventory] = await sequelize.models.Inventory.findOrCreate({
+        where: { productId: item.productId },
+        defaults: { productId: item.productId, quantity: 0 },
+        transaction,
+      });
+
+      await sequelize.models.InventoryTransaction.create(
+        {
+          inventoryId: inventory.id,
+          previousValue: inventory.quantity,
+          newValue: parseInt(inventory.quantity) - parseInt(item.quantity),
+          value: item.quantity,
+          transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
+          orderId,
+          orderType: ORDER_TYPE.PURCHASE,
+          userId,
+        },
+        { transaction }
+      );
+
+      await inventory.update(
+        { quantity: inventory.quantity - item.quantity },
+        { transaction }
+      );
+    })
+  );
 };
 
 export default purchaseOrderService;

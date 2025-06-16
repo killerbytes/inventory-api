@@ -1,4 +1,3 @@
-import { NextFunction, Request, Response } from "express";
 import salesOrderService from "../services/salesOrder.service";
 import authService from "../services/auth.service";
 
@@ -12,10 +11,10 @@ const salesOrderController = {
       next(error);
     }
   },
-  async create(req: Request, res: Response, next: NextFunction) {
+  async create(req, res, next) {
     try {
-      const user = await authService.getCurrent(req.headers["x-access-token"]);
-      const result = await salesOrderService.create(req.body, user);
+      const user = await authService.getCurrent();
+      const result = await salesOrderService.create(req.body);
       res.status(201).json(result);
     } catch (error: any) {
       next(error);
@@ -61,7 +60,7 @@ const salesOrderController = {
 
   async updateStatus(req, res, next) {
     const { id } = req.params;
-    const user = await authService.getCurrent(req.headers["x-access-token"]);
+    const user = await authService.getCurrent();
     try {
       const salesOrder = await salesOrderService.updateStatus(
         id,

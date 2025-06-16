@@ -56,7 +56,7 @@ const inventoryController = {
   async getPaginated(req, res, next) {
     try {
       const result = await inventoryService.getPaginated(req.query);
-      res.status(200).json(result);
+      return res.status(200).json(result);
     } catch (error) {
       next(error);
     }

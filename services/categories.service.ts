@@ -9,11 +9,11 @@ const { Category } = db;
 const categoryServices = {
   get: async (id) => {
     try {
-      const categories = await Category.findByPk(id, { raw: true });
-      if (!categories) {
+      const category = await Category.findByPk(id, { raw: true });
+      if (!category) {
         throw new Error("Categories not found");
       }
-      return categories;
+      return category;
     } catch (error) {
       throw error;
     }
@@ -54,22 +54,22 @@ const categoryServices = {
       throw ApiError.validation(error);
     }
     try {
-      const categories = await Category.findByPk(id);
-      if (!categories) {
+      const category = await Category.findByPk(id);
+      if (!category) {
         throw new Error("Categories not found");
       }
-      return categories.update(params);
+      return category.update(params);
     } catch (error) {
       throw error;
     }
   },
 
   delete: async (id) => {
-    const categories = await Category.findByPk(id);
-    if (!categories) {
+    const category = await Category.findByPk(id);
+    if (!category) {
       throw new Error("Categories not found");
     }
-    return categories.destroy();
+    return category.destroy();
   },
   async getPaginated(query) {
     const { q = null, sort } = query;

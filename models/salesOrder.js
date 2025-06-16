@@ -20,97 +20,6 @@ class SalesOrder extends Model {
       as: "receivedByUser",
     });
   }
-
-  static async processCompletedOrder(salesOrder, transaction) {
-    const orderWithItems =
-      await salesOrder.sequelize.models.SalesOrder.findByPk(salesOrder.id, {
-        include: [
-          {
-            association: "salesOrderItems",
-            include: ["inventory"],
-          },
-        ],
-        transaction,
-      });
-
-    await Promise.all(
-      orderWithItems.salesOrderItems.map(async (item) => {
-        const [inventory] =
-          await salesOrder.sequelize.models.Inventory.findOrCreate({
-            where: { productId: item.inventory.productId },
-            defaults: {
-              productId: item.inventory.productId,
-              quantity: 0,
-            },
-            transaction,
-          });
-
-        await salesOrder.sequelize.models.InventoryTransaction.create(
-          {
-            inventoryId: inventory.id,
-            previousValue: inventory.quantity,
-            newValue: inventory.quantity - item.quantity,
-            value: item.quantity,
-            transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
-            orderId: orderWithItems.id,
-            orderType: ORDER_TYPE.SALES,
-          },
-          { transaction }
-        );
-
-        await inventory.update(
-          {
-            quantity: inventory.quantity - item.quantity,
-          },
-          { transaction }
-        );
-      })
-    );
-  }
-
-  static async processCancelledOrder(salesOrder, transaction) {
-    const orderWithItems =
-      await salesOrder.sequelize.models.SalesOrder.findByPk(salesOrder.id, {
-        include: [
-          {
-            association: "salesOrderItems",
-            include: ["inventory"],
-          },
-        ],
-        transaction,
-      });
-
-    await Promise.all(
-      orderWithItems.salesOrderItems.map(async (item) => {
-        const [inventory] =
-          await salesOrder.sequelize.models.Inventory.findOrCreate({
-            where: { productId: item.inventory.productId },
-            defaults: { productId: item.inventoryId, quantity: 0 },
-            transaction,
-          });
-
-        await salesOrder.sequelize.models.InventoryTransaction.create(
-          {
-            inventoryId: inventory.id,
-            previousValue: inventory.quantity,
-            newValue: inventory.quantity + item.quantity,
-            value: item.quantity,
-            transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-            orderId: orderWithItems.id,
-            orderType: ORDER_TYPE.SALES,
-          },
-          { transaction }
-        );
-
-        await inventory.update(
-          {
-            quantity: inventory.quantity + item.quantity,
-          },
-          { transaction }
-        );
-      })
-    );
-  }
 }
 
 module.exports = (sequelize) => {
@@ -156,43 +65,43 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "SalesOrder",
-      hooks: {
-        afterCreate: async (salesOrder, options) => {
-          if (!options.transaction) {
-            throw new Error("This operation requires a transaction");
-          }
+      // hooks: {
+      //   afterCreate: async (salesOrder, options) => {
+      //     if (!options.transaction) {
+      //       throw new Error("This operation requires a transaction");
+      //     }
 
-          try {
-            if (salesOrder.status === SALES_ORDER_STATUS.COMPLETED) {
-              await SalesOrder.processCompletedOrder(
-                salesOrder,
-                options.transaction
-              );
-            }
-          } catch (error) {
-            console.error("Error in afterCreate hook:", error);
-            throw error;
-          }
-        },
-        afterUpdate: async (salesOrder, options) => {
-          if (!options.transaction) {
-            throw new Error("This operation requires a transaction");
-          }
+      //     try {
+      //       if (salesOrder.status === SALES_ORDER_STATUS.COMPLETED) {
+      //         await SalesOrder.processCompletedOrder(
+      //           salesOrder,
+      //           options.transaction
+      //         );
+      //       }
+      //     } catch (error) {
+      //       console.error("Error in afterCreate hook:", error);
+      //       throw error;
+      //     }
+      //   },
+      //   afterUpdate: async (salesOrder, options) => {
+      //     if (!options.transaction) {
+      //       throw new Error("This operation requires a transaction");
+      //     }
 
-          try {
-            // Assuming update to cancelled status triggers inventory return
-            if (salesOrder.status === SALES_ORDER_STATUS.CANCELLED) {
-              await SalesOrder.processCancelledOrder(
-                salesOrder,
-                options.transaction
-              );
-            }
-          } catch (error) {
-            console.error("Error in afterUpdate hook:", error);
-            throw error;
-          }
-        },
-      },
+      //     try {
+      //       // Assuming update to cancelled status triggers inventory return
+      //       if (salesOrder.status === SALES_ORDER_STATUS.CANCELLED) {
+      //         await SalesOrder.processCancelledOrder(
+      //           salesOrder,
+      //           options.transaction
+      //         );
+      //       }
+      //     } catch (error) {
+      //       console.error("Error in afterUpdate hook:", error);
+      //       throw error;
+      //     }
+      //   },
+      // },
     }
   );
   return SalesOrder;

@@ -112,3 +112,13 @@ export const inventorySchema = Joi.object({
   quantity: Joi.number().required(),
   price: Joi.number().required(),
 }).required();
+
+export const inventoryTransactionSchema = Joi.object({
+  inventoryId: Joi.number().required(),
+  previousValue: Joi.number().required(),
+  newValue: Joi.number().required(),
+  value: Joi.number().required(),
+  transactionType: Joi.string().required(),
+  orderId: Joi.number().optional(),
+  orderType: Joi.string().optional(),
+}).required();

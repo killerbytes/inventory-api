@@ -1,9 +1,10 @@
-import { Request, Response } from "express";
 import db from "../models";
 import { inventorySchema } from "../schema";
 import { Op, Transaction } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
+import inventoryTransactionService from "./inventoryTransactions.service";
+import { INVENTORY_TRANSACTION_TYPE } from "../definitions.js";
 const { Inventory, Product } = db;
 
 const inventoryService = {
@@ -62,10 +63,27 @@ const inventoryService = {
         throw new Error("Inventory not found");
       }
       await db.sequelize.transaction(async (transaction: Transaction) => {
-        await inventories.update(params, { transaction });
-        // await inventories.updatePrice(params.price, transaction);
+        try {
+          await inventoryTransactionService.create(
+            {
+              inventoryId: inventories.id,
+              previousValue: inventories.price,
+              newValue: params.price,
+              value: params.price,
+              transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
+            },
+            { transaction }
+          );
+        } catch (error) {
+          throw new Error("Error in createInventoryTransaction");
+        }
+        try {
+          await inventories.update(params, { transaction });
+        } catch (error) {
+          throw new Error("Error in updateInventory");
+        }
       });
-      await inventories.update(params);
+      // await inventories.update(params);
       return inventories;
     } catch (error) {
       throw error;

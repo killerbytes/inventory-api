@@ -14,6 +14,8 @@ const authController = {
       abortEarly: false,
     });
     if (error) {
+      console.log(34, error);
+
       return next(ApiError.badRequest(error.message, error.details));
     }
 
@@ -23,25 +25,27 @@ const authController = {
         { session: false },
         (err: any, user: any, info: any) => {
           if (err || !user) {
+            console.log(33344, err);
+
             return res
               .status(500)
               .json(ApiError.badRequest("Invalid username or password"));
           }
 
           const token = generateToken(user);
-          return res.status(200).json({ token });
+          res.status(200).json({ token });
         }
       )(req, res, next);
     } catch (error) {
+      console.log(44, error);
+
       next(error);
     }
   },
 
   me: async (req, res, next) => {
     try {
-      const token = req.headers["x-access-token"];
-      const { id } = decodeToken(token) || {};
-      const user = await authService.me(id);
+      const user = await authService.getCurrent();
       res.status(200).json(user);
     } catch (error) {
       next(error);

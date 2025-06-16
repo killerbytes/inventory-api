@@ -23,7 +23,7 @@ class ApiError extends Error {
     details: any,
     stack?: string
   ) {
-    super(message);
+    super();
     this.code = code;
     this.statusCode = statusCode;
     this.message = message;
@@ -39,8 +39,6 @@ class ApiError extends Error {
 
   // Utility methods for common errors
   static internal(message = "Internal Server Error", details = null) {
-    console.log(details);
-
     return new ApiError("INTERNAL_ERROR", 500, message, [], details);
   }
 

@@ -1,3 +1,4 @@
+import { authStorage } from "../services/auth.service";
 import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {
@@ -11,7 +12,6 @@ export const verifyToken = (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     req.userId = decoded.id;
-
-    next();
+    authStorage.run({ userId: decoded.id }, next);
   });
 };

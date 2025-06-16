@@ -12,8 +12,7 @@ const purchaseOrderController = {
     }
   },
   async create(req, res, next) {
-    const token = req.headers["x-access-token"];
-    const user = await authService.getCurrent(token);
+    const user = await authService.getCurrent();
     try {
       const result = await purchaseOrderService.create(req.body, user);
       res.status(201).json(result);
@@ -83,7 +82,7 @@ const purchaseOrderController = {
   async updateStatus(req, res, next) {
     const { id } = req.params;
 
-    const user = await authService.getCurrent(req.headers["x-access-token"]);
+    const user = await authService.getCurrent();
 
     try {
       const purchaseOrder = await purchaseOrderService.updateStatus(
