@@ -18,7 +18,9 @@
     "start": "ts-node-dev index.ts",
     "build": "tsc",
     "sync": "node sync.js",
+    "sync:prod": "cross-env NODE_ENV=production node sync.js",
     "dev": "cross-env NODE_ENV=development ts-node-dev index.ts",
+    "prod": "cross-env NODE_ENV=production ts-node-dev index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

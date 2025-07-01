@@ -26,6 +26,16 @@ class PurchaseOrder extends Model {
       foreignKey: "receivedBy",
       as: "receivedByUser",
     });
+
+    PurchaseOrder.belongsTo(models.User, {
+      foreignKey: "completedBy",
+      as: "completedByUser",
+    });
+
+    PurchaseOrder.belongsTo(models.User, {
+      foreignKey: "cancelledBy",
+      as: "cancelledByUser",
+    });
   }
 
   // static async processInventoryUpdates(purchaseOrder, transaction) {
@@ -116,16 +126,25 @@ module.exports = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-      orderDate: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
       status: {
         type: DataTypes.ENUM(Object.values(PURCHASE_ORDER_STATUS)),
         defaultValue: PURCHASE_ORDER_STATUS.PENDING,
       },
       deliveryDate: {
         type: DataTypes.DATE,
+      },
+      orderBy: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      orderDate: {
+        type: DataTypes.DATE,
+        allowNull: false,
+      },
+      receivedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
       },
       receivedDate: {
         type: DataTypes.DATE,
@@ -140,51 +159,51 @@ module.exports = (sequelize) => {
           },
         },
       },
+      completedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      completedDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      cancelledBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      cancelledDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      cancellationReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       totalAmount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
-      orderBy: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
-      receivedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-        validate: {
-          conditionalRequired(value) {
-            if (this.status === PURCHASE_ORDER_STATUS.COMPLETED && !value) {
-              throw new Error(
-                "receivedBy is required when status is completed"
-              );
-            }
-          },
-        },
-      },
       notes: {
         type: DataTypes.TEXT,
+      },
+      isCheckPayment: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      isCheckPaymentPaid: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      dueDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
       },
     },
     {
       sequelize,
       modelName: "PurchaseOrder",
-      // hooks: {
-      //   afterUpdate: async (purchaseOrder, options) => {
-      //     if (!options.transaction) {
-      //       throw new Error("This operation requires a transaction");
-      //     }
-
-      //     try {
-      //       await PurchaseOrder.processInventoryUpdates(
-      //         purchaseOrder,
-      //         options.transaction
-      //       );
-      //     } catch (error) {
-      //       throw error;
-      //     }
-      //   },
-      // },
     }
   );
 

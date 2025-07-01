@@ -19,6 +19,7 @@ const inventoryTransactionService = {
         payload;
 
       const user = await authService.getCurrent();
+      console.log("user", user);
 
       const result = await InventoryTransaction.create(
         {
@@ -29,7 +30,7 @@ const inventoryTransactionService = {
           transactionType,
           orderId: null,
           orderType: null,
-          user: user.id,
+          userId: user.id,
         },
         { ...transaction }
       );

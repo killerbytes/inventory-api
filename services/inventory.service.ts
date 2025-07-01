@@ -75,6 +75,8 @@ const inventoryService = {
             { transaction }
           );
         } catch (error) {
+          console.log(error);
+
           throw new Error("Error in createInventoryTransaction");
         }
         try {

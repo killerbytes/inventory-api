@@ -46,6 +46,14 @@ const purchaseOrderService = {
             model: db.User,
             as: "receivedByUser",
           },
+          {
+            model: db.User,
+            as: "completedByUser",
+          },
+          {
+            model: db.User,
+            as: "cancelledByUser",
+          },
         ],
         // raw: true,
         nest: true,
@@ -75,6 +83,8 @@ const purchaseOrderService = {
         receivedDate,
         notes,
         purchaseOrderItems,
+        isCheckPayment,
+        dueDate,
       } = payload;
 
       const totalAmount = purchaseOrderItems.reduce(
@@ -93,6 +103,8 @@ const purchaseOrderService = {
           orderBy: user.id,
           notes,
           purchaseOrderItems,
+          isCheckPayment,
+          dueDate,
         },
         {
           include: [
@@ -130,25 +142,26 @@ const purchaseOrderService = {
     return result;
   },
 
-  async update(id, payload) {
-    const { id: _id, ...params } = payload;
-    const { error } = purchaseOrderSchema.validate(params, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw ApiError.validation(error);
-    }
-    try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id);
-      if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
-      }
-      await purchaseOrder.update(params);
-      return purchaseOrder;
-    } catch (error) {
-      throw error;
-    }
-  },
+  // async update(id, payload) {
+  //   const { id: _id, ...params } = payload;
+  //   const { error } = purchaseOrderSchema.validate(params, {
+  //     abortEarly: false,
+  //   });
+  //   if (error) {
+  //     throw ApiError.validation(error);
+  //   }
+  //   try {
+  //     const purchaseOrder = await PurchaseOrder.findByPk(id);
+  //     if (!purchaseOrder) {
+  //       throw new Error("PurchaseOrder not found");
+  //     }
+  //     await purchaseOrder.update(params);
+  //     return purchaseOrder;
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // },
+
   async delete(id) {
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id);
@@ -275,35 +288,73 @@ const purchaseOrderService = {
       if (!purchaseOrder) {
         throw new Error("PurchaseOrder not found");
       }
-      if (
-        purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING ||
-        purchaseOrder.status === PURCHASE_ORDER_STATUS.COMPLETED
-      ) {
-        await db.sequelize.transaction(async (transaction: Transaction) => {
-          const status =
-            purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING
-              ? PURCHASE_ORDER_STATUS.COMPLETED
-              : PURCHASE_ORDER_STATUS.CANCELLED;
-          try {
-            await purchaseOrder.update(
-              {
-                status,
-                receivedBy: user.id,
-                receivedDate: new Date(),
-              },
-              { transaction }
-            );
-          } catch (error) {
-            throw new Error("Error in updatePurchaseOrder");
-          }
-          try {
-            await processInventoryUpdates(purchaseOrder, transaction);
-          } catch (error) {
-            console.log(error);
+      switch (purchaseOrder.status) {
+        case PURCHASE_ORDER_STATUS.PENDING: // Pending to Received
+          await db.sequelize.transaction(async (transaction: Transaction) => {
+            try {
+              await purchaseOrder.update(
+                {
+                  status: PURCHASE_ORDER_STATUS.RECEIVED,
+                  receivedBy: user.id,
+                  receivedDate: new Date(),
+                },
+                { transaction }
+              );
+            } catch (error) {
+              throw new Error("Error in updatePurchaseOrder");
+            }
+            try {
+              await processInventoryUpdates(purchaseOrder, transaction);
+            } catch (error) {
+              throw new Error("Error in processInventoryUpdates");
+            }
+          });
 
-            throw new Error("Error in processInventoryUpdates");
-          }
-        });
+          break;
+        case PURCHASE_ORDER_STATUS.RECEIVED: // Received to Completed
+          await db.sequelize.transaction(async (transaction: Transaction) => {
+            try {
+              await purchaseOrder.update(
+                {
+                  status: PURCHASE_ORDER_STATUS.COMPLETED,
+                  isCheckPaymentPaid: true,
+                  completedBy: user.id,
+                  completedDate: new Date(),
+                },
+                { transaction }
+              );
+            } catch (error) {
+              console.log(error);
+
+              throw new Error("Error in updatePurchaseOrder");
+            }
+          });
+          break;
+        case PURCHASE_ORDER_STATUS.COMPLETED: // Completed to Cancelled
+          await db.sequelize.transaction(async (transaction: Transaction) => {
+            try {
+              const { cancellationReason } = payload;
+              await purchaseOrder.update(
+                {
+                  cancellationReason,
+                  status: PURCHASE_ORDER_STATUS.CANCELLED,
+                  cancelledBy: user.id,
+                  cancelledDate: new Date(),
+                },
+                { transaction }
+              );
+            } catch (error) {
+              console.log(error);
+
+              throw new Error("Error in updatePurchaseOrder");
+            }
+            try {
+              await processInventoryUpdates(purchaseOrder, transaction);
+            } catch (error) {
+              throw new Error("Error in processInventoryUpdates");
+            }
+          });
+        default:
       }
 
       return purchaseOrder;
@@ -316,7 +367,7 @@ const purchaseOrderService = {
 const processInventoryUpdates = async (purchaseOrder, transaction) => {
   const { status, purchaseOrderItems, id } = purchaseOrder;
   const user = await authService.getCurrent();
-  if (status === PURCHASE_ORDER_STATUS.COMPLETED) {
+  if (status === PURCHASE_ORDER_STATUS.RECEIVED) {
     await handleCompletedOrder(
       purchaseOrder.sequelize,
       purchaseOrderItems,

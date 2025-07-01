@@ -30,15 +30,16 @@ const purchaseOrderController = {
     }
   },
 
-  async update(req, res, next) {
-    const { id } = req.params;
-    try {
-      const purchaseOrder = await purchaseOrderService.update(id, req.body);
-      res.status(200).json(purchaseOrder);
-    } catch (error) {
-      next(error);
-    }
-  },
+  // async update(req, res, next) {
+  //   const { id } = req.params;
+  //   try {
+  //     const purchaseOrder = await purchaseOrderService.update(id, req.body);
+  //     res.status(200).json(purchaseOrder);
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // },
+
   async delete(req, res, next) {
     const { id } = req.params;
     try {

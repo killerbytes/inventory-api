@@ -11,6 +11,14 @@ class User extends Model {
       foreignKey: "receivedBy",
       as: "receivedPurchaseOrders",
     });
+    User.hasMany(models.PurchaseOrder, {
+      foreignKey: "completedBy",
+      as: "completedPurchaseOrders",
+    });
+    User.hasMany(models.PurchaseOrder, {
+      foreignKey: "cancelledBy",
+      as: "cancelledPurchaseOrders",
+    });
     User.hasMany(models.SalesOrder, {
       foreignKey: "receivedBy",
       as: "receivedSalesOrders",
