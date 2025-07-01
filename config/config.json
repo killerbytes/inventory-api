@@ -13,14 +13,14 @@
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
-  "stage": {
+  "production": {
     "username": "freedb_azidburn",
     "password": "N5zvnTq5j*uvea%",
     "database": "freedb_azidburn",
     "host": "sql.freedb.tech",
     "dialect": "mysql"
   },
-  "production": {
+  "stage": {
     "username": "root",
     "password": "xiVpmob3RUftYHbycyyGRQ80mXLBvt54",
     "database": "inventory_db_m89r",
