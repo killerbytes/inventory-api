@@ -33,13 +33,23 @@ passport.use(
   new LocalStrategy(
     { usernameField: "username", passwordField: "password" },
     async (username: string, password: string, done: any) => {
+      console.log(123123, username, password);
+
       try {
         const user = await User.scope("withPassword").findOne({
           where: { username, isActive: true },
         });
 
+        console.log(7676767, user);
+
         if (!user || !User.validatePassword(password, user.password)) {
           // return done(null, false, { message: "Invalid username or password" });
+          console.log(
+            9876434,
+            user,
+            User.validatePassword(password, user.password)
+          );
+
           throw ApiError.badRequest("Invalid username or password");
         }
         console.log("from index", user);
