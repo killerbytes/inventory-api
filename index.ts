@@ -80,7 +80,8 @@ app.use((err, req, res, next) => {
 
   if (!(err instanceof ApiError)) {
     err = ApiError.internal(err.message, {
-      originalError: process.env.NODE_ENV === "development" ? err : undefined,
+      originalError: err,
+      // originalError: process.env.NODE_ENV === "development" ? err : undefined,
     });
   }
 
@@ -94,7 +95,8 @@ app.use((err, req, res, next) => {
     statusCode: err.statusCode,
     message: err.message,
     errors,
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    // ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    stack: err.stack,
   });
 });
 
