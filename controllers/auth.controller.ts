@@ -1,15 +1,13 @@
 import { loginSchema } from "../schema";
-import db from "../models";
-import { NextFunction, Request, Response } from "express";
 import ApiError from "../services/ApiError";
-import { decodeToken, generateToken } from "../services/auth.service";
-import UserController from "./users.controller";
+import { generateToken } from "../services/auth.service";
 import authService from "../services/auth.service";
 import passport from "passport";
-const { User } = db;
 
 const authController = {
   login: async (req, res, next) => {
+    console.log(123, req.body);
+
     const { error } = loginSchema.validate(req.body, {
       abortEarly: false,
     });
