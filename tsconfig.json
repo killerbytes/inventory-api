@@ -2,6 +2,8 @@
     "compilerOptions": {
         "target": "ES2017", // Avoid ES5 – ES6+ retains proper `class` behavior
         "module": "NodeNext",
-        "moduleResolution": "NodeNext"
+        "moduleResolution": "NodeNext",
+        "outDir": "dist",
+        "rootDir": "src"
     }
 }
