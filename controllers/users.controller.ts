@@ -1,9 +1,3 @@
-import { Request, Response } from "express";
-import ApiError from "../services/ApiError";
-const { PAGINATION } = require("../definitions");
-const { userSchema, userBaseSchema } = require("../schema");
-const { Op } = require("sequelize");
-import { User, Sequelize } from "../models";
 import userService from "../services/users.service";
 
 const userController = {
