@@ -12,7 +12,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "tsc && cpx \"**/*.{html,css,json,png,jpg}\" dist",
+    "build": "tsc && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
     "sync": "node sync.js",
     "sync:prod": "cross-env NODE_ENV=production node sync.js",
     "dev": "cross-env NODE_ENV=development ts-node-dev index.ts",
