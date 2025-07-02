@@ -1,5 +1,5 @@
 {
-  "xdevelopment": {
+  "development": {
     "username": "postgres",
     "password": "killer",
     "database": "inventory_db",
@@ -14,7 +14,7 @@
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
-  "development": {
+  "production": {
     "username": "root",
     "password": "xiVpmob3RUftYHbycyyGRQ80mXLBvt54",
     "database": "inventory_db_m89r",
