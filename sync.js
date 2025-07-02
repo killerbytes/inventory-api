@@ -5,14 +5,14 @@ const { sequelize } = db;
 
 (async () => {
   try {
-    await sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
+    // await sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
 
     await db.sequelize.sync({
       force: true,
       omitNested: true, // This skips foreign key constraints
     }); // recreate tables
 
-    await sequelize.query("SET FOREIGN_KEY_CHECKS = 1");
+    // await sequelize.query("SET FOREIGN_KEY_CHECKS = 1");
 
     // 2. Run all seeders
     const { exec } = require("child_process");
