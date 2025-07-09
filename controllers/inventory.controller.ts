@@ -1,4 +1,3 @@
-import { PAGINATION } from "../definitions.js";
 import db from "../models";
 import inventoryService from "../services/inventory.service";
 const { Inventory, Product } = db;
@@ -35,15 +34,15 @@ const inventoryController = {
     }
   },
 
-  async update(req, res, next) {
-    const { id } = req.params;
-    try {
-      const inventories = await inventoryService.update(id, req.body);
-      return res.status(200).json(inventories);
-    } catch (error) {
-      next(error);
-    }
-  },
+  // async update(req, res, next) {
+  //   const { id } = req.params;
+  //   try {
+  //     const inventories = await inventoryService.update(id, req.body);
+  //     return res.status(200).json(inventories);
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // },
   async delete(req, res, next) {
     const { id } = req.params;
     try {
@@ -68,6 +67,16 @@ const inventoryController = {
         nest: true,
       });
 
+      return res.status(200).json(inventories);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async updatePrice(req, res, next) {
+    const { id } = req.params;
+    try {
+      const inventories = await inventoryService.updatePrice(id, req.body);
       return res.status(200).json(inventories);
     } catch (error) {
       next(error);

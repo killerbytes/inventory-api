@@ -21,6 +21,7 @@ module.exports = (sequelize) => {
       inventoryId: { type: DataTypes.INTEGER, allowNull: false },
       quantity: { type: DataTypes.INTEGER, allowNull: false },
       unitPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+      originalPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
       discount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     },
     {

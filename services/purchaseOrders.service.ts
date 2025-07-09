@@ -168,7 +168,11 @@ const purchaseOrderService = {
       if (!purchaseOrder) {
         throw new Error("PurchaseOrder not found");
       }
-      await purchaseOrder.destroy();
+      if (purchaseOrder.status) {
+        await purchaseOrder.destroy();
+      } else {
+        throw new Error("PurchaseOrder is not in a valid state");
+      }
     } catch (error) {
       throw error;
     }
@@ -368,7 +372,7 @@ const processInventoryUpdates = async (purchaseOrder, transaction) => {
   const { status, purchaseOrderItems, id } = purchaseOrder;
   const user = await authService.getCurrent();
   if (status === PURCHASE_ORDER_STATUS.RECEIVED) {
-    await handleCompletedOrder(
+    await handleReceivedOrder(
       purchaseOrder.sequelize,
       purchaseOrderItems,
       id,
@@ -386,7 +390,7 @@ const processInventoryUpdates = async (purchaseOrder, transaction) => {
   }
 };
 
-const handleCompletedOrder = async (
+const handleReceivedOrder = async (
   sequelize,
   items,
   orderId,

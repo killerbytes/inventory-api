@@ -9,7 +9,7 @@ const { sequelize } = db;
 
     await db.sequelize.sync({
       force: true,
-      omitNested: true, // This skips foreign key constraints
+      omitNested: true,
     }); // recreate tables
 
     // await sequelize.query("SET FOREIGN_KEY_CHECKS = 1");

@@ -66,6 +66,19 @@ const salesOrderService = {
         0
       );
 
+      const items = await Promise.all(
+        salesOrderItems.map(async (item) => {
+          const inventory = await Inventory.findByPk(item.inventoryId);
+          return {
+            ...item,
+            originalPrice: inventory.price,
+          };
+        })
+      );
+
+      console.log(items);
+
+      // throw new Error(JSON.stringify(items));
       const result = await db.sequelize.transaction(
         async (transaction: Transaction) => {
           try {
@@ -79,7 +92,7 @@ const salesOrderService = {
                 totalAmount,
                 receivedBy: user.id,
                 notes,
-                salesOrderItems,
+                salesOrderItems: items,
               },
               {
                 transaction,

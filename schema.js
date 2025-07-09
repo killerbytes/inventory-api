@@ -101,6 +101,7 @@ export const salesOrderItemSchema = salesOrderStatusSchema
     inventoryId: Joi.number().required(),
     quantity: Joi.number().required(),
     unitPrice: Joi.number().required(),
+    originalPrice: Joi.number().allow(null),
     discount: Joi.number().optional().allow(null),
     inventory: Joi.object(),
   })
@@ -133,3 +134,7 @@ export const inventoryTransactionSchema = Joi.object({
   orderId: Joi.number().optional(),
   orderType: Joi.string().optional(),
 }).required();
+
+export const inventoryPriceAdjustmentSchema = Joi.object({
+  price: Joi.number().required(),
+});

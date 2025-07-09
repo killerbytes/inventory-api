@@ -1,5 +1,5 @@
 import db from "../models";
-import { inventorySchema } from "../schema";
+import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schema";
 import { Op, Transaction } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
@@ -49,48 +49,47 @@ const inventoryService = {
     return result;
   },
 
-  async update(id, payload) {
-    const { id: _id, product, updatedAt, ...params } = payload;
-    const { error } = inventorySchema.validate(params, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw ApiError.validation(error);
-    }
-    try {
-      const inventories = await Inventory.findByPk(id);
-      if (!inventories) {
-        throw new Error("Inventory not found");
-      }
-      await db.sequelize.transaction(async (transaction: Transaction) => {
-        try {
-          await inventoryTransactionService.create(
-            {
-              inventoryId: inventories.id,
-              previousValue: inventories.price,
-              newValue: params.price,
-              value: params.price,
-              transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
-            },
-            { transaction }
-          );
-        } catch (error) {
-          console.log(error);
+  // async update(id, payload) {
+  //   const { id: _id, product, updatedAt, ...params } = payload;
+  //   const { error } = inventorySchema.validate(params, {
+  //     abortEarly: false,
+  //   });
+  //   if (error) {
+  //     throw ApiError.validation(error);
+  //   }
+  //   try {
+  //     const inventories = await Inventory.findByPk(id);
+  //     if (!inventories) {
+  //       throw new Error("Inventory not found");
+  //     }
+  //     await db.sequelize.transaction(async (transaction: Transaction) => {
+  //       try {
+  //         await inventoryTransactionService.create(
+  //           {
+  //             inventoryId: inventories.id,
+  //             previousValue: inventories.price,
+  //             newValue: params.price,
+  //             value: params.price,
+  //             transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
+  //           },
+  //           { transaction }
+  //         );
+  //       } catch (error) {
+  //         console.log(error);
 
-          throw new Error("Error in createInventoryTransaction");
-        }
-        try {
-          await inventories.update(params, { transaction });
-        } catch (error) {
-          throw new Error("Error in updateInventory");
-        }
-      });
-      // await inventories.update(params);
-      return inventories;
-    } catch (error) {
-      throw error;
-    }
-  },
+  //         throw new Error("Error in createInventoryTransaction");
+  //       }
+  //       try {
+  //         await inventories.update(params, { transaction });
+  //       } catch (error) {
+  //         throw new Error("Error in updateInventory");
+  //       }
+  //     });
+  //     return inventories;
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // },
   async delete(id) {
     try {
       const inventories = await Inventory.findByPk(id);
@@ -153,6 +152,49 @@ const inventoryService = {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+    } catch (error) {
+      throw error;
+    }
+  },
+  async updatePrice(id, payload) {
+    const { price } = payload;
+    const { error } = inventoryPriceAdjustmentSchema.validate(
+      { price },
+      {
+        abortEarly: false,
+      }
+    );
+    if (error) {
+      throw ApiError.validation(error);
+    }
+    try {
+      const inventories = await Inventory.findByPk(id);
+      if (!inventories) {
+        throw new Error("Inventory not found");
+      }
+      await db.sequelize.transaction(async (transaction: Transaction) => {
+        try {
+          await inventoryTransactionService.create(
+            {
+              inventoryId: inventories.id,
+              previousValue: inventories.price,
+              newValue: price,
+              value: price,
+              transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
+            },
+            { transaction }
+          );
+        } catch (error) {
+          console.log(error);
+          throw new Error("Error in createInventoryTransaction");
+        }
+        try {
+          await inventories.update({ price }, { transaction });
+        } catch (error) {
+          throw new Error("Error in updateInventory");
+        }
+      });
+      return inventories;
     } catch (error) {
       throw error;
     }

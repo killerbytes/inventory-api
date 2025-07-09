@@ -34,7 +34,6 @@ const salesOrderController = {
     const { id } = req.params;
     try {
       const salesOrder = await salesOrderService.update(id, req.body);
-      await salesOrder.update(req.body);
       res.status(200).json(salesOrder);
     } catch (error) {
       next(error);

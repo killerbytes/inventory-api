@@ -9,7 +9,8 @@ router.get("/reorders", inventoryController.getReorderList);
 router.get("/list", inventoryController.getAll);
 router.get("/transactions", inventoryTransactionsController.getPaginated);
 router.get("/:id", inventoryController.get);
-router.patch("/:id", inventoryController.update);
+// router.patch("/:id", inventoryController.update);
 router.delete("/:id", inventoryController.delete);
+router.patch("/:id/price", inventoryController.updatePrice);
 
 export default router;

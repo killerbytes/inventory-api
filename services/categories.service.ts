@@ -11,7 +11,7 @@ const categoryServices = {
     try {
       const category = await Category.findByPk(id, { raw: true });
       if (!category) {
-        throw new Error("Categories not found");
+        throw new Error("Category not found");
       }
       return category;
     } catch (error) {
@@ -56,7 +56,7 @@ const categoryServices = {
     try {
       const category = await Category.findByPk(id);
       if (!category) {
-        throw new Error("Categories not found");
+        throw new Error("Category not found");
       }
       return category.update(params);
     } catch (error) {
@@ -67,7 +67,7 @@ const categoryServices = {
   delete: async (id) => {
     const category = await Category.findByPk(id);
     if (!category) {
-      throw new Error("Categories not found");
+      throw new Error("Category not found");
     }
     return category.destroy();
   },

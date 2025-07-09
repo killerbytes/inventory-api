@@ -1,11 +1,11 @@
 {
   "development": {
-    "username": "postgres",
+    "username": "root",
     "password": "killer",
     "database": "inventory_db",
     "host": "localhost",
-    "dialect": "postgres",
-    "port": 5432
+    "dialect": "mysql",
+    "logging": false
   },
   "test": {
     "username": "root",
@@ -18,8 +18,14 @@
     "username": "root",
     "password": "xiVpmob3RUftYHbycyyGRQ80mXLBvt54",
     "database": "inventory_db_m89r",
-    "host": "dpg-d1hpscbe5dus739a1800-a",
+    "host": "dpg-d1hpscbe5dus739a1800-a.singapore-postgres.render.com",
     "dialect": "postgres",
-    "port": 5432
+    "port": 5432,
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   }
 }
