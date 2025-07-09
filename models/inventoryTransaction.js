@@ -17,9 +17,22 @@ module.exports = (sequelize, DataTypes) => {
   InventoryTransaction.init(
     {
       inventoryId: { type: DataTypes.INTEGER, allowNull: false },
-      previousValue: { type: DataTypes.INTEGER, allowNull: false },
-      newValue: { type: DataTypes.INTEGER, allowNull: false },
-      value: { type: DataTypes.INTEGER, allowNull: false },
+      // previousValue: { type: DataTypes.DECIMAL, allowNull: false },
+      previousValue: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+      },
+      newValue: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+      },
+      value: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+      },
       transactionType: { type: DataTypes.STRING, allowNull: false },
       orderId: { type: DataTypes.INTEGER, allowNull: true },
       orderType: {
