@@ -186,7 +186,7 @@ const inventoryService = {
           );
         } catch (error) {
           console.log(error);
-          throw new Error("Error in createInventoryTransaction");
+          throw new Error(JSON.stringify(error));
         }
         try {
           await inventories.update({ price }, { transaction });
