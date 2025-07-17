@@ -178,30 +178,58 @@ const salesOrderService = {
       throw error;
     }
   },
-  async getPaginated(query) {
-    const { status = null, sort } = query;
-    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
-    const page = parseInt(query.page) || PAGINATION.PAGE;
+
+  async getPaginated(params) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION,
+      q,
+      startDate,
+      endDate,
+      status,
+      sort,
+    } = params;
+    const where: any = {};
+
+    // Build the where clause
+
+    // Search by name if query exists
+    if (q) {
+      where.name = { [Op.like]: `%${q}%` };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    // Add date filtering if dates are provided
+    if (startDate || endDate) {
+      where.updatedAt = {};
+
+      if (startDate) {
+        const start = new Date(startDate as string);
+        start.setHours(0, 0, 0, 0);
+        where.updatedAt[Op.gte] = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt[Op.lte] = end;
+      }
+    }
+
+    const offset = (page - 1) * limit;
 
     try {
-      const where = status ? { status } : null;
-      const offset = (page - 1) * limit;
       const order = [];
       if (sort) {
-        switch (sort) {
-          default:
-            order.push([sort, query.order || "ASC"]);
-            break;
-        }
-      } else {
-        order.push(["orderDate", "ASC"]); // Default sort
+        order.push([sort as string, order || "ASC"]);
       }
 
       const { count, rows } = await SalesOrder.findAndCountAll({
         limit,
         offset,
         order,
-        where,
+        where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
         include: [
           {
@@ -220,6 +248,7 @@ const salesOrderService = {
           },
         ],
       });
+
       return {
         data: rows,
         total: count,

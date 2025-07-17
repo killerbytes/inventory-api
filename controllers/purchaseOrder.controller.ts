@@ -30,15 +30,21 @@ const purchaseOrderController = {
     }
   },
 
-  // async update(req, res, next) {
-  //   const { id } = req.params;
-  //   try {
-  //     const purchaseOrder = await purchaseOrderService.update(id, req.body);
-  //     res.status(200).json(purchaseOrder);
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // },
+  async update(req, res, next) {
+    const { id } = req.params;
+    const user = await authService.getCurrent();
+
+    try {
+      const purchaseOrder = await purchaseOrderService.update(
+        id,
+        req.body,
+        user
+      );
+      res.status(200).json(purchaseOrder);
+    } catch (error) {
+      next(error);
+    }
+  },
 
   async delete(req, res, next) {
     const { id } = req.params;
@@ -55,7 +61,6 @@ const purchaseOrderController = {
     const page = parseInt(req.query.page as string);
     const q = req.query.q || null;
     const { startDate, endDate, status } = req.query;
-    const where: any = {};
     try {
       const order = [];
       if (req.query.sort) {

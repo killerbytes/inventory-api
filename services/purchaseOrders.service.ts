@@ -1,7 +1,11 @@
 import { Transaction } from "sequelize";
 import ApiError from "./ApiError";
 import db from "../models";
-import { purchaseOrderSchema } from "../schema";
+import {
+  purchaseOrderUpdateSchema,
+  purchaseOrderSchema,
+  purchaseOrderStatusSchema,
+} from "../schema";
 import {
   INVENTORY_TRANSACTION_TYPE,
   ORDER_TYPE,
@@ -9,7 +13,6 @@ import {
   PAGINATION,
 } from "../definitions.js";
 import { Op } from "sequelize";
-import { purchaseOrderStatusSchema } from "../schema";
 import authService from "./auth.service";
 const { PurchaseOrder, PurchaseOrderItem, Product } = db;
 
@@ -17,6 +20,9 @@ const purchaseOrderService = {
   async get(id) {
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id, {
+        attributes: {
+          exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
+        },
         include: [
           {
             model: PurchaseOrderItem,
@@ -76,6 +82,7 @@ const purchaseOrderService = {
 
     try {
       const {
+        purchaseOrderNumber,
         supplierId,
         orderDate,
         status,
@@ -83,7 +90,8 @@ const purchaseOrderService = {
         receivedDate,
         notes,
         purchaseOrderItems,
-        isCheckPayment,
+        modeOfPayment,
+        checkNumber,
         dueDate,
       } = payload;
 
@@ -94,6 +102,7 @@ const purchaseOrderService = {
 
       const result = await PurchaseOrder.create(
         {
+          purchaseOrderNumber,
           supplierId,
           orderDate,
           status,
@@ -103,7 +112,8 @@ const purchaseOrderService = {
           orderBy: user.id,
           notes,
           purchaseOrderItems,
-          isCheckPayment,
+          modeOfPayment,
+          checkNumber,
           dueDate,
         },
         {
@@ -142,25 +152,77 @@ const purchaseOrderService = {
     return result;
   },
 
-  // async update(id, payload) {
-  //   const { id: _id, ...params } = payload;
-  //   const { error } = purchaseOrderSchema.validate(params, {
-  //     abortEarly: false,
-  //   });
-  //   if (error) {
-  //     throw ApiError.validation(error);
-  //   }
-  //   try {
-  //     const purchaseOrder = await PurchaseOrder.findByPk(id);
-  //     if (!purchaseOrder) {
-  //       throw new Error("PurchaseOrder not found");
-  //     }
-  //     await purchaseOrder.update(params);
-  //     return purchaseOrder;
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // },
+  async update(id, payload, user) {
+    const {
+      id: _id,
+      status,
+      orderBy,
+      receivedBy,
+      receivedDate,
+      completedBy,
+      cancelledBy,
+      completedDate,
+      cancelledDate,
+      totalAmount,
+      supplier,
+      orderByUser,
+      receivedByUser,
+      completedByUser,
+      cancelledByUser,
+      isCheckPaymentPaid,
+      cancellationReason,
+      ...params
+    } = payload;
+
+    const { error } = purchaseOrderSchema.validate(params, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw ApiError.validation(error);
+    }
+    try {
+      const purchaseOrder = await PurchaseOrder.findByPk(id, {
+        include: [
+          {
+            model: PurchaseOrderItem,
+            as: "purchaseOrderItems",
+          },
+        ],
+      });
+      if (!purchaseOrder) {
+        throw new Error("PurchaseOrder not found");
+      }
+
+      await db.sequelize.transaction(async (transaction: Transaction) => {
+        try {
+          await purchaseOrder.update(
+            {
+              status: PURCHASE_ORDER_STATUS.RECEIVED,
+              receivedBy: user.id,
+              receivedDate: new Date(),
+            },
+            { transaction }
+          );
+        } catch (error) {
+          throw new Error("Error in updatePurchaseOrder");
+        }
+        try {
+          console.log(123, purchaseOrder);
+
+          await processInventoryUpdates(purchaseOrder, transaction);
+          // throw new Error("xxxx Error in processInventoryUpdates xxx");
+        } catch (error) {
+          console.log(error);
+
+          throw new Error("Error in processInventoryUpdates");
+        }
+      });
+      await purchaseOrder.update(params);
+      return purchaseOrder;
+    } catch (error) {
+      throw error;
+    }
+  },
 
   async delete(id) {
     try {
@@ -222,7 +284,7 @@ const purchaseOrderService = {
       if (sort) {
         order.push([sort as string, order || "ASC"]);
       }
-
+      console.log(123, where);
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,

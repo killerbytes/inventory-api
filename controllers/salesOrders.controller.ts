@@ -48,9 +48,30 @@ const salesOrderController = {
       next(error);
     }
   },
+
   async getPaginated(req, res, next) {
+    const limit = parseInt(req.query.limit as string);
+    const page = parseInt(req.query.page as string);
+    const q = req.query.q || null;
+    const { startDate, endDate, status } = req.query;
     try {
-      const result = await salesOrderService.getPaginated(req.query);
+      const order = [];
+      if (req.query.sort) {
+        order.push([
+          req.query.sort as string,
+          (req.query.order as string) || "ASC",
+        ]);
+      }
+
+      const result = await salesOrderService.getPaginated({
+        limit,
+        page,
+        q,
+        startDate,
+        endDate,
+        status,
+      });
+
       res.status(200).json(result);
     } catch (error) {
       next(error);

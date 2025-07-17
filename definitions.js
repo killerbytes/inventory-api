@@ -31,6 +31,11 @@ export const PAGINATION = {
   PAGE: 1,
 };
 
+export const MODE_OF_PAYMENT = {
+  CASH: "CASH",
+  CHECK: "CHECK",
+};
+
 // PENDING
 // RECEIVED
 // COMPLETED

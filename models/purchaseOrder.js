@@ -3,6 +3,7 @@ const {
   INVENTORY_TRANSACTION_TYPE,
   PURCHASE_ORDER_STATUS,
   ORDER_TYPE,
+  MODE_OF_PAYMENT,
 } = require("../definitions");
 
 class PurchaseOrder extends Model {
@@ -122,6 +123,10 @@ class PurchaseOrder extends Model {
 module.exports = (sequelize) => {
   PurchaseOrder.init(
     {
+      purchaseOrderNumber: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
       supplierId: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -187,14 +192,19 @@ module.exports = (sequelize) => {
       },
       notes: {
         type: DataTypes.TEXT,
+        allowNull: true,
       },
-      isCheckPayment: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
+      internalNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
-      isCheckPaymentPaid: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
+      modeOfPayment: {
+        type: DataTypes.ENUM(Object.values(MODE_OF_PAYMENT)),
+        defaultValue: MODE_OF_PAYMENT.CHECK,
+      },
+      checkNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
       dueDate: {
         type: DataTypes.DATE,

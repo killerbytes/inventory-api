@@ -63,21 +63,56 @@ export const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .keys({
     productId: Joi.number().required(),
     quantity: Joi.number().required(),
+    unit: Joi.string().required(),
     unitPrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
+    discountNote: Joi.string().optional().allow(null),
     product: Joi.object().strip(),
   })
   .required();
 
 export const purchaseOrderSchema = Joi.object({
+  purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
   orderDate: Joi.date().required(),
   deliveryDate: Joi.date().required(),
   receivedDate: Joi.date().optional(),
+  notes: Joi.string().optional().allow(null).allow(""),
+  internalNotes: Joi.string().optional().allow(null),
+  modeOfPayment: Joi.string().required(),
+  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
+    is: "CHECK",
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  dueDate: Joi.date().when("modeOfPayment", {
+    is: "CHECK",
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  purchaseOrderItems: Joi.array()
+    .items(purchaseOrderItemSchema)
+    .required()
+    .messages({
+      "array.includesRequiredUnknowns":
+        "Purchase order must include at least one product.",
+    }),
+}).required();
+
+export const purchaseOrderUpdateSchema = Joi.object({
+  purchaseOrderNumber: Joi.string().required(),
+  supplierId: Joi.number().required(),
+  deliveryDate: Joi.date().required(),
+  internalNotes: Joi.string().optional().allow(null),
   notes: Joi.string().optional().allow(null),
-  isCheckPayment: Joi.boolean().default(false),
-  dueDate: Joi.date().when("isCheckPayment", {
-    is: true,
+  modeOfPayment: Joi.string().required(),
+  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
+    is: "CHECK",
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  dueDate: Joi.date().when("modeOfPayment", {
+    is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),

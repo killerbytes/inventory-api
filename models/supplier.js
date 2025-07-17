@@ -19,7 +19,7 @@ module.exports = (sequelize) => {
         unique: true,
         validate: { isEmail: true },
       },
-      phone: { type: DataTypes.STRING, allowNull: false },
+      phone: { type: DataTypes.TEXT },
       address: { type: DataTypes.STRING, allowNull: false },
       notes: { type: DataTypes.TEXT },
       isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
