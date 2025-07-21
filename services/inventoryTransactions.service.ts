@@ -4,7 +4,7 @@ import db from "../models";
 import ApiError from "./ApiError";
 import { inventoryTransactionSchema } from "../schema.js";
 import authService from "./auth.service";
-const { Inventory, InventoryTransaction, Product } = db;
+const { Inventory, InventoryTransaction, Product, User } = db;
 
 const inventoryTransactionService = {
   async create(payload, transaction) {
@@ -19,7 +19,6 @@ const inventoryTransactionService = {
         payload;
 
       const user = await authService.getCurrent();
-      console.log("user", user);
 
       const result = await InventoryTransaction.create(
         {
@@ -65,8 +64,6 @@ const inventoryTransactionService = {
       const offset = (page - 1) * limit;
       const order = [];
 
-      console.log(123, where);
-
       const { count, rows } = await InventoryTransaction.findAndCountAll({
         limit,
         offset,
@@ -79,6 +76,10 @@ const inventoryTransactionService = {
             model: Inventory,
             as: "inventory",
             include: [{ model: Product, as: "product" }],
+          },
+          {
+            model: User,
+            as: "user",
           },
         ],
       });

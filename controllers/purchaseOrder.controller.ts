@@ -32,14 +32,9 @@ const purchaseOrderController = {
 
   async update(req, res, next) {
     const { id } = req.params;
-    const user = await authService.getCurrent();
 
     try {
-      const purchaseOrder = await purchaseOrderService.update(
-        id,
-        req.body,
-        user
-      );
+      const purchaseOrder = await purchaseOrderService.update(id, req.body);
       res.status(200).json(purchaseOrder);
     } catch (error) {
       next(error);
@@ -85,16 +80,13 @@ const purchaseOrderController = {
     }
   },
 
-  async updateStatus(req, res, next) {
+  async cancelOrder(req, res, next) {
     const { id } = req.params;
 
-    const user = await authService.getCurrent();
-
     try {
-      const purchaseOrder = await purchaseOrderService.updateStatus(
+      const purchaseOrder = await purchaseOrderService.cancelOrder(
         id,
-        req.body,
-        user
+        req.body
       );
 
       res.status(200).json(purchaseOrder);

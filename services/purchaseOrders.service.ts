@@ -1,11 +1,7 @@
 import { Transaction } from "sequelize";
 import ApiError from "./ApiError";
 import db from "../models";
-import {
-  purchaseOrderUpdateSchema,
-  purchaseOrderSchema,
-  purchaseOrderStatusSchema,
-} from "../schema";
+import { purchaseOrderSchema } from "../schema";
 import {
   INVENTORY_TRANSACTION_TYPE,
   ORDER_TYPE,
@@ -85,10 +81,9 @@ const purchaseOrderService = {
         purchaseOrderNumber,
         supplierId,
         orderDate,
-        status,
         deliveryDate,
-        receivedDate,
         notes,
+        internalNotes,
         purchaseOrderItems,
         modeOfPayment,
         checkNumber,
@@ -105,12 +100,11 @@ const purchaseOrderService = {
           purchaseOrderNumber,
           supplierId,
           orderDate,
-          status,
           deliveryDate,
-          receivedDate,
           totalAmount,
           orderBy: user.id,
           notes,
+          internalNotes,
           purchaseOrderItems,
           modeOfPayment,
           checkNumber,
@@ -152,75 +146,37 @@ const purchaseOrderService = {
     return result;
   },
 
-  async update(id, payload, user) {
-    const {
-      id: _id,
-      status,
-      orderBy,
-      receivedBy,
-      receivedDate,
-      completedBy,
-      cancelledBy,
-      completedDate,
-      cancelledDate,
-      totalAmount,
-      supplier,
-      orderByUser,
-      receivedByUser,
-      completedByUser,
-      cancelledByUser,
-      isCheckPaymentPaid,
-      cancellationReason,
-      ...params
-    } = payload;
-
-    const { error } = purchaseOrderSchema.validate(params, {
-      abortEarly: false,
+  async update(id, payload) {
+    const purchaseOrder = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseOrderItem,
+          as: "purchaseOrderItems",
+        },
+      ],
     });
-    if (error) {
-      throw ApiError.validation(error);
+    if (!purchaseOrder) {
+      throw new Error("PurchaseOrder not found");
     }
-    try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, {
-        include: [
-          {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
-          },
-        ],
-      });
-      if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
-      }
 
-      await db.sequelize.transaction(async (transaction: Transaction) => {
-        try {
-          await purchaseOrder.update(
-            {
-              status: PURCHASE_ORDER_STATUS.RECEIVED,
-              receivedBy: user.id,
-              receivedDate: new Date(),
-            },
-            { transaction }
-          );
-        } catch (error) {
-          throw new Error("Error in updatePurchaseOrder");
-        }
-        try {
-          console.log(123, purchaseOrder);
-
-          await processInventoryUpdates(purchaseOrder, transaction);
-          // throw new Error("xxxx Error in processInventoryUpdates xxx");
-        } catch (error) {
-          console.log(error);
-
-          throw new Error("Error in processInventoryUpdates");
-        }
-      });
-      await purchaseOrder.update(params);
-      return purchaseOrder;
-    } catch (error) {
-      throw error;
+    switch (true) {
+      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
+        payload.status === PURCHASE_ORDER_STATUS.RECEIVED:
+        await processReceivedOrder(payload, purchaseOrder);
+        break;
+      case purchaseOrder.status === PURCHASE_ORDER_STATUS.RECEIVED &&
+        payload.status === PURCHASE_ORDER_STATUS.COMPLETED:
+        await processCompletedOrder(payload, purchaseOrder);
+        break;
+      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
+        payload.status === PURCHASE_ORDER_STATUS.PENDING:
+        await processUpdateOrder(payload, purchaseOrder);
+        break;
+      default:
+        throw new Error(
+          `Invalid status change from ${purchaseOrder.status} to ${payload.status}`
+        );
+        break;
     }
   },
 
@@ -230,7 +186,8 @@ const purchaseOrderService = {
       if (!purchaseOrder) {
         throw new Error("PurchaseOrder not found");
       }
-      if (purchaseOrder.status) {
+
+      if (purchaseOrder.status !== PURCHASE_ORDER_STATUS.PENDING) {
         await purchaseOrder.destroy();
       } else {
         throw new Error("PurchaseOrder is not in a valid state");
@@ -284,7 +241,6 @@ const purchaseOrderService = {
       if (sort) {
         order.push([sort as string, order || "ASC"]);
       }
-      console.log(123, where);
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,
@@ -334,122 +290,20 @@ const purchaseOrderService = {
     }
   },
 
-  async updateStatus(id, payload, user) {
-    const { error } = purchaseOrderStatusSchema.validate(payload, {
-      abortEarly: false,
+  async cancelOrder(id, payload) {
+    const purchaseOrder = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseOrderItem,
+          as: "purchaseOrderItems",
+        },
+      ],
     });
-    if (error) {
-      throw ApiError.validation(error);
+    if (!purchaseOrder) {
+      throw new Error("PurchaseOrder not found");
     }
-
-    try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, {
-        include: [
-          {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
-          },
-        ],
-      });
-      if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
-      }
-      switch (purchaseOrder.status) {
-        case PURCHASE_ORDER_STATUS.PENDING: // Pending to Received
-          await db.sequelize.transaction(async (transaction: Transaction) => {
-            try {
-              await purchaseOrder.update(
-                {
-                  status: PURCHASE_ORDER_STATUS.RECEIVED,
-                  receivedBy: user.id,
-                  receivedDate: new Date(),
-                },
-                { transaction }
-              );
-            } catch (error) {
-              throw new Error("Error in updatePurchaseOrder");
-            }
-            try {
-              await processInventoryUpdates(purchaseOrder, transaction);
-            } catch (error) {
-              throw new Error("Error in processInventoryUpdates");
-            }
-          });
-
-          break;
-        case PURCHASE_ORDER_STATUS.RECEIVED: // Received to Completed
-          await db.sequelize.transaction(async (transaction: Transaction) => {
-            try {
-              await purchaseOrder.update(
-                {
-                  status: PURCHASE_ORDER_STATUS.COMPLETED,
-                  isCheckPaymentPaid: true,
-                  completedBy: user.id,
-                  completedDate: new Date(),
-                },
-                { transaction }
-              );
-            } catch (error) {
-              console.log(error);
-
-              throw new Error("Error in updatePurchaseOrder");
-            }
-          });
-          break;
-        case PURCHASE_ORDER_STATUS.COMPLETED: // Completed to Cancelled
-          await db.sequelize.transaction(async (transaction: Transaction) => {
-            try {
-              const { cancellationReason } = payload;
-              await purchaseOrder.update(
-                {
-                  cancellationReason,
-                  status: PURCHASE_ORDER_STATUS.CANCELLED,
-                  cancelledBy: user.id,
-                  cancelledDate: new Date(),
-                },
-                { transaction }
-              );
-            } catch (error) {
-              console.log(error);
-
-              throw new Error("Error in updatePurchaseOrder");
-            }
-            try {
-              await processInventoryUpdates(purchaseOrder, transaction);
-            } catch (error) {
-              throw new Error("Error in processInventoryUpdates");
-            }
-          });
-        default:
-      }
-
-      return purchaseOrder;
-    } catch (error: any) {
-      throw error;
-    }
+    await processCancelledOrder(payload, purchaseOrder);
   },
-};
-
-const processInventoryUpdates = async (purchaseOrder, transaction) => {
-  const { status, purchaseOrderItems, id } = purchaseOrder;
-  const user = await authService.getCurrent();
-  if (status === PURCHASE_ORDER_STATUS.RECEIVED) {
-    await handleReceivedOrder(
-      purchaseOrder.sequelize,
-      purchaseOrderItems,
-      id,
-      user.id,
-      transaction
-    );
-  } else if (status === PURCHASE_ORDER_STATUS.CANCELLED) {
-    await handleCancelledOrder(
-      purchaseOrder.sequelize,
-      purchaseOrderItems,
-      id,
-      user.id,
-      transaction
-    );
-  }
 };
 
 const handleReceivedOrder = async (
@@ -524,6 +378,133 @@ const handleCancelledOrder = async (
       );
     })
   );
+};
+
+const processCompletedOrder = async (payload, purchaseOrder) => {
+  await db.sequelize.transaction(async (transaction: Transaction) => {
+    const user = await authService.getCurrent();
+    try {
+      await updateOrder(
+        {
+          ...payload,
+          status: PURCHASE_ORDER_STATUS.COMPLETED,
+          completedBy: user.id,
+          completedDate: new Date(),
+        },
+        purchaseOrder,
+        transaction,
+        true
+      );
+    } catch (error) {
+      throw new Error("Error in processCompletedOrder");
+    }
+  });
+};
+
+const processCancelledOrder = async (payload, purchaseOrder) => {
+  await db.sequelize.transaction(async (transaction: Transaction) => {
+    const user = await authService.getCurrent();
+    try {
+      await updateOrder(
+        {
+          ...payload,
+          status: PURCHASE_ORDER_STATUS.CANCELLED,
+          cancelledBy: user.id,
+          cancelledDate: new Date(),
+        },
+        purchaseOrder,
+        transaction
+      );
+    } catch (error) {
+      console.log(333, error);
+
+      throw new Error("Error in processCancelledOrder");
+    }
+    try {
+      const { purchaseOrderItems, id } = purchaseOrder;
+      await handleCancelledOrder(
+        purchaseOrder.sequelize,
+        purchaseOrderItems,
+        id,
+        user.id,
+        transaction
+      );
+    } catch (error) {
+      throw new Error("Error in processInventoryUpdates");
+    }
+  });
+};
+
+const processReceivedOrder = async (payload, purchaseOrder) => {
+  await db.sequelize.transaction(async (transaction: Transaction) => {
+    const user = await authService.getCurrent();
+    try {
+      await updateOrder(
+        {
+          ...payload,
+          status: PURCHASE_ORDER_STATUS.RECEIVED,
+          receivedBy: user.id,
+          receivedDate: new Date(),
+        },
+        purchaseOrder,
+        transaction,
+        true
+      );
+    } catch (error) {
+      throw error;
+    }
+    try {
+      // await processInventoryUpdates(purchaseOrder, transaction);
+      const { purchaseOrderItems, id } = purchaseOrder;
+      await handleReceivedOrder(
+        purchaseOrder.sequelize,
+        purchaseOrderItems,
+        id,
+        user.id,
+        transaction
+      );
+    } catch (error) {
+      throw new Error("Error in processInventoryUpdates");
+    }
+  });
+};
+const processUpdateOrder = async (payload, purchaseOrder) => {
+  await db.sequelize.transaction(async (transaction: Transaction) => {
+    try {
+      await updateOrder(payload, purchaseOrder, transaction, true);
+    } catch (error) {
+      throw new Error("Error in processUpdateOrder");
+    }
+  });
+};
+
+const updateOrder = async (
+  payload,
+  purchaseOrder,
+  transaction,
+  updateOrderItems = false
+) => {
+  try {
+    await purchaseOrder.update(payload, { transaction });
+  } catch (error) {
+    console.log(12, error);
+    throw new Error("Error in updateOrder");
+  }
+  try {
+    if (updateOrderItems) {
+      await Promise.all(
+        payload.purchaseOrderItems.map((item) => {
+          return PurchaseOrderItem.update(item, {
+            where: { id: item.id },
+            transaction,
+          });
+        })
+      );
+    }
+  } catch (error) {
+    console.log(12, error);
+    throw new Error("Error in updateOrderItems");
+  }
 };
 
 export default purchaseOrderService;

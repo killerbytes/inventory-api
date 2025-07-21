@@ -48,6 +48,10 @@ export const categorySchema = Joi.object({
   description: Joi.string().optional(),
 }).required();
 
+export const purchaseOrderChangeStatusSchema = Joi.object({
+  status: Joi.string().valid("VOID"),
+}).required();
+
 export const purchaseOrderStatusSchema = Joi.object({
   status: Joi.string()
     .valid("PENDING", "RECEIVED", "COMPLETED", "CANCELLED")
@@ -61,12 +65,13 @@ export const purchaseOrderStatusSchema = Joi.object({
 
 export const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .keys({
+    id: Joi.number().optional(),
     productId: Joi.number().required(),
     quantity: Joi.number().required(),
     unit: Joi.string().required(),
     unitPrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
-    discountNote: Joi.string().optional().allow(null),
+    discountNote: Joi.string().optional().allow(null).allow(""),
     product: Joi.object().strip(),
   })
   .required();
