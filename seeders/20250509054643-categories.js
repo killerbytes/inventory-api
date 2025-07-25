@@ -16,24 +16,64 @@ module.exports = {
       "Categories",
       [
         {
-          name: "Electronics",
-          description: "Devices and gadgets",
+          id: 1,
+          name: "Building Materials",
+          description:
+            "Foundation materials including lumber, plywood, concrete, roofing, siding, insulation, drywall, and fencing",
         },
         {
-          name: "Clothing",
-          description: "Apparel and accessories",
+          id: 2,
+          name: "Hardware",
+          description:
+            "Essential small parts like fasteners (nails, screws), tools accessories, door/window/cabinet hardware, chains, and electrical boxes",
         },
         {
-          name: "Books",
-          description: "Literature and educational materials",
+          id: 3,
+          name: "Paint & Supplies",
+          description:
+            "Interior/exterior paint, stains, spray paint, brushes, rollers, tape, wallpaper, and painting preparation materials",
         },
         {
-          name: "Home & Kitchen",
-          description: "Household items and kitchenware",
+          id: 4,
+          name: "Tools",
+          description:
+            "Power tools (drills, saws), hand tools (hammers, wrenches), tool storage, and outdoor power equipment (mowers, trimmers)",
         },
         {
-          name: "Sports & Outdoors",
-          description: "Sporting goods and outdoor equipment",
+          id: 5,
+          name: "Plumbing",
+          description:
+            "Water systems components including pipes, fittings, water heaters, faucets, sinks, sump pumps, and toilets",
+        },
+        {
+          id: 6,
+          name: "Electrical",
+          description:
+            "Power and lighting systems with wiring, breakers, switches, outlets, lighting fixtures, ceiling fans, and generators",
+        },
+        {
+          id: 7,
+          name: "Flooring",
+          description:
+            "Surface coverings like carpet, hardwood, laminate, vinyl, tile, underlayment, and area rugs",
+        },
+        {
+          id: 8,
+          name: "Kitchen & Bath",
+          description:
+            "Renovation essentials including cabinets, countertops, sinks, faucets, vanities, bathtubs, showers, and toilets",
+        },
+        {
+          id: 9,
+          name: "Doors & Windows",
+          description:
+            "Interior/exterior doors, various window types, and garage doors for entryways and natural light",
+        },
+        {
+          id: 10,
+          name: "Garden Center",
+          description:
+            "Plants (trees/shrubs/flowers), soil, mulch, fertilizer, gardening tools, and pest control for landscaping",
         },
       ],
       {}

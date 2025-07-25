@@ -10,6 +10,7 @@ import {
 } from "../definitions.js";
 import { Op } from "sequelize";
 import authService from "./auth.service";
+import { processInventoryUpdates } from "./inventory.service";
 const { PurchaseOrder, PurchaseOrderItem, Product } = db;
 
 const purchaseOrderService = {
@@ -315,30 +316,7 @@ const handleReceivedOrder = async (
 ) => {
   await Promise.all(
     items.map(async (item) => {
-      const [inventory] = await sequelize.models.Inventory.findOrCreate({
-        where: { productId: item.productId },
-        defaults: { productId: item.productId, quantity: 0 },
-        transaction,
-      });
-
-      await sequelize.models.InventoryTransaction.create(
-        {
-          inventoryId: inventory.id,
-          previousValue: inventory.quantity,
-          newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
-          value: item.quantity,
-          transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-          orderId,
-          orderType: ORDER_TYPE.PURCHASE,
-          userId,
-        },
-        { transaction }
-      );
-
-      await inventory.update(
-        { quantity: inventory.quantity + item.quantity },
-        { transaction }
-      );
+      await processInventoryUpdates(item, orderId, transaction);
     })
   );
 };

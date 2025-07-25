@@ -1,10 +1,11 @@
-import db from "../models";
+import db, { sequelize } from "../models";
 import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schema";
 import { Op, Transaction } from "sequelize";
-import { PAGINATION } from "../definitions.js";
+import { ORDER_TYPE, PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
 import inventoryTransactionService from "./inventoryTransactions.service";
 import { INVENTORY_TRANSACTION_TYPE } from "../definitions.js";
+import authService from "./auth.service";
 const { Inventory, Product } = db;
 
 const inventoryService = {
@@ -49,47 +50,6 @@ const inventoryService = {
     return result;
   },
 
-  // async update(id, payload) {
-  //   const { id: _id, product, updatedAt, ...params } = payload;
-  //   const { error } = inventorySchema.validate(params, {
-  //     abortEarly: false,
-  //   });
-  //   if (error) {
-  //     throw ApiError.validation(error);
-  //   }
-  //   try {
-  //     const inventories = await Inventory.findByPk(id);
-  //     if (!inventories) {
-  //       throw new Error("Inventory not found");
-  //     }
-  //     await db.sequelize.transaction(async (transaction: Transaction) => {
-  //       try {
-  //         await inventoryTransactionService.create(
-  //           {
-  //             inventoryId: inventories.id,
-  //             previousValue: inventories.price,
-  //             newValue: params.price,
-  //             value: params.price,
-  //             transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
-  //           },
-  //           { transaction }
-  //         );
-  //       } catch (error) {
-  //         console.log(error);
-
-  //         throw new Error("Error in createInventoryTransaction");
-  //       }
-  //       try {
-  //         await inventories.update(params, { transaction });
-  //       } catch (error) {
-  //         throw new Error("Error in updateInventory");
-  //       }
-  //     });
-  //     return inventories;
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // },
   async delete(id) {
     try {
       const inventories = await Inventory.findByPk(id);
@@ -180,7 +140,7 @@ const inventoryService = {
               previousValue: inventories.price,
               newValue: price,
               value: price,
-              transactionType: INVENTORY_TRANSACTION_TYPE.ADJUSTMENT,
+              transactionType: INVENTORY_TRANSACTION_TYPE.PRICE_ADJUSTMENT,
             },
             { transaction }
           );
@@ -199,6 +159,35 @@ const inventoryService = {
       throw error;
     }
   },
+};
+
+export const processInventoryUpdates = async (item, orderId, transaction) => {
+  const user = await authService.getCurrent();
+
+  const [inventory] = await sequelize.models.Inventory.findOrCreate({
+    where: { productId: item.productId },
+    defaults: { productId: item.productId, quantity: 0 },
+    transaction,
+  });
+
+  await sequelize.models.InventoryTransaction.create(
+    {
+      inventoryId: inventory.id,
+      previousValue: inventory.quantity,
+      newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
+      value: item.quantity,
+      transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
+      orderId,
+      orderType: ORDER_TYPE.PURCHASE,
+      userId: user.id,
+    },
+    { transaction }
+  );
+
+  await inventory.update(
+    { quantity: inventory.quantity + item.quantity },
+    { transaction }
+  );
 };
 
 export default inventoryService;

@@ -1,5 +1,5 @@
 "use strict";
-
+const { UNIT } = require("../definitions");
 const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
@@ -25,6 +25,9 @@ module.exports = (sequelize, DataTypes) => {
       name: { type: DataTypes.STRING, allowNull: false, unique: true },
       description: { type: DataTypes.TEXT },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
+      unit: {
+        type: DataTypes.ENUM(Object.values(UNIT)),
+      },
       reorderLevel: {
         type: DataTypes.INTEGER,
         allowNull: false,

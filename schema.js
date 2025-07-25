@@ -85,7 +85,7 @@ export const purchaseOrderSchema = Joi.object({
   notes: Joi.string().optional().allow(null).allow(""),
   internalNotes: Joi.string().optional().allow(null),
   modeOfPayment: Joi.string().required(),
-  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
+  checkNumber: Joi.string().allow(null).allow("").when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),

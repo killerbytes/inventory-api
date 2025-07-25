@@ -18,12 +18,11 @@ export const ORDER_TYPE = {
 export const INVENTORY_TRANSACTION_TYPE = {
   PURCHASE: "PURCHASE",
   SALE: "SALE",
-  ADJUSTMENT: "ADJUSTMENT",
+  PRICE_ADJUSTMENT: "PRICE_ADJUSTMENT",
   RETURN: "RETURN",
-  TRANSFER: "TRANSFER",
-  OTHER: "OTHER",
-  EXPIRY: "EXPIRY",
   CANCELLATION: "CANCELLATION",
+  BREAK_PACK: "BREAK_PACK",
+  REPACK: "REPACK",
 };
 
 export const PAGINATION = {
@@ -34,6 +33,15 @@ export const PAGINATION = {
 export const MODE_OF_PAYMENT = {
   CASH: "CASH",
   CHECK: "CHECK",
+};
+
+export const UNIT = {
+  BOX: "BOX",
+  BAG: "BAG",
+  GAL: "GAL",
+  PACK: "PACK",
+  SET: "SET",
+  PCS: "PCS",
 };
 
 // PENDING
