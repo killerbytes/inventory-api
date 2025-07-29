@@ -42,7 +42,6 @@ export const productSchema = Joi.object({
   categoryId: Joi.number().required(),
   unit: Joi.string().required(),
   parentId: Joi.number().optional(),
-  reorderLevel: Joi.number().optional(),
 }).required();
 
 export const categorySchema = Joi.object({
@@ -165,6 +164,7 @@ export const inventorySchema = Joi.object({
   productId: Joi.number().required(),
   quantity: Joi.number().required(),
   price: Joi.number().required(),
+  reorderLevel: Joi.number().optional(),
 }).required();
 
 export const inventoryTransactionSchema = Joi.object({

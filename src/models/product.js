@@ -37,11 +37,6 @@ module.exports = (sequelize, DataTypes) => {
       unit: {
         type: DataTypes.ENUM(Object.values(UNIT)),
       },
-      reorderLevel: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0,
-      },
       parentId: {
         type: DataTypes.INTEGER,
         allowNull: true,
