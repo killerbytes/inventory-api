@@ -1,12 +1,12 @@
 import db, { sequelize } from "../models";
 import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schema";
 import { Op, Transaction } from "sequelize";
-import { ORDER_TYPE, PAGINATION } from "../definitions.js";
+import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
 import inventoryTransactionService from "./inventoryTransactions.service";
 import { INVENTORY_TRANSACTION_TYPE } from "../definitions.js";
 import authService from "./auth.service";
-const { Inventory, Product } = db;
+const { Inventory, Product, Category } = db;
 
 const inventoryService = {
   async get(id) {
@@ -41,13 +41,43 @@ const inventoryService = {
   },
 
   async getAll() {
-    const result = await Inventory.findAll({
-      raw: true,
-      nest: true,
-      include: [{ model: Product, as: "product", attributes: ["name"] }],
-    });
+    try {
+      const order = [];
+      order.push(["product", "category", "order", "ASC"]);
+      const inventories = await Inventory.findAll({
+        order,
+        include: [
+          {
+            model: Product,
+            as: "product",
+            include: [{ model: Category, as: "category" }],
+          },
+        ],
+      });
 
-    return result;
+      const groupedByCategory = {};
+      inventories.forEach((inventory) => {
+        const category = inventory.product?.category;
+        if (!category) return;
+
+        const categoryId = category.id;
+        if (!groupedByCategory[categoryId]) {
+          groupedByCategory[categoryId] = {
+            categoryId: category.id,
+            categoryName: category.name,
+            inventories: [],
+          };
+        }
+
+        groupedByCategory[categoryId].inventories.push(inventory);
+      });
+
+      const result = Object.values(groupedByCategory);
+
+      return result;
+    } catch (error) {
+      console.log(55, error);
+    }
   },
 
   async delete(id) {
@@ -161,7 +191,13 @@ const inventoryService = {
   },
 };
 
-export const processInventoryUpdates = async (item, orderId, transaction) => {
+export const processInventoryUpdates = async (
+  item,
+  reference,
+  transactionType,
+  transaction,
+  increase = true
+) => {
   const user = await authService.getCurrent();
 
   const [inventory] = await sequelize.models.Inventory.findOrCreate({
@@ -174,18 +210,23 @@ export const processInventoryUpdates = async (item, orderId, transaction) => {
     {
       inventoryId: inventory.id,
       previousValue: inventory.quantity,
-      newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
+      newValue: increase
+        ? parseInt(inventory.quantity) + parseInt(item.quantity)
+        : parseInt(inventory.quantity) - parseInt(item.quantity),
       value: item.quantity,
-      transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-      orderId,
-      orderType: ORDER_TYPE.PURCHASE,
+      transactionType,
+      reference,
       userId: user.id,
     },
     { transaction }
   );
 
   await inventory.update(
-    { quantity: inventory.quantity + item.quantity },
+    {
+      quantity: increase
+        ? inventory.quantity + item.quantity
+        : inventory.quantity - item.quantity,
+    },
     { transaction }
   );
 };

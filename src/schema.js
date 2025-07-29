@@ -40,6 +40,8 @@ export const productSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional().allow(null),
   categoryId: Joi.number().required(),
+  unit: Joi.string().required(),
+  parentId: Joi.number().optional(),
   reorderLevel: Joi.number().optional(),
 }).required();
 

@@ -7,6 +7,7 @@ router.get("/list", categoriesController.getAll);
 router.get("/:id", categoriesController.get);
 router.get("/", categoriesController.getPaginated);
 router.post("/", categoriesController.create);
+router.patch("/updateSort", categoriesController.updateSort);
 router.patch("/:id", categoriesController.update);
 router.delete("/:id", categoriesController.delete);
 

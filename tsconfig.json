@@ -3,11 +3,12 @@
         "target": "ES2017", // Avoid ES5 – ES6+ retains proper `class` behavior
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
+        "rootDir": "src",
         "outDir": "dist",
         "allowJs": true
     },
     "include": [
-        "**/*"
+        "src"
     ],
     "exclude": [
         "node_modules",

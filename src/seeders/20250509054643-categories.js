@@ -20,24 +20,28 @@ module.exports = {
           name: "Building Materials",
           description:
             "Foundation materials including lumber, plywood, concrete, roofing, siding, insulation, drywall, and fencing",
+          order: 1,
         },
         {
           id: 2,
           name: "Hardware",
           description:
             "Essential small parts like fasteners (nails, screws), tools accessories, door/window/cabinet hardware, chains, and electrical boxes",
+          order: 2,
         },
         {
           id: 3,
           name: "Paint & Supplies",
           description:
             "Interior/exterior paint, stains, spray paint, brushes, rollers, tape, wallpaper, and painting preparation materials",
+          order: 3,
         },
         {
           id: 4,
           name: "Tools",
           description:
             "Power tools (drills, saws), hand tools (hammers, wrenches), tool storage, and outdoor power equipment (mowers, trimmers)",
+          order: 4,
         },
         {
           id: 5,
@@ -78,6 +82,7 @@ module.exports = {
       ],
       {}
     );
+    order: 1;
   },
 
   async down(queryInterface, Sequelize) {
@@ -87,5 +92,6 @@ module.exports = {
      * Example:
      * await queryInterface.bulkDelete('People', null, {});
      */
+    order: 1;
   },
 };

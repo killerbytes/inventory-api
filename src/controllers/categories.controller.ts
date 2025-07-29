@@ -24,7 +24,7 @@ const categoriesController = {
 
   getAll: async (req, res, next) => {
     try {
-      const result = await categoryServices.getAll();
+      const result = await categoryServices.getAll(req.query);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -57,6 +57,17 @@ const categoriesController = {
       const result = await categoryServices.getPaginated(req.query);
       res.status(200).json(result);
     } catch (error) {
+      next(error);
+    }
+  },
+  updateSort: async (req, res, next) => {
+    try {
+      const result = await categoryServices.updateSort(req.body);
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.log("catch", error);
+
       next(error);
     }
   },

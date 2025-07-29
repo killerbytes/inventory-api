@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import db from "../models";
 import ApiError from "./ApiError";
-import { inventoryTransactionSchema } from "../schema.js";
+import { inventoryTransactionSchema } from "../schema";
 import authService from "./auth.service";
 const { Inventory, InventoryTransaction, Product, User } = db;
 

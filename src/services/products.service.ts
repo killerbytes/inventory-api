@@ -3,15 +3,25 @@ const { Product, Category } = db;
 import ApiError from "./ApiError";
 import { productSchema } from "../schema";
 import { PAGINATION } from "../definitions.js";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
+
+type GroupedProduct = {
+  categoryId: number;
+  categoryName: string;
+  categoryOrder: number;
+  products: any[]; // or use your Product type if defined
+};
 
 const productService = {
   async get(id) {
     try {
       const product = await Product.findByPk(id, {
-        include: [{ model: Category, as: "category" }],
+        include: [
+          { model: Category, as: "category" },
+          { model: Product, as: "subProducts" },
+        ],
 
-        raw: true,
+        nested: true,
       });
       if (!product) {
         throw new Error("Product not found");
@@ -29,11 +39,14 @@ const productService = {
       throw ApiError.validation(error);
     }
     try {
-      const { name, description, categoryId, reorderLevel } = payload;
+      const { name, description, categoryId, unit, parentId, reorderLevel } =
+        payload;
       const result = await Product.create({
         name,
         description,
         categoryId,
+        unit,
+        parentId,
         reorderLevel,
       });
       return result;
@@ -44,12 +57,51 @@ const productService = {
 
   async getAll() {
     try {
-      const result = await Product.findAll({
-        include: [{ model: Category, as: "category", attributes: ["name"] }],
-        order: [["name", "ASC"]],
-        raw: true,
-        nest: true,
+      const order = [];
+      order.push([{ model: Category, as: "category" }, "order", "ASC"]);
+
+      const products = await Product.findAll({
+        where: {
+          parentId: null,
+        },
+        include: [
+          {
+            model: Category,
+            as: "category",
+            attributes: ["name", "id", "order"],
+          },
+          {
+            model: Product,
+            as: "subProducts",
+          },
+        ],
+        nested: true,
+        order: [[{ model: Category, as: "category" }, "order", "ASC"]],
       });
+
+      const groupedByCategory: Record<number, GroupedProduct> = {};
+
+      products.forEach((product) => {
+        const category = product.category;
+        if (!category) return;
+
+        const catId = category.id;
+
+        if (!groupedByCategory[catId]) {
+          groupedByCategory[catId] = {
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryOrder: category.order,
+            products: [],
+          };
+        }
+
+        groupedByCategory[catId].products.push(product);
+      });
+
+      const result = Object.values(groupedByCategory).sort(
+        (a, b) => a.categoryOrder - b.categoryOrder
+      );
       return result;
     } catch (error) {
       throw error;
@@ -112,10 +164,21 @@ const productService = {
         limit,
         offset,
         order,
-        where,
-        raw: true,
-        nest: true,
-        include: [{ model: Category, as: "category", attributes: ["name"] }],
+        where: {
+          ...where,
+          parentId: null,
+        },
+        include: [
+          {
+            model: Product,
+            as: "subProducts",
+          },
+          {
+            model: Category,
+            as: "category",
+            attributes: ["name"],
+          },
+        ],
       });
       return {
         data: rows,

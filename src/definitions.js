@@ -11,18 +11,22 @@ export const SALES_ORDER_STATUS = {
 };
 
 export const ORDER_TYPE = {
-  SALES: "SALES",
+  SALE: "SALE",
   PURCHASE: "PURCHASE",
 };
 
 export const INVENTORY_TRANSACTION_TYPE = {
-  PURCHASE: "PURCHASE",
-  SALE: "SALE",
+  ...ORDER_TYPE,
   PRICE_ADJUSTMENT: "PRICE_ADJUSTMENT",
   RETURN: "RETURN",
   CANCELLATION: "CANCELLATION",
   BREAK_PACK: "BREAK_PACK",
   REPACK: "REPACK",
+};
+
+export const REF_TYPE = {
+  SALES: "SALES",
+  PURCHASE: "PURCHASE",
 };
 
 export const PAGINATION = {
@@ -42,6 +46,7 @@ export const UNIT = {
   PACK: "PACK",
   SET: "SET",
   PCS: "PCS",
+  KGS: "KGS",
 };
 
 // PENDING

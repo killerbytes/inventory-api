@@ -307,57 +307,6 @@ const purchaseOrderService = {
   },
 };
 
-const handleReceivedOrder = async (
-  sequelize,
-  items,
-  orderId,
-  userId,
-  transaction
-) => {
-  await Promise.all(
-    items.map(async (item) => {
-      await processInventoryUpdates(item, orderId, transaction);
-    })
-  );
-};
-
-const handleCancelledOrder = async (
-  sequelize,
-  items,
-  orderId,
-  userId,
-  transaction
-) => {
-  await Promise.all(
-    items.map(async (item) => {
-      const [inventory] = await sequelize.models.Inventory.findOrCreate({
-        where: { productId: item.productId },
-        defaults: { productId: item.productId, quantity: 0 },
-        transaction,
-      });
-
-      await sequelize.models.InventoryTransaction.create(
-        {
-          inventoryId: inventory.id,
-          previousValue: inventory.quantity,
-          newValue: parseInt(inventory.quantity) - parseInt(item.quantity),
-          value: item.quantity,
-          transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-          orderId,
-          orderType: ORDER_TYPE.PURCHASE,
-          userId,
-        },
-        { transaction }
-      );
-
-      await inventory.update(
-        { quantity: inventory.quantity - item.quantity },
-        { transaction }
-      );
-    })
-  );
-};
-
 const processCompletedOrder = async (payload, purchaseOrder) => {
   await db.sequelize.transaction(async (transaction: Transaction) => {
     const user = await authService.getCurrent();
@@ -400,12 +349,16 @@ const processCancelledOrder = async (payload, purchaseOrder) => {
     }
     try {
       const { purchaseOrderItems, id } = purchaseOrder;
-      await handleCancelledOrder(
-        purchaseOrder.sequelize,
-        purchaseOrderItems,
-        id,
-        user.id,
-        transaction
+      await Promise.all(
+        purchaseOrderItems.map(async (item) => {
+          await processInventoryUpdates(
+            item,
+            id,
+            INVENTORY_TRANSACTION_TYPE.CANCELLATION,
+            transaction,
+            false
+          );
+        })
       );
     } catch (error) {
       throw new Error("Error in processInventoryUpdates");
@@ -432,14 +385,16 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
       throw error;
     }
     try {
-      // await processInventoryUpdates(purchaseOrder, transaction);
       const { purchaseOrderItems, id } = purchaseOrder;
-      await handleReceivedOrder(
-        purchaseOrder.sequelize,
-        purchaseOrderItems,
-        id,
-        user.id,
-        transaction
+      await Promise.all(
+        purchaseOrderItems.map(async (item) => {
+          await processInventoryUpdates(
+            item,
+            id,
+            INVENTORY_TRANSACTION_TYPE.PURCHASE,
+            transaction
+          );
+        })
       );
     } catch (error) {
       throw new Error("Error in processInventoryUpdates");

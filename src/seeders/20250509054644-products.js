@@ -37,8 +37,8 @@ module.exports = {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-
         {
+          id: 4,
           name: "Assorted Nails",
           categoryId: 2,
           unit: "BOX",

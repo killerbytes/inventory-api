@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
-import db from "../models";
+import db, { Sequelize } from "../models";
 import { categorySchema } from "../schema";
 import ApiError from "./ApiError";
 
@@ -37,10 +37,11 @@ const categoryServices = {
     }
   },
 
-  getAll: async () => {
+  getAll: async (query) => {
+    const { products = false } = query;
     const result = await Category.findAll({
       raw: true,
-      order: [["name", "ASC"]],
+      order: [["order", "ASC"]],
     });
     return result;
   },
@@ -86,7 +87,7 @@ const categoryServices = {
           }
         : null;
       const offset = (page - 1) * limit;
-      const order = [];
+      const order = [[Sequelize.literal("`order` IS NULL"), "ASC"]];
       if (sort) {
         switch (sort) {
           case "category.name":
@@ -114,6 +115,33 @@ const categoryServices = {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateSort: async (payload) => {
+    // const { id: _id, ...params } = payload;
+    // const { error } = categorySchema.validate(params, {
+    //   abortEarly: false,
+    // });
+
+    // if (error) {
+    //   throw ApiError.validation(error);
+    // }
+    try {
+      await Promise.all(
+        payload.map(async (id, index) => {
+          const category = await Category.findByPk(id);
+          category.update({ order: index });
+        })
+      );
+
+      // const category = await Category.findByPk(id);
+      // if (!category) {
+      //   throw new Error("Category not found");
+      // }
+      // return category.update(params);
     } catch (error) {
       throw error;
     }

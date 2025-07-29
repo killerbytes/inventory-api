@@ -5,9 +5,18 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Product extends Model {
     static associate(models) {
+      Product.hasMany(models.Product, {
+        foreignKey: "parentId",
+        as: "subProducts",
+      });
+      Product.belongsTo(models.Product, {
+        foreignKey: "parentId",
+        as: "parent",
+      });
       Product.belongsTo(models.Category, {
         foreignKey: "categoryId",
         as: "category",
+        onDelete: "RESTRICT",
       });
       Product.hasMany(models.PurchaseOrderItem, {
         foreignKey: "productId",
@@ -32,6 +41,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
+      },
+      parentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: "Products",
+          key: "id",
+        },
       },
     },
     {

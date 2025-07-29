@@ -33,14 +33,10 @@ passport.use(
   new LocalStrategy(
     { usernameField: "username", passwordField: "password" },
     async (username: string, password: string, done: any) => {
-      console.log(123123, username, password);
-
       try {
         const user = await User.scope("withPassword").findOne({
           where: { username, isActive: true },
         });
-
-        console.log(7676767, user);
 
         if (!user || !User.validatePassword(password, user.password)) {
           // return done(null, false, { message: "Invalid username or password" });
@@ -79,6 +75,7 @@ app.get("/", (req, res) => {
 
 app.use((err, req, res, next) => {
   // If this isn't our custom error, convert it
+
   let errors = err.errors;
   if (err instanceof ValidationError) {
     errors = err.errors.map((err) => ({

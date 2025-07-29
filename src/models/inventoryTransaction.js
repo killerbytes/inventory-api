@@ -5,8 +5,6 @@ const { ORDER_TYPE } = require("../definitions");
 
 class InventoryTransaction extends Model {
   static associate(models) {
-    console.log("Associating InventoryTransaction..."); // 🔍
-
     InventoryTransaction.belongsTo(models.User, {
       foreignKey: "userId",
       as: "user",
@@ -22,7 +20,6 @@ module.exports = (sequelize, DataTypes) => {
   InventoryTransaction.init(
     {
       inventoryId: { type: DataTypes.INTEGER, allowNull: false },
-      // previousValue: { type: DataTypes.DECIMAL, allowNull: false },
       previousValue: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -39,11 +36,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
       },
       transactionType: { type: DataTypes.STRING, allowNull: false },
-      orderId: { type: DataTypes.INTEGER, allowNull: true },
-      orderType: {
-        type: DataTypes.ENUM(Object.values(ORDER_TYPE)),
-        allowNull: true,
-      },
+      reference: { type: DataTypes.INTEGER, allowNull: true },
       userId: { type: DataTypes.INTEGER, allowNull: false },
     },
     {

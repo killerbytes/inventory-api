@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       Category.hasMany(models.Product, {
         foreignKey: "categoryId",
         as: "products",
+        onDelete: "RESTRICT",
       });
     }
   }
@@ -22,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
       },
       description: DataTypes.TEXT,
+      order: DataTypes.INTEGER,
     },
     {
       sequelize,
