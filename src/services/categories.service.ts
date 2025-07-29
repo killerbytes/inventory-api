@@ -72,7 +72,7 @@ const categoryServices = {
     }
     return category.destroy();
   },
-  async getPaginated(query) {
+  getPaginated: async (query) => {
     const { q = null, sort } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
@@ -87,7 +87,7 @@ const categoryServices = {
           }
         : null;
       const offset = (page - 1) * limit;
-      const order = [[Sequelize.literal("`order` IS NULL"), "ASC"]];
+      const order = [[Sequelize.literal('"order" IS NULL'), "ASC"]];
       if (sort) {
         switch (sort) {
           case "category.name":

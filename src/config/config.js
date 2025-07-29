@@ -7,7 +7,7 @@ module.exports = {
     password: process.env.DB_PASSWORD || "killer",
     database: process.env.DB_NAME || "inventory_db",
     host: process.env.DB_HOST || "localhost",
-    dialect: "postgres",
+    dialect: process.env.DB_DIALECT || "mysql",
     logging: false,
   },
   production: {
