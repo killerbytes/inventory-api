@@ -83,7 +83,6 @@ app.use((err, req, res, next) => {
       message: err.message,
     }));
   }
-  console.log("ENV", process.env.NODE_ENV);
 
   if (!(err instanceof ApiError)) {
     err = ApiError.internal(err.message, {

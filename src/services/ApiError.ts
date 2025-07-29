@@ -64,7 +64,7 @@ class ApiError extends Error {
       message: message,
     }));
 
-    return new ApiError("VALIDATION", 400, "Bad Request", errors, null);
+    return new ApiError("VALIDATION_ERROR", 400, "Bad Request", errors, null);
   }
 }
 
