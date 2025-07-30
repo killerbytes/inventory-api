@@ -22,9 +22,9 @@ const categoriesController = {
     }
   },
 
-  getAll: async (req, res, next) => {
+  list: async (req, res, next) => {
     try {
-      const result = await categoryServices.getAll(req.query);
+      const result = await categoryServices.list(req.query);
       res.status(200).json(result);
     } catch (error) {
       next(error);

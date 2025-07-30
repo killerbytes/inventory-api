@@ -3,7 +3,7 @@ import categoriesController from "../controllers/categories.controller";
 
 const router = express.Router();
 
-router.get("/list", categoriesController.getAll);
+router.get("/list", categoriesController.list);
 router.get("/:id", categoriesController.get);
 router.get("/", categoriesController.getPaginated);
 router.post("/", categoriesController.create);

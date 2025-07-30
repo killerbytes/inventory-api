@@ -40,7 +40,7 @@ const userService = {
     }
   },
 
-  async getAll() {
+  async list() {
     const result = await User.findAll();
     return result;
   },

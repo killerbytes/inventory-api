@@ -1,10 +1,5 @@
 const { Model, DataTypes } = require("sequelize");
-const {
-  INVENTORY_TRANSACTION_TYPE,
-  PURCHASE_ORDER_STATUS,
-  ORDER_TYPE,
-  MODE_OF_PAYMENT,
-} = require("../definitions");
+const { PURCHASE_ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
 
 class PurchaseOrder extends Model {
   static associate(models) {
@@ -38,86 +33,6 @@ class PurchaseOrder extends Model {
       as: "cancelledByUser",
     });
   }
-
-  // static async processInventoryUpdates(purchaseOrder, transaction) {
-  //   const { status, purchaseOrderItems, id } = purchaseOrder;
-
-  //   if (status === PURCHASE_ORDER_STATUS.COMPLETED) {
-  //     await this.handleCompletedOrder(
-  //       purchaseOrder.sequelize,
-  //       purchaseOrderItems,
-  //       id,
-  //       transaction
-  //     );
-  //   } else if (status === PURCHASE_ORDER_STATUS.CANCELLED) {
-  //     await this.handleCancelledOrder(
-  //       purchaseOrder.sequelize,
-  //       purchaseOrderItems,
-  //       id,
-  //       transaction
-  //     );
-  //   }
-  // }
-
-  // static async handleCompletedOrder(sequelize, items, orderId, transaction) {
-  //   await Promise.all(
-  //     items.map(async (item) => {
-  //       const [inventory] = await sequelize.models.Inventory.findOrCreate({
-  //         where: { productId: item.productId },
-  //         defaults: { productId: item.productId, quantity: 0 },
-  //         transaction,
-  //       });
-
-  //       await sequelize.models.InventoryTransaction.create(
-  //         {
-  //           inventoryId: inventory.id,
-  //           previousValue: inventory.quantity,
-  //           newValue: inventory.quantity + item.quantity,
-  //           value: item.quantity,
-  //           transactionType: INVENTORY_TRANSACTION_TYPE.PURCHASE,
-  //           orderId,
-  //           orderType: ORDER_TYPE.PURCHASE,
-  //         },
-  //         { transaction }
-  //       );
-
-  //       await inventory.update(
-  //         { quantity: inventory.quantity + item.quantity },
-  //         { transaction }
-  //       );
-  //     })
-  //   );
-  // }
-
-  // static async handleCancelledOrder(sequelize, items, orderId, transaction) {
-  //   await Promise.all(
-  //     items.map(async (item) => {
-  //       const [inventory] = await sequelize.models.Inventory.findOrCreate({
-  //         where: { productId: item.productId },
-  //         defaults: { productId: item.productId, quantity: 0 },
-  //         transaction,
-  //       });
-
-  //       await sequelize.models.InventoryTransaction.create(
-  //         {
-  //           inventoryId: inventory.id,
-  //           previousValue: inventory.quantity,
-  //           newValue: inventory.quantity - item.quantity,
-  //           value: item.quantity,
-  //           transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-  //           orderId,
-  //           orderType: ORDER_TYPE.PURCHASE,
-  //         },
-  //         { transaction }
-  //       );
-
-  //       await inventory.update(
-  //         { quantity: inventory.quantity - item.quantity },
-  //         { transaction }
-  //       );
-  //     })
-  //   );
-  // }
 }
 
 module.exports = (sequelize) => {

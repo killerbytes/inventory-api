@@ -19,9 +19,9 @@ const userController = {
     }
   },
 
-  async getAll(req, res, next) {
+  async list(req, res, next) {
     try {
-      const result = await userService.getAll();
+      const result = await userService.list();
       return res.status(200).json(result);
     } catch (error) {
       next(error);

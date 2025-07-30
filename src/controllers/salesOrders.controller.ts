@@ -21,9 +21,9 @@ const salesOrderController = {
     }
   },
 
-  async getAll(req, res, next) {
+  async list(req, res, next) {
     try {
-      const result = await salesOrderService.getAll();
+      const result = await salesOrderService.list();
       res.status(200).json(result);
     } catch (error) {
       next(error);

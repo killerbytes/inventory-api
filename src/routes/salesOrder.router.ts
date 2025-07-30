@@ -2,7 +2,7 @@ import express from "express";
 import salesOrderController from "../controllers/salesOrders.controller";
 const router = express.Router();
 
-router.get("/list", salesOrderController.getAll);
+router.get("/list", salesOrderController.list);
 router.get("/:id", salesOrderController.get);
 router.get("/", salesOrderController.getPaginated);
 router.post("/", salesOrderController.create);

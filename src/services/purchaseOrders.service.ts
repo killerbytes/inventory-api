@@ -127,7 +127,7 @@ const purchaseOrderService = {
     }
   },
 
-  async getAll() {
+  async list() {
     const result = await PurchaseOrder.findAll({
       include: [
         {
@@ -406,6 +406,8 @@ const processUpdateOrder = async (payload, purchaseOrder) => {
     try {
       await updateOrder(payload, purchaseOrder, transaction, true);
     } catch (error) {
+      console.log(22, error);
+
       throw new Error("Error in processUpdateOrder");
     }
   });
@@ -420,22 +422,27 @@ const updateOrder = async (
   try {
     await purchaseOrder.update(payload, { transaction });
   } catch (error) {
-    console.log(12, error);
     throw new Error("Error in updateOrder");
   }
   try {
     if (updateOrderItems) {
-      await Promise.all(
-        payload.purchaseOrderItems.map((item) => {
-          return PurchaseOrderItem.update(item, {
-            where: { id: item.id },
-            transaction,
-          });
-        })
-      );
+      await PurchaseOrderItem.destroy({
+        where: { orderId: purchaseOrder.id },
+        transaction,
+      });
+
+      const items = payload.purchaseOrderItems.map((item) => {
+        const props = {
+          ...item,
+          orderId: purchaseOrder.id,
+        };
+
+        return props;
+      });
+
+      await PurchaseOrderItem.bulkCreate(items, { transaction });
     }
   } catch (error) {
-    console.log(12, error);
     throw new Error("Error in updateOrderItems");
   }
 };

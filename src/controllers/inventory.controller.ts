@@ -25,9 +25,9 @@ const inventoryController = {
     }
   },
 
-  async getAll(req, res, next) {
+  async list(req, res, next) {
     try {
-      const result = await inventoryService.getAll();
+      const result = await inventoryService.list();
       return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json(error);

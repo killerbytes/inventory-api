@@ -37,7 +37,7 @@ const categoryServices = {
     }
   },
 
-  getAll: async (query) => {
+  list: async (query) => {
     const { products = false } = query;
     const result = await Category.findAll({
       raw: true,

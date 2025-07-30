@@ -40,7 +40,7 @@ const inventoryService = {
     }
   },
 
-  async getAll() {
+  async list() {
     try {
       const order = [];
       order.push(["product", "category", "order", "ASC"]);

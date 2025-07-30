@@ -39,10 +39,11 @@ const supplierService = {
     }
   },
 
-  async getAll() {
+  async list() {
     const result = await Supplier.findAll({
       raw: true,
       order: [["name", "ASC"]],
+      attributes: ["id", "name"],
     });
     return result;
   },

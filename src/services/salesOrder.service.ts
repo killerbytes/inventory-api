@@ -119,7 +119,7 @@ const salesOrderService = {
     }
   },
 
-  async getAll() {
+  async list() {
     const result = await SalesOrder.findAll({
       include: [
         {

@@ -2,7 +2,7 @@ import express from "express";
 import productsController from "../controllers/products.controller";
 const router = express.Router();
 
-router.get("/list", productsController.getAll);
+router.get("/list", productsController.list);
 router.get("/:id", productsController.get);
 router.get("/", productsController.getPaginated);
 router.post("/", productsController.create);

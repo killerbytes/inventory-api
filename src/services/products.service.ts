@@ -87,7 +87,7 @@ const productService = {
     }
   },
 
-  async getAll() {
+  async list() {
     try {
       const order = [];
       order.push([{ model: Category, as: "category" }, "order", "ASC"]);
@@ -223,7 +223,7 @@ const productService = {
           {
             model: Product,
             as: "subProducts",
-            attributes: ["id", "name", "unit", "categoryId"], // adjust as needed
+            attributes: ["id", "name", "unit", "categoryId", "description"], // adjust as needed
           },
         ],
         nested: true,
