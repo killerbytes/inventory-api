@@ -40,12 +40,18 @@ const inventoryTransactionService = {
     }
   },
   async getPaginated(query) {
-    const { q = null, transactionType = null } = query;
+    const {
+      q = null,
+      transactionType = null,
+      sort = "updatedAt",
+      startDate,
+      endDate,
+    } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
 
     try {
-      const where = {
+      const where: any = {
         [Op.and]: [
           ...(q
             ? [{ "$inventory.product.name$": { [Op.like]: `%${q}%` } }]
@@ -55,14 +61,24 @@ const inventoryTransactionService = {
             : []),
         ],
       };
-      // { "$product.name$": { [Op.like]: `%${q}%` } },
+      if (startDate || endDate) {
+        where.updatedAt = {};
 
-      // const where = transactionType
-      //   ? { transactionType: { [Op.like]: `%${transactionType}%` } }
-      //   : null;
+        if (startDate) {
+          const start = new Date(startDate as string);
+          start.setHours(0, 0, 0, 0);
+          where.updatedAt[Op.gte] = start;
+        }
+        if (endDate) {
+          const end = new Date(endDate as string);
+          end.setHours(23, 59, 59, 999);
+          where.updatedAt[Op.lte] = end;
+        }
+      }
 
       const offset = (page - 1) * limit;
       const order = [];
+      order.push([sort, query.order || "DESC"]);
 
       const { count, rows } = await InventoryTransaction.findAndCountAll({
         limit,

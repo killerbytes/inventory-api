@@ -1,10 +1,17 @@
 "use strict";
-
+const { UNIT } = require("../definitions");
 const { Model } = require("sequelize");
-
 module.exports = (sequelize, DataTypes) => {
   class Inventory extends Model {
     static associate(models) {
+      Inventory.hasMany(models.Inventory, {
+        foreignKey: "parentId",
+        as: "repacks",
+      });
+      Inventory.belongsTo(models.Inventory, {
+        foreignKey: "parentId",
+        as: "parent",
+      });
       Inventory.belongsTo(models.Product, {
         foreignKey: "productId",
         as: "product",
@@ -33,6 +40,17 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 10,
+      },
+      unit: {
+        type: DataTypes.ENUM(Object.values(UNIT)),
+      },
+      parentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: "Inventories",
+          key: "id",
+        },
       },
     },
     {

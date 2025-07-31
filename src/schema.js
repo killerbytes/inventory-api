@@ -40,7 +40,6 @@ export const productSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional().allow(null),
   categoryId: Joi.number().required(),
-  unit: Joi.string().required(),
   parentId: Joi.number().optional(),
 }).required();
 
@@ -164,7 +163,8 @@ export const inventorySchema = Joi.object({
   productId: Joi.number().required(),
   quantity: Joi.number().required(),
   price: Joi.number().required(),
-  reorderLevel: Joi.number().optional(),
+  reorderLevel: Joi.number(),
+  unit: Joi.string().required(),
 }).required();
 
 export const inventoryTransactionSchema = Joi.object({
@@ -179,4 +179,15 @@ export const inventoryTransactionSchema = Joi.object({
 
 export const inventoryPriceAdjustmentSchema = Joi.object({
   price: Joi.number().required(),
+});
+
+export const repackInventorySchema = Joi.object({
+  name: Joi.string().required(),
+  description: Joi.string().optional().allow(null),
+  categoryId: Joi.number().required(),
+  unit: Joi.string().required(),
+  price: Joi.number().required(),
+  pullOutQuantity: Joi.number().required(),
+  repackQuantity: Joi.number().required(),
+  parentId: Joi.number().required(),
 });

@@ -39,33 +39,31 @@ const productService = {
       throw ApiError.validation(error);
     }
 
-    const { name, description, categoryId, unit, parentId, reorderLevel } =
-      payload;
+    const { name, description, categoryId, parentId, reorderLevel } = payload;
     if (parentId) {
       const parent = await Product.findByPk(parentId, {
         include: [{ model: Product, as: "subProducts" }],
       });
 
-      if (
-        (parent && parent.unit === unit) ||
-        (parent.subProducts && parent.subProducts.some((p) => p.unit === unit))
-      ) {
-        throw ApiError.validation({
-          details: [
-            {
-              path: ["unit"],
-              message: "Unit already exists",
-            },
-          ],
-        });
-      }
+      // if (
+      //   (parent && parent.unit === unit) ||
+      //   (parent.subProducts && parent.subProducts.some((p) => p.unit === unit))
+      // ) {
+      //   throw ApiError.validation({
+      //     details: [
+      //       {
+      //         path: ["unit"],
+      //         message: "Unit already exists",
+      //       },
+      //     ],
+      //   });
+      // }
     }
     try {
       const result = await Product.create({
         name,
         description,
         categoryId,
-        unit,
         parentId,
         reorderLevel,
       });
@@ -191,7 +189,7 @@ const productService = {
       if (q) {
         where[Op.or] = [
           { name: { [Op.like]: `%${q}%` } },
-          { "$subProducts.name$": { [Op.like]: `%${q}%` } },
+          { description: { [Op.like]: `%${q}%` } },
         ];
       }
 
@@ -223,7 +221,7 @@ const productService = {
           {
             model: Product,
             as: "subProducts",
-            attributes: ["id", "name", "unit", "categoryId", "description"], // adjust as needed
+            attributes: ["id", "name", "categoryId", "description"], // adjust as needed
           },
         ],
         nested: true,

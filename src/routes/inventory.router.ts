@@ -12,5 +12,6 @@ router.get("/:id", inventoryController.get);
 // router.patch("/:id", inventoryController.update);
 router.delete("/:id", inventoryController.delete);
 router.patch("/:id/price", inventoryController.updatePrice);
+router.post("/repackage", inventoryController.repackage);
 
 export default router;

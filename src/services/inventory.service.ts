@@ -1,6 +1,10 @@
 import db, { sequelize } from "../models";
-import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schema";
-import { Op, Transaction } from "sequelize";
+import {
+  inventoryPriceAdjustmentSchema,
+  inventorySchema,
+  repackInventorySchema,
+} from "../schema";
+import { Op, Transaction, where } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
 import inventoryTransactionService from "./inventoryTransactions.service";
@@ -29,10 +33,11 @@ const inventoryService = {
       throw ApiError.validation(error);
     }
     try {
-      const { name, description } = payload;
+      const { name, description, unit } = payload;
       const result = await Inventory.create({
         name,
         description,
+        unit,
       });
       return result;
     } catch (error) {
@@ -45,6 +50,7 @@ const inventoryService = {
       const order = [];
       order.push(["product", "category", "order", "ASC"]);
       const inventories = await Inventory.findAll({
+        where,
         order,
         include: [
           {
@@ -92,56 +98,92 @@ const inventoryService = {
     }
   },
   async getPaginated(query) {
-    const { q = null, sort } = query;
-    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
-    const page = parseInt(query.page) || PAGINATION.PAGE;
+    const { q = null, sort, categoryId } = query;
+    // const limit = parseInt(query.limit) || PAGINATION.LIMIT;
+    // const page = parseInt(query.page) || PAGINATION.PAGE;
 
     try {
-      const where = q
-        ? {
-            [Op.or]: [
-              { "$product.name$": { [Op.like]: `%${q}%` } },
-              { "$product.description$": { [Op.like]: `%${q}%` } },
-            ],
-          }
-        : null;
-      const offset = (page - 1) * limit;
-      const order = [];
-      if (sort) {
-        switch (sort) {
-          case "product.name":
-            order.push(["product", "name", query.order || "ASC"]);
-            break;
-          case "product.description":
-            order.push(["product", "description", query.order || "ASC"]);
-            break;
-          case "product.reorderLevel":
-            order.push(["product", "reorderLevel", query.order || "ASC"]);
-            break;
-
-          default:
-            order.push([sort, query.order || "ASC"]);
-            break;
-        }
-      } else {
-        order.push(["product", "name", "ASC"]); // Default sort
+      const where = {
+        parentId: null,
+      };
+      if (categoryId) {
+        where["categoryId"] = categoryId;
       }
 
-      const { count, rows } = await Inventory.findAndCountAll({
-        limit,
-        offset,
+      if (q) {
+        where[Op.or] = [
+          { "$product.name$": { [Op.like]: `%${q}%` } },
+          { "$product.description$": { [Op.like]: `%${q}%` } },
+        ];
+      }
+      // const offset = (page - 1) * limit;
+      const order = [];
+      order.push(["product", "category", "order", "ASC"]);
+      // if (sort) {
+      //   switch (sort) {
+      //     case "product.name":
+      //       order.push(["product", "name", query.order || "ASC"]);
+      //       break;
+      //     case "product.description":
+      //       order.push(["product", "description", query.order || "ASC"]);
+      //       break;
+      //     case "product.reorderLevel":
+      //       order.push(["product", "reorderLevel", query.order || "ASC"]);
+      //       break;
+
+      //     default:
+      //       order.push([sort, query.order || "ASC"]);
+      //       break;
+      //   }
+      // } else {
+      //   order.push(["product", "name", "ASC"]); // Default sort
+      // }
+
+      const inventories = await Inventory.findAll({
+        // limit,
+        // offset,
         order,
         where,
-        raw: true,
         nest: true,
-        include: [{ model: Product, as: "product" }],
+        include: [
+          {
+            model: Product,
+            as: "product",
+            include: [{ model: Category, as: "category" }],
+          },
+          {
+            model: Inventory,
+            as: "repacks",
+            include: [{ model: Product, as: "product" }],
+          },
+        ],
       });
-      return {
-        data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-      };
+
+      const groupedByCategory = {};
+      inventories.forEach((inventory) => {
+        const category = inventory.product?.category;
+        if (!category) return;
+
+        const categoryId = category.id;
+        if (!groupedByCategory[categoryId]) {
+          groupedByCategory[categoryId] = {
+            categoryId: category.id,
+            categoryName: category.name,
+            inventories: [],
+          };
+        }
+
+        groupedByCategory[categoryId].inventories.push(inventory);
+      });
+
+      const result = Object.values(groupedByCategory);
+      return result;
+      // return {
+      //   data: rows,
+      //   total: count,
+      //   totalPages: Math.ceil(count / limit),
+      //   currentPage: page,
+      // };
     } catch (error) {
       throw error;
     }
@@ -189,6 +231,93 @@ const inventoryService = {
       throw error;
     }
   },
+  async repackage(payload) {
+    const { error } = repackInventorySchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw ApiError.validation(error);
+    }
+    const {
+      name,
+      description,
+      categoryId,
+      unit,
+      price,
+      repackQuantity,
+      pullOutQuantity,
+      parentId,
+    } = payload;
+
+    const inventories = await Inventory.findByPk(parentId);
+
+    if (inventories.quantity < pullOutQuantity) {
+      throw new Error("Not enough inventory");
+    }
+
+    if (inventories.parentId) {
+      throw new Error("Cannot repack a repack");
+    }
+
+    await db.sequelize.transaction(async (transaction: Transaction) => {
+      try {
+        //Deduct inventory
+        await processInventoryUpdates(
+          {
+            productId: inventories.productId,
+            quantity: pullOutQuantity,
+          },
+          parentId,
+          INVENTORY_TRANSACTION_TYPE.BREAK_PACK,
+          transaction,
+          false
+        );
+      } catch (error) {
+        throw new Error(JSON.stringify(error));
+      }
+
+      try {
+        const product = await Product.create(
+          {
+            name,
+            description,
+            categoryId,
+          },
+          { transaction }
+        );
+        // Add inventory
+        const inventory = await processInventoryUpdates(
+          {
+            productId: product.id,
+            unit,
+            parentId,
+            price,
+            quantity: repackQuantity,
+          },
+          parentId,
+          INVENTORY_TRANSACTION_TYPE.REPACKAGE,
+          transaction,
+          true
+        );
+
+        return inventory;
+      } catch (error) {
+        switch (error.parent.code) {
+          case "ER_DUP_ENTRY":
+            throw ApiError.validation({
+              details: [
+                {
+                  path: ["name"],
+                  message: "Product name already exists",
+                },
+              ],
+            });
+          default:
+            throw error;
+        }
+      }
+    });
+  },
 };
 
 export const processInventoryUpdates = async (
@@ -196,17 +325,23 @@ export const processInventoryUpdates = async (
   reference,
   transactionType,
   transaction,
-  increase = true
+  increase = true //Add inventory
 ) => {
   const user = await authService.getCurrent();
+  const { quantity, ...params } = item;
 
   const [inventory] = await sequelize.models.Inventory.findOrCreate({
+    //Find or create inventory exclude quantity
     where: { productId: item.productId },
-    defaults: { productId: item.productId, quantity: 0 },
+    defaults: {
+      ...params,
+      quantity: 0,
+    },
     transaction,
   });
 
   await sequelize.models.InventoryTransaction.create(
+    // Create inventory transaction
     {
       inventoryId: inventory.id,
       previousValue: inventory.quantity,
@@ -222,6 +357,7 @@ export const processInventoryUpdates = async (
   );
 
   await inventory.update(
+    // Update inventory quantity
     {
       quantity: increase
         ? inventory.quantity + item.quantity
@@ -229,6 +365,7 @@ export const processInventoryUpdates = async (
     },
     { transaction }
   );
+  return inventory;
 };
 
 export default inventoryService;

@@ -407,7 +407,6 @@ const processUpdateOrder = async (payload, purchaseOrder) => {
       await updateOrder(payload, purchaseOrder, transaction, true);
     } catch (error) {
       console.log(22, error);
-
       throw new Error("Error in processUpdateOrder");
     }
   });

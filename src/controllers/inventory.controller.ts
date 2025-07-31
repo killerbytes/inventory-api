@@ -82,6 +82,16 @@ const inventoryController = {
       next(error);
     }
   },
+
+  async repackage(req, res, next) {
+    const { id } = req.params;
+    try {
+      const inventories = await inventoryService.repackage(req.body);
+      return res.status(200).json(inventories);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default inventoryController;
