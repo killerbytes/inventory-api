@@ -100,10 +100,10 @@ const productService = {
             as: "category",
             attributes: ["name", "id", "order"],
           },
-          {
-            model: Product,
-            as: "subProducts",
-          },
+          // {
+          //   model: Product,
+          //   as: "subProducts",
+          // },
         ],
         nested: true,
         order: [[{ model: Category, as: "category" }, "order", "ASC"]],
@@ -195,23 +195,25 @@ const productService = {
 
       // const offset = (page - 1) * limit;
       const order = [];
-      order.push([{ model: Category, as: "category" }, "order", "ASC"]);
+      // order.push([{ model: Category, as: "category" }, "order", "ASC"]);
+      order.push(["name", "ASC"]); // Default sort
 
-      if (sort) {
-        switch (sort) {
-          case "category.name":
-            order.push(["category", "name", query.order || "ASC"]);
-            break;
-          default:
-            order.push([sort, query.order || "ASC"]);
-            break;
-        }
-      } else {
-        order.push(["name", "ASC"]); // Default sort
-      }
+      // if (sort) {
+      //   switch (sort) {
+      //     case "category.name":
+      //       order.push(["category", "name", query.order || "ASC"]);
+      //       break;
+      //     default:
+      //       order.push([sort, query.order || "ASC"]);
+      //       break;
+      //   }
+      // } else {
+      //   order.push(["name", "ASC"]); // Default sort
+      // }
 
       const { count, rows } = await Product.findAndCountAll({
         where,
+        order,
         include: [
           {
             model: Category,
@@ -225,7 +227,7 @@ const productService = {
           },
         ],
         nested: true,
-        order: [[{ model: Category, as: "category" }, "order", "ASC"]],
+        // order: [[{ model: Category, as: "category" }, "order", "ASC"]],
         distinct: true,
       });
 

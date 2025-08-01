@@ -43,6 +43,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       unit: {
         type: DataTypes.ENUM(Object.values(UNIT)),
+        allowNull: false,
       },
       parentId: {
         type: DataTypes.INTEGER,

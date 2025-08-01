@@ -50,7 +50,6 @@ const inventoryService = {
       const order = [];
       order.push(["product", "category", "order", "ASC"]);
       const inventories = await Inventory.findAll({
-        where,
         order,
         include: [
           {
@@ -98,27 +97,31 @@ const inventoryService = {
     }
   },
   async getPaginated(query) {
-    const { q = null, sort, categoryId } = query;
+    const { q = null, sort, categoryId = null } = query;
     // const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     // const page = parseInt(query.page) || PAGINATION.PAGE;
 
     try {
       const where = {
         parentId: null,
+        // "$product.categoryId$": 5,
       };
+
       if (categoryId) {
-        where["categoryId"] = categoryId;
+        where["$product.categoryId$"] = categoryId;
       }
 
       if (q) {
         where[Op.or] = [
-          { "$product.name$": { [Op.like]: `%${q}%` } },
-          { "$product.description$": { [Op.like]: `%${q}%` } },
+          // { "$product.name$": { [Op.like]: `%${q}%` } },
+          // { "$product.description$": { [Op.like]: `%${q}%` } },
+          // { "$repacks.product.name$": { [Op.like]: `%${q}%` } },
+          // { "$repacks.product.description$": { [Op.like]: `%${q}%` } },
         ];
       }
       // const offset = (page - 1) * limit;
       const order = [];
-      order.push(["product", "category", "order", "ASC"]);
+      order.push(["product", "name", "ASC"]); // Default sort
       // if (sort) {
       //   switch (sort) {
       //     case "product.name":
@@ -150,6 +153,7 @@ const inventoryService = {
             model: Product,
             as: "product",
             include: [{ model: Category, as: "category" }],
+            attributes: ["id", "name", "categoryId", "description"],
           },
           {
             model: Inventory,
@@ -282,6 +286,7 @@ const inventoryService = {
             name,
             description,
             categoryId,
+            parentId: inventories.productId,
           },
           { transaction }
         );
@@ -335,6 +340,7 @@ export const processInventoryUpdates = async (
     where: { productId: item.productId },
     defaults: {
       ...params,
+      unit: item.unit,
       quantity: 0,
     },
     transaction,
