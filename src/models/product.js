@@ -5,26 +5,32 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Product extends Model {
     static associate(models) {
-      Product.hasMany(models.Product, {
-        foreignKey: "parentId",
-        as: "subProducts",
-      });
-      Product.belongsTo(models.Product, {
-        foreignKey: "parentId",
-        as: "parent",
-      });
+      // Product.hasMany(models.Product, {
+      //   foreignKey: "parentId",
+      //   as: "subProducts",
+      // });
+      // Product.belongsTo(models.Product, {
+      //   foreignKey: "parentId",
+      //   as: "parent",
+      // });
       Product.belongsTo(models.Category, {
         foreignKey: "categoryId",
         as: "category",
-        onDelete: "RESTRICT",
+        // onDelete: "RESTRICT",
       });
       Product.hasMany(models.PurchaseOrderItem, {
         foreignKey: "productId",
         as: "purchaseOrderItems",
       });
-      Product.hasMany(models.Inventory, {
+      // Product.hasMany(models.Inventory, {
+      //   foreignKey: "productId",
+      //   as: "inventories",
+      // });
+      Product.hasMany(models.ProductVariantCombination, {
         foreignKey: "productId",
-        as: "inventories",
+      });
+      Product.hasMany(models.ProductVariant, {
+        foreignKey: "productId",
       });
     }
   }
@@ -33,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       name: { type: DataTypes.STRING, allowNull: false, unique: true },
       description: { type: DataTypes.TEXT },
-      categoryId: { type: DataTypes.INTEGER, allowNull: false },
+      // categoryId: { type: DataTypes.INTEGER, allowNull: false },
       parentId: {
         type: DataTypes.INTEGER,
         allowNull: true,

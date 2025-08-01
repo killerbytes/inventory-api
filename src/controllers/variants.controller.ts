@@ -1,14 +1,11 @@
-import productService from "../services/products.service";
-import { PAGINATION } from "../definitions.js";
 import db from "../models";
-import { Op } from "sequelize";
-const { Category } = db;
+import variantService from "../services/variant.service";
 
-const productController = {
+const variantController = {
   async get(req, res, next) {
     const { id } = req.params;
     try {
-      const product = await productService.get(id);
+      const product = await variantService.get(id);
       return res.status(200).json(product);
     } catch (error) {
       next(error);
@@ -16,7 +13,7 @@ const productController = {
   },
   async create(req, res, next) {
     try {
-      const result = await productService.create(req.body);
+      const result = await variantService.create(req.body);
       return res.status(201).json(result);
     } catch (error) {
       next(error);
@@ -25,7 +22,7 @@ const productController = {
 
   async list(req, res, next) {
     try {
-      const result = await productService.list();
+      const result = await variantService.list();
       return res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -35,8 +32,8 @@ const productController = {
   async update(req, res, next) {
     const { id } = req.params;
     try {
-      const product = await productService.updateProductById(id, req.body);
-      return res.status(200).json(product);
+      const variant = await variantService.update(id, req.body);
+      return res.status(200).json(variant);
     } catch (error) {
       next(error);
     }
@@ -44,7 +41,7 @@ const productController = {
   async delete(req, res, next) {
     const { id } = req.params;
     try {
-      await productService.delete(id);
+      await variantService.delete(id);
       return res.status(204).send();
     } catch (error) {
       next(error);
@@ -53,7 +50,7 @@ const productController = {
   async getPaginated(req, res, next) {
     const query = req.query;
     try {
-      const result = await productService.getPaginated(query);
+      const result = await variantService.getPaginated(query);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -70,4 +67,4 @@ const productController = {
   // },
 };
 
-export default productController;
+export default variantController;

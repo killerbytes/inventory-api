@@ -8,6 +8,7 @@ import suppliersRouter from "./routes/supplier.router";
 import inventoryRouter from "./routes/inventory.router";
 import purchaseRouter from "./routes/purchaseOrder.router";
 import salesRouter from "./routes/salesOrder.router";
+import variantsRouter from "./routes/variants.router";
 
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -68,6 +69,7 @@ app.use("/api/suppliers", verifyToken, suppliersRouter);
 app.use("/api/inventory", verifyToken, inventoryRouter);
 app.use("/api/purchase", verifyToken, purchaseRouter);
 app.use("/api/sales", verifyToken, salesRouter);
+app.use("/api/variants", verifyToken, variantsRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");

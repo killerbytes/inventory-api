@@ -191,3 +191,20 @@ export const repackInventorySchema = Joi.object({
   repackQuantity: Joi.number().required(),
   parentId: Joi.number().required(),
 });
+
+export const variantSchema = Joi.object({
+  id: Joi.number().required(),
+  name: Joi.string().required(),
+  values: Joi.array().items(
+    Joi.object({
+      id: Joi.number().required(),
+      value: Joi.string().required(),
+      variantTypeId: Joi.number().required(),
+    })
+  ),
+});
+
+export const productVariantCombinationSchema = Joi.object({
+  sku: Joi.string().required(),
+  price: Joi.number().required(),
+});
