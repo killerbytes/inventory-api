@@ -123,7 +123,7 @@ const productService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
     // const issue = validateCombinations(payload);
@@ -369,7 +369,8 @@ const productService = {
           ],
         },
       ],
-      order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+      // order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+      order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
     });
 
     const groupedByCategory: Map<number, any> = new Map();
@@ -406,7 +407,6 @@ const productService = {
 
       groupedByCategory[catId].products.push(product);
     });
-    console.log(products);
 
     const result = Object.values(groupedByCategory).sort(
       (a, b) => a.categoryOrder - b.categoryOrder
@@ -469,7 +469,6 @@ const productService = {
 
       groupedByCategory[catId].products.push(product);
     });
-    console.log(products);
 
     const result = Object.values(groupedByCategory).sort(
       (a, b) => a.categoryOrder - b.categoryOrder

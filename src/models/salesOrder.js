@@ -65,6 +65,10 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "SalesOrder",
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
+
       // hooks: {
       //   afterCreate: async (salesOrder, options) => {
       //     if (!options.transaction) {

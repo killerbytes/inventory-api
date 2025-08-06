@@ -10,7 +10,7 @@ const variantTypesServices = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     const transaction = await sequelize.transaction();
     try {
@@ -55,7 +55,7 @@ const variantTypesServices = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
     try {

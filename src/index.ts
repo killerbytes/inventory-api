@@ -19,6 +19,7 @@ import db from "./models";
 import ApiError from "./services/ApiError";
 import dotenv from "dotenv";
 import { ValidationError } from "sequelize";
+import { errorHandler } from "./middlewares/errorHandler";
 dotenv.config();
 
 const { User } = db;
@@ -76,38 +77,39 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.use((err, req, res, next) => {
-  // If this isn't our custom error, convert it
+app.use(errorHandler);
+// app.use((err, req, res, next) => {
+//   // If this isn't our custom error, convert it
 
-  let errors = err.errors;
-  if (err instanceof ValidationError) {
-    errors = err.errors.map((err) => ({
-      field: err.path,
-      message: err.message,
-    }));
-  }
+//   let errors = err.errors;
+//   if (err instanceof ValidationError) {
+//     errors = err.errors.map((err) => ({
+//       field: err.path,
+//       message: err.message,
+//     }));
+//   }
 
-  if (!(err instanceof ApiError)) {
-    err = ApiError.internal(err.message, {
-      originalError: err,
-      // originalError: process.env.NODE_ENV === "development" ? err : undefined,
-    });
-  }
+//   if (!(err instanceof ApiError)) {
+//     err = ApiError.internal(err.message, {
+//       originalError: err,
+//       // originalError: process.env.NODE_ENV === "development" ? err : undefined,
+//     });
+//   }
 
-  // Log the error (in production you might want to use a proper logger)
-  console.error(err);
+//   // Log the error (in production you might want to use a proper logger)
+//   console.error(err);
 
-  // Send the error response
-  res.status(err.statusCode).json({
-    code: err.code,
-    details: err.details,
-    statusCode: err.statusCode,
-    message: err.message,
-    errors,
-    // ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    stack: err.stack,
-  });
-});
+//   // Send the error response
+//   res.status(err.statusCode).json({
+//     code: err.code,
+//     details: err.details,
+//     statusCode: err.statusCode,
+//     message: err.message,
+//     errors,
+//     // ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+//     stack: err.stack,
+//   });
+// });
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");

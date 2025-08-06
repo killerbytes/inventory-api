@@ -10,10 +10,6 @@ module.exports = (sequelize, DataTypes) => {
         as: "category",
         onDelete: "RESTRICT",
       });
-      Product.hasMany(models.PurchaseOrderItem, {
-        foreignKey: "productId",
-        as: "purchaseOrderItems",
-      });
       Product.hasMany(models.VariantType, {
         foreignKey: "productId",
         as: "variants",

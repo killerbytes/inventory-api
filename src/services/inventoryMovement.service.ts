@@ -1,44 +1,43 @@
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
-import db from "../models";
-import ApiError from "./ApiError";
-import { inventoryTransactionSchema } from "../schemas.js";
-import authService from "./auth.service";
+import db from "../models/index.js";
+import ApiError from "./ApiError.js";
+import authService from "./auth.service.js";
 const { Inventory, InventoryTransaction, Product, User } = db;
 
 const inventoryTransactionService = {
-  async create(payload, transaction) {
-    const { error } = inventoryTransactionSchema.validate(payload, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw ApiError.validation(error);
-    }
-    try {
-      const { inventoryId, previousValue, newValue, value, transactionType } =
-        payload;
+  // async create(payload, transaction) {
+  //   const { error } = inventoryTransactionSchema.validate(payload, {
+  //     abortEarly: false,
+  //   });
+  //   if (error) {
+  //     throw error;
+  //   }
+  //   try {
+  //     const { inventoryId, previousValue, newValue, value, transactionType } =
+  //       payload;
 
-      const user = await authService.getCurrent();
+  //     const user = await authService.getCurrent();
 
-      const result = await InventoryTransaction.create(
-        {
-          inventoryId,
-          previousValue,
-          newValue,
-          value,
-          transactionType,
-          orderId: null,
-          orderType: null,
-          userId: user.id,
-        },
-        { ...transaction }
-      );
+  //     const result = await InventoryTransaction.create(
+  //       {
+  //         inventoryId,
+  //         previousValue,
+  //         newValue,
+  //         value,
+  //         transactionType,
+  //         orderId: null,
+  //         orderType: null,
+  //         userId: user.id,
+  //       },
+  //       { ...transaction }
+  //     );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
-  },
+  //     return result;
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // },
   async getPaginated(query) {
     const {
       q = null,

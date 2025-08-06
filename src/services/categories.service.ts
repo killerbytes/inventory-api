@@ -23,7 +23,7 @@ const categoryServices = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const { name, description } = payload;
@@ -52,7 +52,7 @@ const categoryServices = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const category = await Category.findByPk(id);
@@ -127,7 +127,7 @@ const categoryServices = {
     // });
 
     // if (error) {
-    //   throw ApiError.validation(error);
+    //   throw error;
     // }
     try {
       await Promise.all(

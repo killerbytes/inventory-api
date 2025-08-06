@@ -23,7 +23,7 @@ const userService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const { name, email, username, password } = payload;
@@ -51,7 +51,7 @@ const userService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const user = await User.findByPk(id);

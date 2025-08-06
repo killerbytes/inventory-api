@@ -92,8 +92,8 @@ module.exports = {
       // Insert ProductCombinations and Inventory
       const combinations = [
         { sku: "TS-S-R", size: "S", color: "Red", price: 100, quantity: 10 },
-        { sku: "TS-S-B", size: "S", color: "Blue", price: 120 },
-        { sku: "TS-M-R", size: "M", color: "Red", price: 80 },
+        { sku: "TS-S-B", size: "S", color: "Blue", price: 120, quantity: 0 },
+        { sku: "TS-M-R", size: "M", color: "Red", price: 80, quantity: 0 },
         { sku: "TS-M-B", size: "M", color: "Blue", price: 50, quantity: 5 },
       ];
 

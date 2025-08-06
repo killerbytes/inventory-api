@@ -189,30 +189,16 @@ const productCombinationService = {
     });
 
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
     const issue = validateCombinations(payload);
 
     if (issue.duplicates.length > 0) {
-      throw ApiError.validation({
-        details: [
-          {
-            path: ["combinations"],
-            message: "Combinations are invalid",
-          },
-        ],
-      });
+      throw error;
     }
     if (issue.conflicts.length > 0) {
-      throw ApiError.validation({
-        details: [
-          {
-            path: ["combinations"],
-            message: "Combinations are invalid",
-          },
-        ],
-      });
+      throw error;
     }
 
     const transaction = await sequelize.transaction();

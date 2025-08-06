@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { INVENTORY_MOVEMENT_TYPE } from "./definitions";
 
 export const userBaseSchema = Joi.object({
   name: Joi.string().required(),
@@ -128,13 +129,12 @@ export const purchaseOrderStatusSchema = Joi.object({
 export const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .keys({
     id: Joi.number().optional(),
-    productId: Joi.number().required(),
+    combinationId: Joi.number().required(),
     quantity: Joi.number().required(),
-    unit: Joi.string().required(),
+    originalPrice: Joi.number().optional().allow(null),
     unitPrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
-    discountNote: Joi.string().optional().allow(null).allow(""),
-    product: Joi.object().strip(),
+    discountNote: Joi.string().optional().allow(null, ""),
   })
   .required()
   .meta({ className: "purchaseOrderItem" });
@@ -145,10 +145,10 @@ export const purchaseOrderSchema = Joi.object({
   orderDate: Joi.date().required(),
   deliveryDate: Joi.date().required(),
   receivedDate: Joi.date().optional(),
-  notes: Joi.string().optional().allow(null).allow(""),
-  internalNotes: Joi.string().optional().allow(null),
+  notes: Joi.string().optional().allow(null, ""),
+  internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),
-  checkNumber: Joi.string().allow(null).allow("").when("modeOfPayment", {
+  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),
@@ -231,17 +231,13 @@ export const salesOrderSchema = Joi.object({
   .required()
   .meta({ className: "salesOrder" });
 
-export const inventoryTransactionSchema = Joi.object({
-  inventoryId: Joi.number().required(),
-  previousValue: Joi.number().required(),
-  newValue: Joi.number().required(),
-  value: Joi.number().required(),
-  transactionType: Joi.string().required(),
-  orderId: Joi.number().optional(),
-  orderType: Joi.string().optional(),
+export const inventoryMovementSchema = Joi.object({
+  type: Joi.string()
+    .valid(...Object.values(INVENTORY_MOVEMENT_TYPE))
+    .required(),
 })
   .required()
-  .meta({ className: "inventoryTransaction" });
+  .meta({ className: "inventoryMovement" });
 
 export const inventoryPriceAdjustmentSchema = Joi.object({
   price: Joi.number().required(),

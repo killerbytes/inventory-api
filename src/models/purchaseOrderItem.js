@@ -8,7 +8,7 @@ class PurchaseOrderItem extends Model {
     });
 
     PurchaseOrderItem.belongsTo(models.ProductCombination, {
-      foreignKey: "productCombinationId",
+      foreignKey: "combinationId",
       as: "combinations",
     });
   }
@@ -18,7 +18,7 @@ module.exports = (sequelize) => {
   PurchaseOrderItem.init(
     {
       orderId: { type: DataTypes.INTEGER, allowNull: false },
-      productCombinationId: { type: DataTypes.INTEGER, allowNull: false },
+      combinationId: { type: DataTypes.INTEGER, allowNull: false },
       quantity: { type: DataTypes.INTEGER, allowNull: false },
       originalPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       unitPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
@@ -28,6 +28,9 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "PurchaseOrderItem",
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
 

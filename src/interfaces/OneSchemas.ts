@@ -20,11 +20,8 @@ export interface customer {
 
 export interface inventory {
   id?: number;
-  price: number;
   productId: number;
   quantity: number;
-  reorderLevel?: number;
-  unit: string;
 }
 
 export interface inventoryPriceAdjustment {
@@ -59,15 +56,16 @@ export interface productCombinations {
   id?: number;
   price: number;
   productId?: number;
+  reorderLevel: number;
   sku: string;
   values?: variantValue[];
 }
 
 export interface purchaseOrder {
-  checkNumber?: string | null | '';
+  checkNumber?: string | null;
   deliveryDate: Date;
   dueDate?: Date;
-  internalNotes?: string | null;
+  internalNotes?: string | null | '';
   modeOfPayment: string;
   notes?: string | null | '';
   orderDate: Date;
@@ -83,14 +81,13 @@ export interface purchaseOrderChangeStatus {
 
 export interface purchaseOrderItem {
   cancellationReason?: string | null;
+  combinationId: number;
   discount?: number | null;
   discountNote?: string | null | '';
   id?: number;
-  product?: object;
-  productId: number;
+  originalPrice?: number | null;
   quantity: number;
   status?: 'PENDING' | 'RECEIVED' | 'COMPLETED' | 'CANCELLED';
-  unit: string;
   unitPrice: number;
 }
 

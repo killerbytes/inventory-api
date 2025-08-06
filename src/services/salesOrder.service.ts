@@ -4,7 +4,7 @@ import db from "../models";
 import { salesOrderSchema, salesOrderStatusSchema } from "../schemas";
 import {
   ORDER_TYPE,
-  INVENTORY_TRANSACTION_TYPE,
+  INVENTORY_MOVEMENT_TYPE,
   SALES_ORDER_STATUS,
   PAGINATION,
 } from "../definitions.js";
@@ -54,7 +54,7 @@ const salesOrderService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
     try {
@@ -144,7 +144,7 @@ const salesOrderService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const salesOrder = await SalesOrder.findByPk(id);
@@ -265,7 +265,7 @@ const salesOrderService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
     try {
@@ -363,20 +363,20 @@ const processCompletedOrder = async (salesOrder, userId, transaction) => {
           "Quantity is less than zero: " + inventory.product.name
         );
       }
-
-      await salesOrder.sequelize.models.InventoryTransaction.create(
-        {
-          inventoryId: inventory.id,
-          previousValue: inventory.quantity,
-          newValue: parseInt(inventory.quantity) - parseInt(item.quantity),
-          value: item.quantity,
-          transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
-          orderId: orderWithItems.id,
-          orderType: ORDER_TYPE.SALES,
-          userId,
-        },
-        { transaction }
-      );
+      //TODO
+      // await salesOrder.sequelize.models.InventoryTransaction.create(
+      //   {
+      //     inventoryId: inventory.id,
+      //     previousValue: inventory.quantity,
+      //     newValue: parseInt(inventory.quantity) - parseInt(item.quantity),
+      //     value: item.quantity,
+      //     transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
+      //     orderId: orderWithItems.id,
+      //     orderType: ORDER_TYPE.SALES,
+      //     userId,
+      //   },
+      //   { transaction }
+      // );
 
       await inventory.update(
         {
@@ -412,20 +412,20 @@ const processCancelledOrder = async (salesOrder, userId, transaction) => {
           defaults: { productId: item.inventoryId, quantity: 0 },
           transaction,
         });
-
-      await salesOrder.sequelize.models.InventoryTransaction.create(
-        {
-          inventoryId: inventory.id,
-          previousValue: inventory.quantity,
-          newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
-          value: item.quantity,
-          transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-          orderId: orderWithItems.id,
-          orderType: ORDER_TYPE.SALES,
-          userId,
-        },
-        { transaction }
-      );
+      //TODO
+      // await salesOrder.sequelize.models.InventoryTransaction.create(
+      //   {
+      //     inventoryId: inventory.id,
+      //     previousValue: inventory.quantity,
+      //     newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
+      //     value: item.quantity,
+      //     transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
+      //     orderId: orderWithItems.id,
+      //     orderType: ORDER_TYPE.SALES,
+      //     userId,
+      //   },
+      //   { transaction }
+      // );
 
       await inventory.update(
         {

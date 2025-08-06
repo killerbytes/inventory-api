@@ -41,6 +41,7 @@ module.exports = (sequelize) => {
       purchaseOrderNumber: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true,
       },
       supplierId: {
         type: DataTypes.INTEGER,
@@ -120,6 +121,7 @@ module.exports = (sequelize) => {
       checkNumber: {
         type: DataTypes.STRING,
         allowNull: true,
+        unique: true,
       },
       dueDate: {
         type: DataTypes.DATE,
@@ -129,6 +131,9 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "PurchaseOrder",
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
 

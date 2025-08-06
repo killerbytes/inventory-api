@@ -7,10 +7,10 @@ import {
 import { Op, Transaction, where } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";
-import inventoryTransactionService from "./inventoryTransactions.service";
-import { INVENTORY_TRANSACTION_TYPE } from "../definitions.js";
+import inventoryTransactionService from "./inventoryMovement.service";
+import { INVENTORY_MOVEMENT_TYPE } from "../definitions.js";
 import authService from "./auth.service";
-const { Inventory, Product, Category } = db;
+const { Inventory, Product, Category, ProductCombination } = db;
 
 const inventoryService = {
   async get(id) {
@@ -30,7 +30,7 @@ const inventoryService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const { name, description, unit } = payload;
@@ -107,21 +107,21 @@ const inventoryService = {
         // "$product.categoryId$": 5,
       };
 
-      if (categoryId) {
-        where["$product.categoryId$"] = categoryId;
-      }
+      // if (categoryId) {
+      //   where["$product.categoryId$"] = categoryId;
+      // }
 
-      if (q) {
-        where[Op.or] = [
-          // { "$product.name$": { [Op.like]: `%${q}%` } },
-          // { "$product.description$": { [Op.like]: `%${q}%` } },
-          // { "$repacks.product.name$": { [Op.like]: `%${q}%` } },
-          // { "$repacks.product.description$": { [Op.like]: `%${q}%` } },
-        ];
-      }
+      // if (q) {
+      //   where[Op.or] = [
+      //     // { "$product.name$": { [Op.like]: `%${q}%` } },
+      //     // { "$product.description$": { [Op.like]: `%${q}%` } },
+      //     // { "$repacks.product.name$": { [Op.like]: `%${q}%` } },
+      //     // { "$repacks.product.description$": { [Op.like]: `%${q}%` } },
+      //   ];
+      // }
       // const offset = (page - 1) * limit;
-      const order = [];
-      order.push(["product", "name", "ASC"]); // Default sort
+      // const order = [];
+      // order.push(["product", "name", "ASC"]); // Default sort
       // if (sort) {
       //   switch (sort) {
       //     case "product.name":
@@ -145,19 +145,10 @@ const inventoryService = {
       const inventories = await Inventory.findAll({
         // limit,
         // offset,
-        order,
-        where,
         nest: true,
         include: [
           {
-            model: Product,
-            as: "product",
-            include: [{ model: Category, as: "category" }],
-            attributes: ["id", "name", "categoryId", "description"],
-          },
-          {
-            model: Inventory,
-            as: "repacks",
+            model: ProductCombination,
             include: [{ model: Product, as: "product" }],
           },
         ],
@@ -165,23 +156,29 @@ const inventoryService = {
 
       const groupedByCategory = {};
       inventories.forEach((inventory) => {
-        const category = inventory.product?.category;
-        if (!category) return;
+        console.log(inventory.ProductCombination);
 
-        const categoryId = category.id;
-        if (!groupedByCategory[categoryId]) {
-          groupedByCategory[categoryId] = {
-            categoryId: category.id,
-            categoryName: category.name,
-            inventories: [],
-          };
-        }
+        // inventory.ProductCombination.forEach((combination) => {
+        //   console.log(combination.product);
+        // });
 
-        groupedByCategory[categoryId].inventories.push(inventory);
+        //   const category = inventory.product?.category;
+        //   if (!category) return;
+
+        //   const categoryId = category.id;
+        //   if (!groupedByCategory[categoryId]) {
+        //     groupedByCategory[categoryId] = {
+        //       categoryId: category.id,
+        //       categoryName: category.name,
+        //       inventories: [],
+        //     };
+        //   }
+
+        //   groupedByCategory[categoryId].inventories.push(inventory);
       });
 
-      const result = Object.values(groupedByCategory);
-      return result;
+      // const result = Object.values(groupedByCategory);
+      return inventories;
       // return {
       //   data: rows,
       //   total: count,
@@ -189,6 +186,8 @@ const inventoryService = {
       //   currentPage: page,
       // };
     } catch (error) {
+      // console.log(error.stack);
+
       throw error;
     }
   },
@@ -201,35 +200,32 @@ const inventoryService = {
       }
     );
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const inventories = await Inventory.findByPk(id);
       if (!inventories) {
         throw new Error("Inventory not found");
       }
-      await db.sequelize.transaction(async (transaction: Transaction) => {
-        try {
-          await inventoryTransactionService.create(
-            {
-              inventoryId: inventories.id,
-              previousValue: inventories.price,
-              newValue: price,
-              value: price,
-              transactionType: INVENTORY_TRANSACTION_TYPE.PRICE_ADJUSTMENT,
-            },
-            { transaction }
-          );
-        } catch (error) {
-          console.log(error);
-          throw new Error(JSON.stringify(error));
-        }
-        try {
-          await inventories.update({ price }, { transaction });
-        } catch (error) {
-          throw new Error("Error in updateInventory");
-        }
-      });
+      // Create Price History
+      // await db.sequelize.transaction(async (transaction: Transaction) => {
+      //   try {
+      //     await inventoryTransactionService.create(
+      //       {
+      //         type: INVENTORY_TRANSACTION_TYPE.PRICE_ADJUSTMENT,
+      //       },
+      //       { transaction }
+      //     );
+      //   } catch (error) {
+      //     console.log(error);
+      //     throw new Error(JSON.stringify(error));
+      //   }
+      //   try {
+      //     await inventories.update({ price }, { transaction });
+      //   } catch (error) {
+      //     throw new Error("Error in updateInventory");
+      //   }
+      // });
       return inventories;
     } catch (error) {
       throw error;
@@ -240,7 +236,7 @@ const inventoryService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     const {
       name,
@@ -264,21 +260,22 @@ const inventoryService = {
     }
 
     await db.sequelize.transaction(async (transaction: Transaction) => {
-      try {
-        //Deduct inventory
-        await processInventoryUpdates(
-          {
-            productId: inventories.productId,
-            quantity: pullOutQuantity,
-          },
-          parentId,
-          INVENTORY_TRANSACTION_TYPE.BREAK_PACK,
-          transaction,
-          false
-        );
-      } catch (error) {
-        throw new Error(JSON.stringify(error));
-      }
+      //TODO
+      // try {
+      //   //Deduct inventory
+      //   await processInventoryUpdates(
+      //     {
+      //       productId: inventories.productId,
+      //       quantity: pullOutQuantity,
+      //     },
+      //     parentId,
+      //     INVENTORY_TRANSACTION_TYPE.BREAK_PACK,
+      //     transaction,
+      //     false
+      //   );
+      // } catch (error) {
+      //   throw new Error(JSON.stringify(error));
+      // }
 
       try {
         const product = await Product.create(
@@ -290,36 +287,25 @@ const inventoryService = {
           },
           { transaction }
         );
+        //TODO
         // Add inventory
-        const inventory = await processInventoryUpdates(
-          {
-            productId: product.id,
-            unit,
-            parentId,
-            price,
-            quantity: repackQuantity,
-          },
-          parentId,
-          INVENTORY_TRANSACTION_TYPE.REPACKAGE,
-          transaction,
-          true
-        );
+        // const inventory = await processInventoryUpdates(
+        //   {
+        //     productId: product.id,
+        //     unit,
+        //     parentId,
+        //     price,
+        //     quantity: repackQuantity,
+        //   },
+        //   parentId,
+        //   INVENTORY_TRANSACTION_TYPE.REPACKAGE,
+        //   transaction,
+        //   true
+        // );
 
-        return inventory;
+        // return inventory;
       } catch (error) {
-        switch (error.parent.code) {
-          case "ER_DUP_ENTRY":
-            throw ApiError.validation({
-              details: [
-                {
-                  path: ["name"],
-                  message: "Product name already exists",
-                },
-              ],
-            });
-          default:
-            throw error;
-        }
+        throw error;
       }
     });
   },
@@ -327,7 +313,8 @@ const inventoryService = {
 
 export const processInventoryUpdates = async (
   item,
-  reference,
+  reference = null,
+  reason = null,
   transactionType,
   transaction,
   increase = true //Add inventory
@@ -337,27 +324,27 @@ export const processInventoryUpdates = async (
 
   const [inventory] = await sequelize.models.Inventory.findOrCreate({
     //Find or create inventory exclude quantity
-    where: { productId: item.productId },
+    where: { combinationId: item.combinationId },
     defaults: {
       ...params,
-      unit: item.unit,
       quantity: 0,
     },
     transaction,
   });
 
-  await sequelize.models.InventoryTransaction.create(
-    // Create inventory transaction
+  await sequelize.models.InventoryMovement.create(
+    // Create inventory movement
     {
-      inventoryId: inventory.id,
-      previousValue: inventory.quantity,
-      newValue: increase
+      combinationId: item.combinationId,
+      previous: inventory.quantity,
+      new: increase
         ? parseInt(inventory.quantity) + parseInt(item.quantity)
         : parseInt(inventory.quantity) - parseInt(item.quantity),
-      value: item.quantity,
-      transactionType,
-      reference,
+      quantity: item.quantity,
+      type: transactionType,
       userId: user.id,
+      reference,
+      reason,
     },
     { transaction }
   );
