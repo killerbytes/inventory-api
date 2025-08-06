@@ -4,6 +4,7 @@
     "@types/node": "^22.15.21",
     "@types/validator": "^13.15.1",
     "cross-env": "^7.0.3",
+    "joi-to-typescript": "^4.15.0",
     "sequelize-cli": "^6.6.3",
     "sequelize-cli-typescript": "^3.2.0-c"
   },
@@ -33,11 +34,12 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
-    "sync": "node src/sync.js",
+    "sync": "node src/sync.js && npm run dev",
     "sync:prod": "cross-env NODE_ENV=production node src/sync.js",
     "dev": "cross-env NODE_ENV=development ts-node-dev src/index.ts",
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "joi2ts": "ts-node src/joi2ts.ts"
   },
   "author": "",
   "license": "ISC",

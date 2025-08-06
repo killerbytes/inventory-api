@@ -5,14 +5,6 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Product extends Model {
     static associate(models) {
-      Product.hasMany(models.Product, {
-        foreignKey: "parentId",
-        as: "subProducts",
-      });
-      Product.belongsTo(models.Product, {
-        foreignKey: "parentId",
-        as: "parent",
-      });
       Product.belongsTo(models.Category, {
         foreignKey: "categoryId",
         as: "category",
@@ -22,9 +14,13 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "productId",
         as: "purchaseOrderItems",
       });
-      Product.hasMany(models.Inventory, {
+      Product.hasMany(models.VariantType, {
         foreignKey: "productId",
-        as: "inventories",
+        as: "variants",
+      });
+      Product.hasMany(models.ProductCombination, {
+        foreignKey: "productId",
+        as: "combinations",
       });
     }
   }
@@ -33,20 +29,16 @@ module.exports = (sequelize, DataTypes) => {
     {
       name: { type: DataTypes.STRING, allowNull: false, unique: true },
       description: { type: DataTypes.TEXT },
+      unit: { type: DataTypes.STRING, allowNull: false },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
-      parentId: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: "Products",
-          key: "id",
-        },
-      },
     },
     {
       sequelize,
       modelName: "Product",
       paranoid: true,
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
 

@@ -3,7 +3,7 @@ import {
   inventoryPriceAdjustmentSchema,
   inventorySchema,
   repackInventorySchema,
-} from "../schema";
+} from "../schemas";
 import { Op, Transaction, where } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import ApiError from "./ApiError";

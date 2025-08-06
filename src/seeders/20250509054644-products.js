@@ -1,219 +1,165 @@
 "use strict";
 
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // await queryInterface.sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
+    const transaction = await queryInterface.sequelize.transaction();
 
-    /**
-     * Add seed commands here.
-     *
-     * Example:
-     */
-    await queryInterface.bulkInsert(
-      "Products",
-      [
-        {
-          name: "Pressure-Treated Lumber",
-          categoryId: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Plywood Sheets",
-          categoryId: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Roofing Shingles",
-          categoryId: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Assorted Nails",
-          categoryId: 2,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Wood Screws",
-          categoryId: 2,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Door Hinges",
-          categoryId: 2,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+    try {
+      // Insert Product
+      const [productId] = await queryInterface
+        .bulkInsert(
+          "Products",
+          [
+            {
+              name: "T-Shirt",
+              description: "Cotton T-Shirt",
+              unit: "piece",
+              categoryId: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          { transaction, returning: ["id"] }
+        )
+        .then((ids) => [ids[0]?.id || ids]);
 
+      // Insert VariantTypes
+      const variantTypes = [
         {
-          name: "Interior Wall Paint",
-          categoryId: 3,
+          name: "Size",
+          productId,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
         {
-          name: "Exterior Primer",
-          categoryId: 3,
+          name: "Color",
+          productId,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        {
-          name: "Wood Stain",
-          categoryId: 3,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      ];
 
-        {
-          name: "Cordless Drill",
-          categoryId: 4,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Circular Saw",
-          categoryId: 4,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Tool Set",
-          categoryId: 4,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const variantTypeRows = await queryInterface.bulkInsert(
+        "VariantTypes",
+        variantTypes,
+        { transaction, returning: true }
+      );
 
-        {
-          name: "PVC Pipes",
-          categoryId: 5,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Pipe Fittings",
-          categoryId: 5,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Water Heater",
-          categoryId: 5,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const sizeTypeId = variantTypeRows[0]?.id || 1;
+      const colorTypeId = variantTypeRows[1]?.id || 2;
 
-        {
-          name: "LED Light Bulbs",
-          categoryId: 6,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Electrical Wire",
-          categoryId: 6,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Circuit Breaker",
-          categoryId: 6,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      // Insert VariantValues
+      const sizeValues = ["S", "M"];
+      const colorValues = ["Red", "Blue"];
 
-        {
-          name: "Hardwood Flooring",
-          categoryId: 7,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Laminate Planks",
-          categoryId: 7,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Vinyl Tile",
-          categoryId: 7,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const variantValues = [];
 
-        {
-          name: "Base Cabinet",
-          categoryId: 8,
+      for (const val of sizeValues) {
+        variantValues.push({
+          value: val,
+          variantTypeId: sizeTypeId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        },
-        {
-          name: "Bathroom Vanity",
-          categoryId: 8,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Granite Countertop",
-          categoryId: 8,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+        });
+      }
 
-        {
-          name: "Interior Door",
-          categoryId: 9,
+      for (const val of colorValues) {
+        variantValues.push({
+          value: val,
+          variantTypeId: colorTypeId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        },
-        {
-          name: "Storm Door",
-          categoryId: 9,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Double-Hung Window",
-          categoryId: 9,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
+        });
+      }
 
-        {
-          name: "Potting Soil",
-          categoryId: 10,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Mulch",
-          categoryId: 10,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "Fertilizer",
-          categoryId: 10,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      {}
-    );
+      await queryInterface.bulkInsert("VariantValues", variantValues, {
+        transaction,
+        returning: true,
+      });
+      const insertedValues = await queryInterface.sequelize.query(
+        `SELECT id, value, variantTypeId FROM VariantValues WHERE variantTypeId IN (${colorTypeId}, ${sizeTypeId});`,
+        { type: Sequelize.QueryTypes.SELECT, transaction }
+      );
 
-    // await queryInterface.sequelize.query("SET FOREIGN_KEY_CHECKS = 1");
+      const sizeMap = {};
+      const colorMap = {};
+
+      for (const val of insertedValues) {
+        if (val.variantTypeId === sizeTypeId) sizeMap[val.value] = val.id;
+        if (val.variantTypeId === colorTypeId) colorMap[val.value] = val.id;
+      }
+
+      // Insert ProductCombinations and Inventory
+      const combinations = [
+        { sku: "TS-S-R", size: "S", color: "Red", price: 100, quantity: 10 },
+        { sku: "TS-S-B", size: "S", color: "Blue", price: 120 },
+        { sku: "TS-M-R", size: "M", color: "Red", price: 80 },
+        { sku: "TS-M-B", size: "M", color: "Blue", price: 50, quantity: 5 },
+      ];
+
+      for (const combo of combinations) {
+        const [comboId] = await queryInterface
+          .bulkInsert(
+            "ProductCombinations",
+            [
+              {
+                productId,
+                sku: combo.sku,
+                price: combo.price,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+            { transaction, returning: ["id"] }
+          )
+          .then((ids) => [ids[0]?.id || ids]);
+
+        await queryInterface.bulkInsert(
+          "CombinationValues",
+          [
+            {
+              combinationId: comboId,
+              variantValueId: sizeMap[combo.size],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              combinationId: comboId,
+              variantValueId: colorMap[combo.color],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          { transaction }
+        );
+
+        await queryInterface.bulkInsert(
+          "Inventories",
+          [
+            {
+              combinationId: comboId,
+              quantity: combo.quantity,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          { transaction }
+        );
+      }
+
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   },
 
   async down(queryInterface, Sequelize) {
-    /**
-     * Add commands to revert seed here.
-     *
-     * Example:
-     * await queryInterface.bulkDelete('People', null, {});
-     */
+    await queryInterface.bulkDelete("Inventories", null, {});
+    await queryInterface.bulkDelete("CombinationValues", null, {});
+    await queryInterface.bulkDelete("ProductCombinations", null, {});
+    await queryInterface.bulkDelete("VariantValues", null, {});
+    await queryInterface.bulkDelete("VariantTypes", null, {});
+    await queryInterface.bulkDelete("Products", null, {});
   },
 };

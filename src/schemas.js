@@ -4,7 +4,9 @@ export const userBaseSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   isActive: Joi.boolean().default(true),
-}).required();
+})
+  .required()
+  .meta({ className: "userBase" });
 
 export const userSchema = userBaseSchema
   .keys({
@@ -22,7 +24,9 @@ export const userSchema = userBaseSchema
 export const loginSchema = Joi.object({
   password: Joi.string().required(),
   username: Joi.string().required(),
-}).required();
+})
+  .required()
+  .meta({ className: "login" });
 
 export const supplierSchema = Joi.object({
   name: Joi.string().required(),
@@ -32,25 +36,81 @@ export const supplierSchema = Joi.object({
   address: Joi.string().required(),
   notes: Joi.string().optional(),
   isActive: Joi.boolean().default(true),
-}).required();
+})
+  .required()
+  .meta({ className: "supplier" });
 
-export const customerSchema = supplierSchema;
+export const customerSchema = supplierSchema.meta({ className: "customer" });
+
+export const variantValueSchema = Joi.object({
+  id: Joi.number().optional(),
+  value: Joi.string().required(),
+  variantTypeId: Joi.number().optional(),
+}).meta({ className: "variantValue" });
+
+export const variantValuePayloadSchema = Joi.string()
+  .required()
+  .meta({ className: "variantValuePayload" });
+
+export const variantTypesSchema = Joi.object({
+  id: Joi.number().optional(),
+  name: Joi.string().required(),
+  values: Joi.array()
+    .items(
+      Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema)
+    )
+    .required(),
+  productId: Joi.number().optional(),
+})
+  .required()
+  .meta({ className: "variant" });
+
+export const inventorySchema = Joi.object({
+  id: Joi.number().optional(),
+  productId: Joi.number().required(),
+  quantity: Joi.number().required(),
+})
+  .required()
+  .meta({ className: "inventory" });
+
+export const productCombinationSchema = Joi.object({
+  id: Joi.number().optional(),
+  productId: Joi.number(),
+  sku: Joi.string().required(),
+  price: Joi.number().required(),
+  reorderLevel: Joi.number().required(),
+  values: Joi.alternatives().try(
+    Joi.array().items(variantValueSchema).required()
+    // Joi.object()
+  ),
+}).meta({ className: "productCombinations" });
 
 export const productSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional().allow(null),
+  unit: Joi.string().required(),
   categoryId: Joi.number().required(),
-  parentId: Joi.number().optional(),
-}).required();
+  variants: Joi.array().items(variantTypesSchema).optional(),
+  combinations: Joi.array().items(productCombinationSchema).optional(),
+})
+  .required()
+  .options({
+    stripUnknown: true,
+  })
+  .meta({ className: "product" });
 
 export const categorySchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional(),
-}).required();
+})
+  .required()
+  .meta({ className: "category" });
 
 export const purchaseOrderChangeStatusSchema = Joi.object({
   status: Joi.string().valid("VOID"),
-}).required();
+})
+  .required()
+  .meta({ className: "purchaseOrderChangeStatus" });
 
 export const purchaseOrderStatusSchema = Joi.object({
   status: Joi.string()
@@ -61,7 +121,9 @@ export const purchaseOrderStatusSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-}).required();
+})
+  .required()
+  .meta({ className: "purchaseOrderStatus" });
 
 export const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .keys({
@@ -74,7 +136,8 @@ export const purchaseOrderItemSchema = purchaseOrderStatusSchema
     discountNote: Joi.string().optional().allow(null).allow(""),
     product: Joi.object().strip(),
   })
-  .required();
+  .required()
+  .meta({ className: "purchaseOrderItem" });
 
 export const purchaseOrderSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
@@ -102,7 +165,9 @@ export const purchaseOrderSchema = Joi.object({
       "array.includesRequiredUnknowns":
         "Purchase order must include at least one product.",
     }),
-}).required();
+})
+  .required()
+  .meta({ className: "purchaseOrder" });
 
 export const purchaseOrderUpdateSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
@@ -128,13 +193,17 @@ export const purchaseOrderUpdateSchema = Joi.object({
       "array.includesRequiredUnknowns":
         "Purchase order must include at least one product.",
     }),
-}).required();
+})
+  .required()
+  .meta({ className: "purchaseOrderUpdate" });
 
 export const salesOrderStatusSchema = Joi.object({
   status: Joi.string()
     .valid("PENDING", "COMPLETED", "CANCELLED")
     .default("COMPLETED"),
-}).required();
+})
+  .required()
+  .meta({ className: "salesOrderStatus" });
 
 export const salesOrderItemSchema = salesOrderStatusSchema
   .keys({
@@ -145,7 +214,8 @@ export const salesOrderItemSchema = salesOrderStatusSchema
     discount: Joi.number().optional().allow(null),
     inventory: Joi.object(),
   })
-  .required();
+  .required()
+  .meta({ className: "salesOrderItem" });
 
 export const salesOrderSchema = Joi.object({
   customer: Joi.string().required(),
@@ -157,15 +227,9 @@ export const salesOrderSchema = Joi.object({
     "array.includesRequiredUnknowns":
       "Purchase order must include at least one product.",
   }),
-}).required();
-
-export const inventorySchema = Joi.object({
-  productId: Joi.number().required(),
-  quantity: Joi.number().required(),
-  price: Joi.number().required(),
-  reorderLevel: Joi.number(),
-  unit: Joi.string().required(),
-}).required();
+})
+  .required()
+  .meta({ className: "salesOrder" });
 
 export const inventoryTransactionSchema = Joi.object({
   inventoryId: Joi.number().required(),
@@ -175,11 +239,13 @@ export const inventoryTransactionSchema = Joi.object({
   transactionType: Joi.string().required(),
   orderId: Joi.number().optional(),
   orderType: Joi.string().optional(),
-}).required();
+})
+  .required()
+  .meta({ className: "inventoryTransaction" });
 
 export const inventoryPriceAdjustmentSchema = Joi.object({
   price: Joi.number().required(),
-});
+}).meta({ className: "inventoryPriceAdjustment" });
 
 export const repackInventorySchema = Joi.object({
   name: Joi.string().required(),
@@ -190,4 +256,4 @@ export const repackInventorySchema = Joi.object({
   pullOutQuantity: Joi.number().required(),
   repackQuantity: Joi.number().required(),
   parentId: Joi.number().required(),
-});
+}).meta({ className: "repackInventory" });

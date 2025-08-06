@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-import { PAGINATION } from "../definitions.js";
 import categoryServices from "../services/categories.service";
 
 const categoriesController = {

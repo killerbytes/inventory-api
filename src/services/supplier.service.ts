@@ -1,6 +1,6 @@
 import db from "../models";
 import ApiError from "./ApiError";
-import { supplierSchema } from "../schema";
+import { supplierSchema } from "../schemas";
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 const { Supplier } = db;

@@ -1,4 +1,4 @@
-import { loginSchema } from "../schema";
+import { loginSchema } from "../schemas";
 import ApiError from "../services/ApiError";
 import { generateToken } from "../services/auth.service";
 import authService from "../services/auth.service";

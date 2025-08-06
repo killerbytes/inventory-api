@@ -1,7 +1,7 @@
 import { Transaction } from "sequelize";
 import ApiError from "./ApiError";
 import db from "../models";
-import { salesOrderSchema, salesOrderStatusSchema } from "../schema";
+import { salesOrderSchema, salesOrderStatusSchema } from "../schemas";
 import {
   ORDER_TYPE,
   INVENTORY_TRANSACTION_TYPE,

@@ -1,8 +1,8 @@
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import db, { Sequelize } from "../models";
-import { categorySchema } from "../schema";
 import ApiError from "./ApiError";
+import { categorySchema } from "../schemas.js";
 
 const { Category } = db;
 
