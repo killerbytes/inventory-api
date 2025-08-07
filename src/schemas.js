@@ -77,14 +77,18 @@ export const inventorySchema = Joi.object({
 export const productCombinationSchema = Joi.object({
   id: Joi.number().optional(),
   productId: Joi.number(),
-  sku: Joi.string().required(),
+  sku: Joi.string().allow(null),
   price: Joi.number().required(),
   reorderLevel: Joi.number().required(),
   values: Joi.alternatives().try(
     Joi.array().items(variantValueSchema).required()
     // Joi.object()
   ),
-}).meta({ className: "productCombinations" });
+})
+  .options({
+    stripUnknown: true,
+  })
+  .meta({ className: "productCombinations" });
 
 export const productSchema = Joi.object({
   name: Joi.string().required(),

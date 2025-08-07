@@ -2,6 +2,7 @@ import express from "express";
 import productsController from "../controllers/products.controller";
 const router = express.Router();
 
+router.post("/:id/convertToUnit", productsController.cloneToUnit);
 router.get("/list", productsController.list);
 router.get("/:id", productsController.get);
 router.get("/", productsController.getPaginated);

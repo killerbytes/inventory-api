@@ -39,8 +39,9 @@ class ApiError extends Error {
 
   // Utility methods for common errors
   static internal(
-    res,
     message = "Internal Server Error",
+    statusCode = 500,
+    errors = [],
     details = null,
     stack
   ) {
@@ -53,7 +54,14 @@ class ApiError extends Error {
       stack
     );
 
-    return res.status(apiError.statusCode).json(apiError);
+    return new ApiError(
+      "VALIDATION_ERROR",
+      statusCode,
+      "Bad Request",
+      errors,
+      null,
+      null
+    );
   }
 
   static notFound(message = "Not Found", details = null) {
@@ -72,12 +80,13 @@ class ApiError extends Error {
     return new ApiError("FORBIDDEN", 403, message, [], details);
   }
 
-  static validation(errors, statusCode) {
+  static validation(errors, statusCode, message = "Bad Request") {
     return new ApiError(
       "VALIDATION_ERROR",
       statusCode,
-      "Bad Request",
+      message,
       errors,
+      null,
       null
     );
   }

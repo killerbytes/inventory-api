@@ -4,6 +4,7 @@ import { productCombinationSchema } from "../schemas";
 import ApiError from "./ApiError";
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
+import { getSKU } from "../utils";
 const {
   Product,
   VariantType,
@@ -149,6 +150,7 @@ const productCombinationService = {
     //     // ],
     //   ],
     // });
+
     const combinations = await ProductCombination.findAll({
       where: { productId: id },
       include: [
@@ -162,7 +164,9 @@ const productCombinationService = {
       ],
       // order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
     });
-    if (!combinations) throw new Error("Product not found");
+    console.log(combinations);
+
+    if (!combinations) throw new Error("Combination not found");
 
     const variants = await VariantType.findAll({
       where: { productId: id },
@@ -191,14 +195,33 @@ const productCombinationService = {
     if (error) {
       throw error;
     }
+    const product = await Product.findByPk(productId);
+    if (!product) throw new Error("Product not found");
 
     const issue = validateCombinations(payload);
 
     if (issue.duplicates.length > 0) {
-      throw error;
+      throw ApiError.validation(
+        [
+          {
+            path: ["combinations"],
+            message: "Combinations are invalid",
+          },
+        ],
+        400
+      );
     }
     if (issue.conflicts.length > 0) {
-      throw error;
+      throw ApiError.validation(
+        [
+          {
+            field: ["combinations"],
+            message: "Combinations are invalid",
+          },
+        ],
+        400,
+        "Combinations are invalid"
+      );
     }
 
     const transaction = await sequelize.transaction();
@@ -295,7 +318,6 @@ const productCombinationService = {
             return variantValueMap[`${variantTypeId}:${value}`]?.id;
           })
           .filter(Boolean);
-        console.log(variantValueIds, combo.values);
 
         if (variantValueIds.length !== Object.entries(combo.values).length) {
           throw new Error("Some variant values are invalid or missing");
@@ -318,10 +340,17 @@ const productCombinationService = {
           await combination.setValues(variantValueIds, { transaction });
         } else {
           // Create new combination if no ID
-          console.log("else");
-
           combination = await ProductCombination.create(
-            { productId, ...combo },
+            {
+              productId,
+              ...combo,
+              sku: getSKU(
+                product.name,
+                product.categoryId,
+                product.unit,
+                combo.values
+              ),
+            },
             { transaction }
           );
           await combination.addValues(variantValueIds, { transaction });
@@ -351,9 +380,10 @@ const productCombinationService = {
           await inventory.update(updateFields, { transaction });
         }
       }
+      console.log("transaction.commit");
 
       await transaction.commit();
-      return; // { message: "Product updated successfully" };
+      return { message: "Product updated successfully" };
     } catch (err) {
       await transaction.rollback();
 

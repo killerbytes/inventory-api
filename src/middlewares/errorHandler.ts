@@ -23,7 +23,16 @@ export const errorHandler = (err, req, res, next) => {
     return res.status(400).json(ApiError.validation(errors, 400));
   }
 
-  if (err instanceof Error) {
-    return ApiError.internal(res, err.message, err, err.stack);
+  // if (err instanceof Error) {
+
+  //   return ;
+  // }
+  if (err instanceof ApiError) {
+    console.log(123, err);
+    res.status(err.statusCode).json(err);
   }
+
+  return res
+    .status(500)
+    .json(ApiError.internal(err.message, 500, [], null, err.stack));
 };

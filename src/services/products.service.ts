@@ -2,6 +2,8 @@ import { Op } from "sequelize";
 import db, { Sequelize, sequelize } from "../models";
 import { productSchema } from "../schemas";
 import ApiError from "./ApiError";
+import { product } from "../interfaces";
+import { getSKU } from "../utils";
 const {
   Product,
   VariantType,
@@ -475,6 +477,106 @@ const productService = {
     );
 
     return result;
+  },
+
+  async cloneToUnit(id, payload) {
+    const { unit } = payload;
+
+    const transaction = await sequelize.transaction();
+    try {
+      const product = await Product.findByPk(
+        id,
+        {
+          include: [
+            {
+              model: VariantType,
+              as: "variants",
+              include: [{ model: VariantValue, as: "values" }],
+            },
+            {
+              model: ProductCombination,
+              as: "combinations",
+              include: [
+                {
+                  model: Inventory,
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                },
+              ],
+            },
+          ],
+          order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+        },
+        {
+          transaction,
+        }
+      );
+      if (!product) throw new Error("Product not found");
+
+      const { combinations, variants } = product;
+      const variantValueMap = {};
+
+      const newProduct = await Product.create(
+        {
+          name: product.name,
+          description: product.description,
+          categoryId: product.categoryId,
+          unit,
+        },
+        { transaction }
+      );
+
+      for (const variant of variants) {
+        const variantType = await VariantType.create(
+          {
+            name: variant.name,
+            productId: newProduct.id,
+          },
+          { transaction }
+        );
+
+        for (const value of variant.values) {
+          const val = await VariantValue.create(
+            {
+              value: value.value,
+              variantTypeId: variantType.id,
+            },
+            { transaction }
+          );
+          variantValueMap[value.value] = val;
+        }
+      }
+
+      for (const combo of combinations) {
+        const productCombo = await ProductCombination.create(
+          {
+            productId: newProduct.id,
+            sku: getSKU(product.name, product.categoryId, unit, combo.values),
+          },
+          { transaction }
+        );
+
+        for (const value of combo.values) {
+          const val = variantValueMap[value.value];
+          if (val) {
+            await CombinationValue.create(
+              { combinationId: productCombo.id, variantValueId: val.id },
+              { transaction }
+            );
+          }
+        }
+      }
+      transaction.commit();
+
+      return newProduct;
+    } catch (error) {
+      console.log(error);
+      transaction.rollback();
+      throw error;
+    }
   },
 };
 

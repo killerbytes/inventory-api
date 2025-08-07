@@ -60,14 +60,15 @@ const productController = {
     }
   },
 
-  // async getLowInventoryProducts(req, res, next) {
-  //   try {
-  //     const result = await ProductService.getLowInventoryProducts();
-  //     return res.status(200).json(result);
-  //   } catch (error) {
-  //     return res.status(500).json(formatErrors(error));
-  //   }
-  // },
+  async cloneToUnit(req, res, next) {
+    const { id } = req.params;
+    try {
+      const product = await productService.cloneToUnit(id, req.body);
+      return res.status(200).json(product);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default productController;

@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Product.init(
     {
-      name: { type: DataTypes.STRING, allowNull: false, unique: true },
+      name: { type: DataTypes.STRING, allowNull: false },
       description: { type: DataTypes.TEXT },
       unit: { type: DataTypes.STRING, allowNull: false },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
@@ -35,6 +35,12 @@ module.exports = (sequelize, DataTypes) => {
       defaultScope: {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
+      indexes: [
+        {
+          unique: true,
+          fields: ["name", "unit"],
+        },
+      ],
     }
   );
 

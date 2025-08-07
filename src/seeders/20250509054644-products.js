@@ -13,7 +13,7 @@ module.exports = {
             {
               name: "T-Shirt",
               description: "Cotton T-Shirt",
-              unit: "piece",
+              unit: "BOX",
               categoryId: 1,
               createdAt: new Date(),
               updatedAt: new Date(),
@@ -96,6 +96,7 @@ module.exports = {
         { sku: "TS-M-R", size: "M", color: "Red", price: 80, quantity: 0 },
         { sku: "TS-M-B", size: "M", color: "Blue", price: 50, quantity: 5 },
       ];
+      console.log(combinations);
 
       for (const combo of combinations) {
         const [comboId] = await queryInterface
@@ -104,7 +105,6 @@ module.exports = {
             [
               {
                 productId,
-                sku: combo.sku,
                 price: combo.price,
                 createdAt: new Date(),
                 updatedAt: new Date(),
