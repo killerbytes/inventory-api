@@ -555,6 +555,7 @@ const productService = {
           {
             productId: newProduct.id,
             sku: getSKU(product.name, product.categoryId, unit, combo.values),
+            price: 0,
           },
           { transaction }
         );

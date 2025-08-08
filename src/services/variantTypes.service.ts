@@ -1,3 +1,4 @@
+import { where } from "sequelize";
 import db, { sequelize } from "../models/index.js";
 import { variantTypesSchema } from "../schemas.js";
 import ApiError from "./ApiError";
@@ -40,6 +41,22 @@ const variantTypesServices = {
 
         where: { productId: id },
         nested: true,
+      });
+      if (!variantTypes) {
+        throw new Error("VariantType not found");
+      }
+      return variantTypes;
+    } catch (error) {
+      throw error;
+    }
+  },
+  getAll: async () => {
+    try {
+      const variantTypes = await VariantType.findAll({
+        include: [{ model: VariantValue, as: "values" }],
+        order: [["id", "ASC"]],
+        where: { isTemplate: true },
+        attributes: { exclude: ["productId"] },
       });
       if (!variantTypes) {
         throw new Error("VariantType not found");

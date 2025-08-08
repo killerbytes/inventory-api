@@ -18,6 +18,14 @@ const variantTypesController = {
       next(error);
     }
   },
+  async getAll(req, res, next) {
+    try {
+      const user = await variantTypesService.getAll();
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  },
   async update(req, res, next) {
     const { id } = req.params;
     try {

@@ -56,6 +56,7 @@ export const variantValuePayloadSchema = Joi.string()
 export const variantTypesSchema = Joi.object({
   id: Joi.number().optional(),
   name: Joi.string().required(),
+  isTemplate: Joi.boolean().optional(),
   values: Joi.array()
     .items(
       Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema)

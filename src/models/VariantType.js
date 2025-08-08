@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       name: DataTypes.STRING,
       productId: DataTypes.INTEGER,
+      isTemplate: DataTypes.BOOLEAN,
     },
     {
       defaultScope: {
