@@ -29,13 +29,13 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   InventoryMovement.associate = (models) => {
-    InventoryMovement.belongsTo(models.ProductCombination, {
-      foreignKey: "combinationId",
-      as: "combination",
-    });
     InventoryMovement.belongsTo(models.User, {
       foreignKey: "userId",
       as: "user",
+    });
+    InventoryMovement.belongsTo(models.ProductCombination, {
+      foreignKey: "combinationId",
+      as: "combination",
     });
   };
 

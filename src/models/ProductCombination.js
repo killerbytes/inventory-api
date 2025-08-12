@@ -1,4 +1,4 @@
-const { getSKU } = require("../utils.ts");
+const { getSKU } = require("../utils");
 
 module.exports = (sequelize, DataTypes) => {
   const ProductCombination = sequelize.define(
@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
       productId: DataTypes.INTEGER,
       sku: { type: DataTypes.STRING, unique: true },
       price: DataTypes.DECIMAL(10, 2),
-      reorderLevel: DataTypes.INTEGER,
+      reorderLevel: { type: DataTypes.INTEGER, defaultvalue: 0 },
     },
     {
       defaultScope: {
@@ -29,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
     });
     ProductCombination.hasOne(models.Inventory, {
       foreignKey: "combinationId",
+      as: "inventory",
     });
   };
 

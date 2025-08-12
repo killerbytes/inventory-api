@@ -1,43 +1,16 @@
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 import db from "../models/index.js";
-import ApiError from "./ApiError.js";
-import authService from "./auth.service.js";
-const { Inventory, InventoryTransaction, Product, User } = db;
+const {
+  VariantType,
+  VariantValue,
+  InventoryMovement,
+  ProductCombination,
+  User,
+  Product,
+} = db;
 
 const inventoryTransactionService = {
-  // async create(payload, transaction) {
-  //   const { error } = inventoryTransactionSchema.validate(payload, {
-  //     abortEarly: false,
-  //   });
-  //   if (error) {
-  //     throw error;
-  //   }
-  //   try {
-  //     const { inventoryId, previousValue, newValue, value, transactionType } =
-  //       payload;
-
-  //     const user = await authService.getCurrent();
-
-  //     const result = await InventoryTransaction.create(
-  //       {
-  //         inventoryId,
-  //         previousValue,
-  //         newValue,
-  //         value,
-  //         transactionType,
-  //         orderId: null,
-  //         orderType: null,
-  //         userId: user.id,
-  //       },
-  //       { ...transaction }
-  //     );
-
-  //     return result;
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // },
   async getPaginated(query) {
     const {
       q = null,
@@ -79,22 +52,32 @@ const inventoryTransactionService = {
       const order = [];
       order.push([sort, query.order || "DESC"]);
 
-      const { count, rows } = await InventoryTransaction.findAndCountAll({
+      const { count, rows } = await InventoryMovement.findAndCountAll({
         limit,
         offset,
         order,
         where,
-        raw: true,
         nest: true,
         include: [
           {
-            model: Inventory,
-            as: "inventory",
-            include: [{ model: Product, as: "product" }],
-          },
-          {
             model: User,
             as: "user",
+          },
+          {
+            model: ProductCombination,
+            as: "combination",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [{ model: VariantType, as: "variants" }],
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
           },
         ],
       });

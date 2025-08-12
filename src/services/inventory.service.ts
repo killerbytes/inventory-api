@@ -81,7 +81,7 @@ const inventoryService = {
 
       return result;
     } catch (error) {
-      console.log(55, error);
+      throw error;
     }
   },
 

@@ -1,4 +1,4 @@
-import { Transaction, Op } from "sequelize";
+import { Transaction, Op, or } from "sequelize";
 import db, { sequelize } from "../models";
 import { purchaseOrderSchema } from "../schemas";
 import {
@@ -8,7 +8,17 @@ import {
 } from "../definitions.js";
 import authService from "./auth.service";
 import { processInventoryUpdates } from "./inventory.service";
-const { PurchaseOrder, PurchaseOrderItem, ProductCombination, Product } = db;
+import { getMappedVariantValues } from "../utils";
+const {
+  VariantValue,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  ProductCombination,
+  Product,
+  PurchaseOrderStatusHistory,
+  VariantType,
+  Category,
+} = db;
 
 const purchaseOrderService = {
   async get(id) {
@@ -29,20 +39,14 @@ const purchaseOrderService = {
             as: "supplier",
           },
           {
-            model: db.User,
-            as: "orderByUser",
-          },
-          {
-            model: db.User,
-            as: "receivedByUser",
-          },
-          {
-            model: db.User,
-            as: "completedByUser",
-          },
-          {
-            model: db.User,
-            as: "cancelledByUser",
+            model: db.PurchaseOrderStatusHistory,
+            as: "statusHistory",
+            include: [
+              {
+                model: db.User,
+                as: "user",
+              },
+            ],
           },
         ],
         // raw: true,
@@ -80,25 +84,52 @@ const purchaseOrderService = {
       } = payload;
 
       const totalAmount = purchaseOrderItems.reduce(
-        (total: number, item: any) => total + item.unitPrice * item.quantity,
+        (total: number, item: any) =>
+          total + item.purchasePrice * item.quantity,
         0
       );
 
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
-            item.combinationId
+            item.combinationId,
+            {
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+              transaction,
+            }
           );
 
           const props = {
             ...item,
-            // orderId: result.id,
-            // combinationId: item.combinationId,
-            // quantity: item.quantity,
             originalPrice: productCombination.price,
-            // unitPrice: item.unitPrice,
-            // discount: item.discount,
-            // discountNote: item.discountNote,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
           };
 
           return props;
@@ -112,7 +143,6 @@ const purchaseOrderService = {
           orderDate,
           deliveryDate,
           totalAmount,
-          orderBy: user.id,
           notes,
           internalNotes,
           purchaseOrderItems: processedItems,
@@ -127,13 +157,22 @@ const purchaseOrderService = {
               as: "purchaseOrderItems",
             },
           ],
+          transaction,
         }
+      );
+      await PurchaseOrderStatusHistory.create(
+        {
+          purchaseOrderId: result.id,
+          status: PURCHASE_ORDER_STATUS.PENDING,
+          changedBy: user.id,
+          changedAt: new Date(),
+        },
+        { transaction }
       );
       transaction.commit();
       return result;
     } catch (error) {
       transaction.rollback();
-      console.log(1, error);
 
       throw error;
     }
@@ -249,10 +288,20 @@ const purchaseOrderService = {
     const offset = (page - 1) * limit;
 
     try {
-      const order = [];
-      if (sort) {
-        order.push([sort as string, order || "ASC"]);
-      }
+      const order = [
+        [
+          {
+            model: PurchaseOrderStatusHistory,
+            as: "statusHistory",
+          },
+          "id",
+          "ASC",
+        ],
+      ];
+
+      // if (sort) {
+      //   order.push([sort as string, order || "ASC"]);
+      // }
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,
@@ -265,12 +314,14 @@ const purchaseOrderService = {
             as: "purchaseOrderItems",
           },
           {
-            model: db.User,
-            as: "receivedByUser",
-          },
-          {
-            model: db.User,
-            as: "orderByUser",
+            model: db.PurchaseOrderStatusHistory,
+            as: "statusHistory",
+            include: [
+              {
+                model: db.User,
+                as: "user",
+              },
+            ],
           },
           {
             model: db.Supplier,
@@ -286,6 +337,7 @@ const purchaseOrderService = {
         currentPage: page,
       };
     } catch (error) {
+      console.log(error);
       throw error;
     }
   },
@@ -302,109 +354,156 @@ const purchaseOrderService = {
     if (!purchaseOrder) {
       throw new Error("PurchaseOrder not found");
     }
-    await processCancelledOrder(payload, purchaseOrder);
+    await processCancelledOrder(purchaseOrder, payload);
   },
 };
 
 const processCompletedOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.COMPLETED,
-          completedBy: user.id,
-          completedDate: new Date(),
-        },
-        purchaseOrder,
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        ...payload,
+        status: PURCHASE_ORDER_STATUS.COMPLETED,
+      },
+      purchaseOrder,
+      transaction,
+      true
+    );
+
+    await PurchaseOrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: PURCHASE_ORDER_STATUS.COMPLETED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
         transaction,
-        true
-      );
-    } catch (error) {
-      throw new Error("Error in processCompletedOrder");
-    }
-  });
+      }
+    );
+
+    transaction.commit();
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCompletedOrder");
+  }
 };
 
-const processCancelledOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.CANCELLED,
-          cancelledBy: user.id,
-          cancelledDate: new Date(),
-        },
-        purchaseOrder,
-        transaction
-      );
-    } catch (error) {
-      console.log(333, error);
+const processCancelledOrder = async (purchaseOrder, payload) => {
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        status: PURCHASE_ORDER_STATUS.CANCELLED,
+        cancellationReason: payload.reason,
+      },
+      purchaseOrder,
+      transaction
+    );
 
-      throw new Error("Error in processCancelledOrder");
-    }
-    try {
-      const { purchaseOrderItems, id } = purchaseOrder;
-      await Promise.all(
-        purchaseOrderItems.map(async (item) => {
-          await processInventoryUpdates(
-            item,
-            id,
-            INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
-            transaction,
-            false
-          );
-        })
-      );
-    } catch (error) {
-      throw new Error("Error in processInventoryUpdates");
-    }
-  });
+    const { purchaseOrderItems, id } = purchaseOrder;
+    await Promise.all(
+      purchaseOrderItems.map(async (item) => {
+        await processInventoryUpdates(
+          item,
+          id,
+          payload.reason,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
+          transaction,
+          false
+        );
+      })
+    );
+
+    await PurchaseOrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: PURCHASE_ORDER_STATUS.CANCELLED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCancelledOrder");
+  }
 };
 
 const processReceivedOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.RECEIVED,
-          receivedBy: user.id,
-          receivedDate: new Date(),
-        },
-        purchaseOrder,
-        transaction,
-        true
-      );
-    } catch (error) {
-      throw error;
-    }
-    try {
-      const { purchaseOrderItems, id } = purchaseOrder;
-      await Promise.all(
-        purchaseOrderItems.map(async (item) => {
-          await processInventoryUpdates(
-            {
-              combinationId: item.combinationId,
-              quantity: item.quantity,
-            },
-            id,
-            null,
-            INVENTORY_MOVEMENT_TYPE.IN,
-            transaction
-          );
-        })
-      );
-    } catch (error) {
-      console.log(1, error);
+  const transaction = await db.sequelize.transaction();
+  const user = await authService.getCurrent();
+  try {
+    const totalAmount = payload.purchaseOrderItems.reduce(
+      (total: number, item: any) => total + item.purchasePrice * item.quantity,
+      0
+    );
 
-      throw new Error("Error in processInventoryUpdates");
-    }
-  });
+    await updateOrder(
+      {
+        ...payload,
+        status: PURCHASE_ORDER_STATUS.RECEIVED,
+        totalAmount,
+      },
+      purchaseOrder,
+      transaction,
+      true
+    );
+
+    const { purchaseOrderItems, id } = purchaseOrder;
+    await Promise.all(
+      purchaseOrderItems.map(async (item) => {
+        await processInventoryUpdates(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+          },
+          id,
+          null,
+          INVENTORY_MOVEMENT_TYPE.IN,
+          transaction
+        );
+      })
+    );
+
+    await PurchaseOrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: PURCHASE_ORDER_STATUS.RECEIVED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processInventoryUpdates");
+  }
 };
 const processUpdateOrder = async (payload, purchaseOrder) => {
   await db.sequelize.transaction(async (transaction: Transaction) => {
@@ -424,26 +523,53 @@ const updateOrder = async (
 ) => {
   try {
     await purchaseOrder.update(payload, { transaction });
-  } catch (error) {
-    throw new Error("Error in updateOrder");
-  }
-  try {
     if (updateOrderItems) {
       await PurchaseOrderItem.destroy({
-        where: { orderId: purchaseOrder.id },
+        where: { purchaseOrderId: purchaseOrder.id },
         transaction,
       });
 
       const items = await Promise.all(
         payload.purchaseOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
-            item.combinationId
+            item.combinationId,
+            {
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+            }
           );
 
           const props = {
             ...item,
+            purchaseOrderId: purchaseOrder.id,
             originalPrice: productCombination.price,
-            orderId: purchaseOrder.id,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
           };
           return props;
         })
@@ -452,6 +578,7 @@ const updateOrder = async (
       await PurchaseOrderItem.bulkCreate(items, { transaction });
     }
   } catch (error) {
+    console.log(error);
     throw new Error("Error in updateOrderItems");
   }
 };

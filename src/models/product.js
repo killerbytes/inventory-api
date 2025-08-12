@@ -1,4 +1,6 @@
 "use strict";
+
+const { getSKU } = require("../utils");
 const { UNIT } = require("../definitions");
 const { Model } = require("sequelize");
 
@@ -27,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
       description: { type: DataTypes.TEXT },
       unit: { type: DataTypes.STRING, allowNull: false },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
+      sku: { type: DataTypes.STRING },
     },
     {
       sequelize,
@@ -43,6 +46,14 @@ module.exports = (sequelize, DataTypes) => {
       ],
     }
   );
+
+  Product.beforeCreate(async (product, options) => {
+    product.sku = getSKU(product.name, product.categoryId, null, null);
+  });
+
+  Product.beforeBulkCreate(async (product, options) => {
+    product.sku = getSKU(product.name, product.categoryId, null, null);
+  });
 
   return Product;
 };

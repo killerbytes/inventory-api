@@ -3,8 +3,10 @@ import productCombinationController from "../controllers/productCombination.cont
 const router = express.Router();
 
 router.post("/", productCombinationController.create);
-router.get("/:id", productCombinationController.getByProductId);
-router.patch("/:id", productCombinationController.update);
+router.get("/:id", productCombinationController.get);
+router.get("/product/:id", productCombinationController.getByProductId);
+router.patch("/product/:id", productCombinationController.updateByProductId);
 router.delete("/:id", productCombinationController.delete);
+router.post("/breakPack", productCombinationController.breakPack);
 
 export default router;

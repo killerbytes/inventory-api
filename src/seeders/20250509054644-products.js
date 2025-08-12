@@ -1,5 +1,7 @@
 "use strict";
 
+const { getSKU } = require("../utils");
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
@@ -15,6 +17,7 @@ module.exports = {
               description: "Cotton T-Shirt",
               unit: "BOX",
               categoryId: 1,
+              sku: getSKU("T-Shirt", 1, undefined, undefined),
               createdAt: new Date(),
               updatedAt: new Date(),
             },
@@ -92,28 +95,28 @@ module.exports = {
       // Insert ProductCombinations and Inventory
       const combinations = [
         {
-          sku: "TSHIRT-CAT1-S-R",
+          sku: "01|TSH|BOX|S|RED",
           size: "S",
           color: "Red",
           price: 100,
           quantity: 10,
         },
         {
-          sku: "TSHIRT-CAT1-S-B",
+          sku: "01|TSH|BOX|S|BLU",
           size: "S",
           color: "Blue",
           price: 120,
           quantity: 0,
         },
         {
-          sku: "TSHIRT-CAT1-M-R",
+          sku: "01|TSH|BOX|M|RED",
           size: "M",
           color: "Red",
           price: 80,
           quantity: 0,
         },
         {
-          sku: "TSHIRT-CAT1-M-B",
+          sku: "01|TSH|BOX|M|BLU",
           size: "M",
           color: "Blue",
           price: 50,

@@ -9,6 +9,7 @@ import inventoryRouter from "./routes/inventory.router";
 import purchaseRouter from "./routes/purchaseOrder.router";
 import salesRouter from "./routes/salesOrder.router";
 import variantTypesRouter from "./routes/variantTypes.router";
+import inventoryMovementRouter from "./routes/inventoryMovement.router";
 import productCombinationRouter from "./routes/productCombination.router";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -72,6 +73,7 @@ app.use("/api/purchase", verifyToken, purchaseRouter);
 app.use("/api/sales", verifyToken, salesRouter);
 app.use("/api/variantTypes", verifyToken, variantTypesRouter);
 app.use("/api/productCombinations", verifyToken, productCombinationRouter);
+app.use("/api/inventoryMovements", verifyToken, inventoryMovementRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");

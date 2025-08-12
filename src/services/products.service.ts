@@ -81,7 +81,44 @@ const productService = {
   },
 
   async get(id) {
-    const product = await Product.findByPk(id, {
+    try {
+      const product = await Product.findByPk(id, {
+        include: [
+          {
+            model: VariantType,
+            as: "variants",
+            include: [{ model: VariantValue, as: "values" }],
+          },
+          {
+            model: ProductCombination,
+            as: "combinations",
+            include: [
+              {
+                model: Inventory,
+                as: "inventory",
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
+          },
+        ],
+        order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+      });
+
+      if (!product) throw ApiError.notFound("Product not found");
+
+      return product;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getAllBySku(sku) {
+    const product = await Product.findAll({
+      where: { sku },
       include: [
         {
           model: VariantType,
@@ -94,6 +131,7 @@ const productService = {
           include: [
             {
               model: Inventory,
+              as: "inventory",
             },
             {
               model: VariantValue,
@@ -362,6 +400,7 @@ const productService = {
           include: [
             {
               model: Inventory,
+              as: "inventory",
             },
             {
               model: VariantValue,
@@ -441,6 +480,7 @@ const productService = {
           include: [
             {
               model: Inventory,
+              as: "inventory",
             },
             {
               model: VariantValue,
@@ -499,6 +539,7 @@ const productService = {
               include: [
                 {
                   model: Inventory,
+                  as: "inventory",
                 },
                 {
                   model: VariantValue,
@@ -574,7 +615,6 @@ const productService = {
 
       return newProduct;
     } catch (error) {
-      console.log(error);
       transaction.rollback();
       throw error;
     }

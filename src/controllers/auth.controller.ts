@@ -6,14 +6,10 @@ import passport from "passport";
 
 const authController = {
   login: async (req, res, next) => {
-    console.log(123, req.body);
-
     const { error } = loginSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
-      console.log(34, error);
-
       return next(ApiError.badRequest(error.message, error.details));
     }
 
@@ -23,8 +19,6 @@ const authController = {
         { session: false },
         (err: any, user: any, info: any) => {
           if (err || !user) {
-            console.log(33344, err);
-
             return res
               .status(500)
               .json(ApiError.badRequest("Invalid username or password"));
@@ -35,8 +29,6 @@ const authController = {
         }
       )(req, res, next);
     } catch (error) {
-      console.log(44, error);
-
       next(error);
     }
   },

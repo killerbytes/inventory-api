@@ -9,29 +9,34 @@ class PurchaseOrder extends Model {
     });
 
     PurchaseOrder.hasMany(models.PurchaseOrderItem, {
-      foreignKey: "orderId",
+      foreignKey: "purchaseOrderId",
       as: "purchaseOrderItems",
     });
 
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "orderBy",
-      as: "orderByUser",
+    PurchaseOrder.hasMany(models.PurchaseOrderStatusHistory, {
+      foreignKey: "purchaseOrderId",
+      as: "statusHistory",
     });
 
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "receivedBy",
-      as: "receivedByUser",
-    });
+    // PurchaseOrder.belongsTo(models.User, {
+    //   foreignKey: "orderBy",
+    //   as: "orderByUser",
+    // });
 
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "completedBy",
-      as: "completedByUser",
-    });
+    // PurchaseOrder.belongsTo(models.User, {
+    //   foreignKey: "receivedBy",
+    //   as: "receivedByUser",
+    // });
 
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "cancelledBy",
-      as: "cancelledByUser",
-    });
+    // PurchaseOrder.belongsTo(models.User, {
+    //   foreignKey: "completedBy",
+    //   as: "completedByUser",
+    // });
+
+    // PurchaseOrder.belongsTo(models.User, {
+    //   foreignKey: "cancelledBy",
+    //   as: "cancelledByUser",
+    // });
   }
 }
 
@@ -54,6 +59,7 @@ module.exports = (sequelize) => {
       deliveryDate: {
         type: DataTypes.DATE,
       },
+      /*
       orderBy: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -98,6 +104,7 @@ module.exports = (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      */
       cancellationReason: {
         type: DataTypes.TEXT,
         allowNull: true,

@@ -76,8 +76,6 @@ const salesOrderService = {
         })
       );
 
-      console.log(items);
-
       // throw new Error(JSON.stringify(items));
       const result = await db.sequelize.transaction(
         async (transaction: Transaction) => {
@@ -404,8 +402,6 @@ const processCancelledOrder = async (salesOrder, userId, transaction) => {
 
   await Promise.all(
     orderWithItems.salesOrderItems.map(async (item) => {
-      console.log(2, item);
-
       const [inventory] =
         await salesOrder.sequelize.models.Inventory.findOrCreate({
           where: { productId: item.inventory.productId },

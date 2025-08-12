@@ -5,7 +5,10 @@ import ApiError from "./ApiError";
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
 import { getSKU } from "../utils";
+import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
+import authService from "./auth.service";
 const {
+  InventoryMovement,
   Product,
   VariantType,
   VariantValue,
@@ -79,78 +82,30 @@ const productCombinationService = {
   },
 
   async get(id) {
-    const product = await Product.findByPk(id, {
+    const productCombination = await ProductCombination.findByPk(id, {
       include: [
         {
-          model: VariantType,
-          as: "variants",
-          include: [{ model: VariantValue, as: "values" }],
+          model: VariantValue,
+          as: "values",
+          through: { attributes: [] },
         },
         {
-          model: ProductCombination,
-          as: "combinations",
-          include: [
-            {
-              model: VariantValue,
-              as: "values",
-              through: { attributes: [] },
-              order: [["variantTypeId", "ASC"]],
-            },
-            Inventory,
-          ],
+          model: Product,
+          as: "product",
         },
-      ],
-      order: [
-        [{ model: ProductCombination, as: "combinations" }, "id", "ASC"],
-        [{ model: VariantType, as: "variants" }, "id", "ASC"],
-        // [
-        //   { model: ProductCombination, as: "combinations" },
-        //   { model: VariantValue, as: "values" },
-        //   "variantTypeId",
-        //   "ASC",
-        // ],
+        {
+          model: Inventory,
+          as: "inventory",
+        },
       ],
     });
 
-    if (!product) throw new Error("Product not found");
+    if (!productCombination) throw new Error("Product not found");
 
-    return product;
+    return productCombination;
   },
 
   async getByProductId(id) {
-    // const product = await Product.findByPk(id, {
-    //   include: [
-    //     {
-    //       model: VariantType,
-    //       as: "variants",
-    //       include: [{ model: VariantValue, as: "values" }],
-    //     },
-    //     {
-    //       model: ProductCombination,
-    //       as: "combinations",
-    //       include: [
-    //         {
-    //           model: VariantValue,
-    //           as: "values",
-    //           through: { attributes: [] },
-    //           order: [["variantTypeId", "ASC"]],
-    //         },
-    //         Inventory,
-    //       ],
-    //     },
-    //   ],
-    //   order: [
-    //     // [{ model: ProductCombination, as: "combinations" }, "id", "ASC"],
-    //     [{ model: VariantType, as: "variants" }, "id", "ASC"],
-    //     // [
-    //     //   { model: ProductCombination, as: "combinations" },
-    //     //   { model: VariantValue, as: "values" },
-    //     //   "variantTypeId",
-    //     //   "ASC",
-    //     // ],
-    //   ],
-    // });
-
     const combinations = await ProductCombination.findAll({
       where: { productId: id },
       include: [
@@ -160,11 +115,13 @@ const productCombinationService = {
           through: { attributes: [] },
           order: [["variantTypeId", "ASC"]],
         },
-        Inventory,
+        {
+          model: Inventory,
+          as: "inventory",
+        },
       ],
       // order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
     });
-    console.log(combinations);
 
     if (!combinations) throw new Error("Combination not found");
 
@@ -185,7 +142,11 @@ const productCombinationService = {
     };
   },
 
-  async update(productId, payload) {
+  async update(id, payload) {
+    throw new Error("Method not implemented.");
+  },
+
+  async updateByProductId(productId, payload) {
     const { error } = Joi.object({
       combinations: Joi.array().items(productCombinationSchema),
     }).validate(payload, {
@@ -200,28 +161,8 @@ const productCombinationService = {
 
     const issue = validateCombinations(payload);
 
-    if (issue.duplicates.length > 0) {
-      throw ApiError.validation(
-        [
-          {
-            path: ["combinations"],
-            message: "Combinations are invalid",
-          },
-        ],
-        400
-      );
-    }
-    if (issue.conflicts.length > 0) {
-      throw ApiError.validation(
-        [
-          {
-            field: ["combinations"],
-            message: "Combinations are invalid",
-          },
-        ],
-        400,
-        "Combinations are invalid"
-      );
+    if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
+      throw ApiError.badRequest("Combinations are invalid");
     }
 
     const transaction = await sequelize.transaction();
@@ -272,6 +213,7 @@ const productCombinationService = {
         include: [
           {
             model: Inventory,
+            as: "inventory",
           },
           {
             model: VariantValue,
@@ -380,7 +322,6 @@ const productCombinationService = {
           await inventory.update(updateFields, { transaction });
         }
       }
-      console.log("transaction.commit");
 
       await transaction.commit();
       return { message: "Product updated successfully" };
@@ -432,63 +373,7 @@ const productCombinationService = {
       throw err;
     }
   },
-  // async getPaginated(query) {
-  //   const products = await Product.findAll({
-  //     include: [
-  //       {
-  //         model: Category,
-  //         as: "category",
-  //       },
-  //       {
-  //         model: VariantType,
-  //         as: "variants",
-  //         include: { model: VariantValue, as: "values" },
-  //       },
-  //       {
-  //         model: ProductVariantCombination,
-  //         as: "combinations",
-  //         include: {
-  //           model: Inventory,
-  //           as: "inventory",
-  //         },
-  //       },
-  //     ],
-  //   });
 
-  //   const groupedByCategory: Map<number, any> = new Map();
-
-  //   products.forEach((product) => {
-  //     const category = product.category;
-  //     if (!category) return;
-
-  //     const catId = category.id;
-
-  //     if (!groupedByCategory[catId]) {
-  //       groupedByCategory[catId] = {
-  //         categoryId: category.id,
-  //         categoryName: category.name,
-  //         categoryOrder: category.order,
-  //         products: [],
-  //       };
-  //     }
-
-  //     groupedByCategory[catId].products.push(product);
-  //   });
-  //   console.log(products);
-
-  //   const result = Object.values(groupedByCategory).sort(
-  //     (a, b) => a.categoryOrder - b.categoryOrder
-  //   );
-
-  //   return {
-  //     data: result,
-  //     // total: count,
-  //     // totalPages: Math.ceil(count / limit),
-  //     // currentPage: page,
-  //   };
-
-  //   return products;
-  // },
   async list() {
     const products = await Product.findAll({
       include: [
@@ -502,12 +387,109 @@ const productCombinationService = {
           as: "combinations",
           include: {
             model: Inventory,
+            as: "inventory",
           },
         },
       ],
     });
 
     return products;
+  },
+
+  async breakPack(payload) {
+    console.log(payload);
+    const { fromComboId, toComboId, packsCount, unitsPerPack, reason } =
+      payload;
+
+    const transaction = await sequelize.transaction();
+    try {
+      const fromInventory = await ProductCombination.findByPk(fromComboId, {
+        include: {
+          model: Inventory,
+          as: "inventory",
+        },
+        transaction,
+      });
+
+      const toInventory = await ProductCombination.findByPk(toComboId, {
+        include: {
+          model: Inventory,
+          as: "inventory",
+        },
+        transaction,
+      });
+
+      if (toInventory && !toInventory.inventory?.quantity) {
+        toInventory.inventory = await Inventory.create(
+          {
+            combinationId: toComboId,
+            quantity: 0,
+          },
+          { transaction }
+        );
+      }
+
+      if (fromInventory && fromInventory.inventory.quantity < packsCount) {
+        throw ApiError.validation(
+          [
+            {
+              path: ["packsCount"],
+              message: "Combinations are invalid",
+            },
+          ],
+          400
+        );
+      }
+      const user = await authService.getCurrent();
+
+      const totalQuantity = packsCount * unitsPerPack;
+      // Log BreakPack movement
+      await InventoryMovement.create(
+        {
+          type: INVENTORY_MOVEMENT_TYPE.BREAK_PACK,
+          previous: fromInventory.inventory.quantity,
+          new: fromInventory.inventory.quantity - packsCount,
+          quantity: packsCount,
+          reference: fromInventory.inventory.id,
+          reason: "Break pack",
+          userId: user.id,
+        },
+        { transaction }
+      );
+      // Log Repack movement
+      await InventoryMovement.create(
+        {
+          type: INVENTORY_MOVEMENT_TYPE.RE_PACK,
+          previous: toInventory.inventory.quantity,
+          new: toInventory.inventory.quantity + totalQuantity,
+          quantity: totalQuantity,
+          reference: fromInventory.inventory.id,
+          reason: "Repack",
+        },
+        { transaction }
+      );
+
+      // Update Inventory
+      await fromInventory.inventory.update(
+        {
+          quantity: fromInventory.inventory.quantity - packsCount,
+        },
+        { transaction }
+      );
+      await toInventory.inventory.update(
+        {
+          quantity: toInventory.inventory.quantity + totalQuantity,
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+      return toInventory;
+    } catch (error) {
+      console.log(1, error);
+      transaction.rollback();
+      throw error;
+    }
   },
 };
 

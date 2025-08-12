@@ -4,6 +4,7 @@ const router = express.Router();
 
 router.post("/:id/convertToUnit", productsController.cloneToUnit);
 router.get("/list", productsController.list);
+router.get("/sku/:sku", productsController.getAllBySku);
 router.get("/:id", productsController.get);
 router.get("/", productsController.getPaginated);
 router.post("/", productsController.create);

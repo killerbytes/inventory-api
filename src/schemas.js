@@ -56,7 +56,7 @@ export const variantValuePayloadSchema = Joi.string()
 export const variantTypesSchema = Joi.object({
   id: Joi.number().optional(),
   name: Joi.string().required(),
-  isTemplate: Joi.boolean().optional(),
+  isTemplate: Joi.boolean().optional().allow(null),
   values: Joi.array()
     .items(
       Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema)
@@ -137,9 +137,13 @@ export const purchaseOrderItemSchema = purchaseOrderStatusSchema
     combinationId: Joi.number().required(),
     quantity: Joi.number().required(),
     originalPrice: Joi.number().optional().allow(null),
-    unitPrice: Joi.number().required(),
+    purchasePrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
     discountNote: Joi.string().optional().allow(null, ""),
+    unit: Joi.string(),
+    skuSnapshot: Joi.string(),
+    nameSnapshot: Joi.string(),
+    variantSnapshot: Joi.object(),
   })
   .required()
   .meta({ className: "purchaseOrderItem" });
@@ -147,9 +151,9 @@ export const purchaseOrderItemSchema = purchaseOrderStatusSchema
 export const purchaseOrderSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
-  orderDate: Joi.date().required(),
   deliveryDate: Joi.date().required(),
-  receivedDate: Joi.date().optional(),
+  // orderDate: Joi.date().required(),
+  // receivedDate: Joi.date().optional(),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),

@@ -3,7 +3,7 @@ const { Model, DataTypes } = require("sequelize");
 class PurchaseOrderItem extends Model {
   static associate(models) {
     PurchaseOrderItem.belongsTo(models.PurchaseOrder, {
-      foreignKey: "orderId",
+      foreignKey: "purchaseOrderId",
       as: "purchaseOrder",
     });
 
@@ -17,13 +17,19 @@ class PurchaseOrderItem extends Model {
 module.exports = (sequelize) => {
   PurchaseOrderItem.init(
     {
-      orderId: { type: DataTypes.INTEGER, allowNull: false },
-      combinationId: { type: DataTypes.INTEGER, allowNull: false },
-      quantity: { type: DataTypes.INTEGER, allowNull: false },
-      originalPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
-      unitPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+      purchaseOrderId: { type: DataTypes.INTEGER },
+      combinationId: { type: DataTypes.INTEGER },
+      quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
+      originalPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+      purchasePrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+      totalAmount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
       discount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-      discountNote: { type: DataTypes.TEXT },
+      unit: DataTypes.STRING,
+      discountNote: DataTypes.TEXT,
+      skuSnapshot: DataTypes.STRING,
+      nameSnapshot: DataTypes.STRING,
+      categorySnapshot: DataTypes.JSON,
+      variantSnapshot: DataTypes.JSON,
     },
     {
       sequelize,

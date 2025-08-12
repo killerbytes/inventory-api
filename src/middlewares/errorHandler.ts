@@ -28,7 +28,6 @@ export const errorHandler = (err, req, res, next) => {
   //   return ;
   // }
   if (err instanceof ApiError) {
-    console.log(123, err);
     res.status(err.statusCode).json(err);
   }
 

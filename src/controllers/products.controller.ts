@@ -69,6 +69,16 @@ const productController = {
       next(error);
     }
   },
+
+  async getAllBySku(req, res, next) {
+    const { sku } = req.params;
+    try {
+      const product = await productService.getAllBySku(sku);
+      return res.status(200).json(product);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default productController;

@@ -45,22 +45,13 @@ class ApiError extends Error {
     details = null,
     stack
   ) {
-    const apiError = new ApiError(
+    return new ApiError(
       "INTERNAL_ERROR",
-      500,
+      statusCode,
       message,
-      [],
+      errors,
       details,
       stack
-    );
-
-    return new ApiError(
-      "VALIDATION_ERROR",
-      statusCode,
-      "Bad Request",
-      errors,
-      null,
-      null
     );
   }
 
