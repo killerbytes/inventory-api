@@ -453,6 +453,7 @@ const productCombinationService = {
           reference: fromInventory.inventory.id,
           reason: "Break pack",
           userId: user.id,
+          combinationId: fromComboId,
         },
         { transaction }
       );
@@ -465,6 +466,8 @@ const productCombinationService = {
           quantity: totalQuantity,
           reference: fromInventory.inventory.id,
           reason: "Repack",
+          userId: user.id,
+          combinationId: toComboId,
         },
         { transaction }
       );
