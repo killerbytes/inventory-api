@@ -77,6 +77,10 @@ const salesOrderService = {
         customerId,
         orderDate,
         deliveryDate,
+        isDelivery,
+        isDeliveryCompleted,
+        deliveryAddress,
+        deliveryInstructions,
         notes,
         internalNotes,
         salesOrderItems,
@@ -144,6 +148,10 @@ const salesOrderService = {
           customerId,
           orderDate,
           deliveryDate,
+          isDelivery,
+          isDeliveryCompleted,
+          deliveryAddress,
+          deliveryInstructions,
           totalAmount,
           notes,
           internalNotes,
@@ -481,8 +489,9 @@ const processReceivedOrder = async (payload, salesOrder) => {
           },
           id,
           null,
-          INVENTORY_MOVEMENT_TYPE.IN,
-          transaction
+          INVENTORY_MOVEMENT_TYPE.OUT,
+          transaction,
+          false // Decrease Inventory
         );
       })
     );

@@ -141,7 +141,15 @@ const productService = {
           ],
         },
       ],
-      order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+      order: [
+        [{ model: VariantType, as: "variants" }, "id", "ASC"],
+        [
+          { model: ProductCombination, as: "combinations" },
+          { model: VariantValue, as: "values" },
+          "id",
+          "ASC",
+        ],
+      ],
     });
 
     if (!product) throw ApiError.notFound("Product not found");
@@ -166,28 +174,6 @@ const productService = {
       throw error;
     }
 
-    // const issue = validateCombinations(payload);
-    // if (issue.duplicates.length > 0) {
-    //   throw ApiError.validation({
-    //     details: [
-    //       {
-    //         path: ["combinations"],
-    //         message: "Combinations are invalid",
-    //       },
-    //     ],
-    //   });
-    // }
-    // if (issue.conflicts.length > 0) {
-    //   throw ApiError.validation({
-    //     details: [
-    //       {
-    //         path: ["combinations"],
-    //         message: "Combinations are invalid",
-    //       },
-    //     ],
-    //   });
-    // }
-
     const transaction = await sequelize.transaction();
 
     try {
@@ -199,141 +185,6 @@ const productService = {
         { name, description, unit, categoryId },
         { transaction }
       );
-
-      // // 2. Upsert VariantTypes and VariantValues
-      // const variantTypeMap = {};
-      // const variantValueMap = {};
-      // for (const variant of variants) {
-      //   const [variantType] = await VariantType.findOrCreate({
-      //     where: { name: variant.name, productId: id },
-      //     defaults: { name: variant.name, productId: id },
-      //     transaction,
-      //   });
-      //   variantTypeMap[variant.name] = variantType;
-
-      //   for (const valueName of variant.values) {
-      //     const [variantValue] = await VariantValue.findOrCreate({
-      //       where: {
-      //         value: valueName,
-      //         variantTypeId: variantType.id,
-      //       },
-      //       defaults: {
-      //         value: valueName,
-      //         variantTypeId: variantType.id,
-      //       },
-      //       transaction,
-      //     });
-      //     variantValueMap[`${variant.name}:${valueName}`] = variantValue;
-      //   }
-      // }
-
-      // // 3. Delete existing combinations that are not in the payload
-      // const existingCombinations = await ProductCombination.findAll({
-      //   where: { productId: id },
-      //   include: [
-      //     {
-      //       model: Inventory,
-      //     },
-      //     {
-      //       model: VariantValue,
-      //       as: "values",
-      //       through: { attributes: [] },
-      //     },
-      //   ],
-      //   transaction,
-      // });
-
-      // const incomingIds = combinations.map((i) => i.id);
-
-      // const deleteCandidates = existingCombinations.filter(
-      //   (comb) => !incomingIds.includes(comb.id)
-      // );
-
-      // const deletableIds = deleteCandidates
-      //   .filter((comb) => {
-      //     return !comb.Inventory || comb.Inventory.quantity <= 0;
-      //   })
-      //   .map((comb) => comb.id);
-
-      // const blockedIds = deleteCandidates
-      //   .filter((comb) => comb.Inventory && comb.Inventory.quantity > 0)
-      //   .map((comb) => comb.id);
-
-      // if (blockedIds.length > 0) {
-      //   throw new Error(
-      //     `Cannot delete combinations with inventory > 0: ${blockedIds.join(
-      //       ", "
-      //     )}`
-      //   );
-      // }
-
-      // await ProductCombination.destroy({
-      //   where: { id: deletableIds },
-      //   transaction,
-      // });
-
-      // // 4. Upsert Combinations and Inventory
-      // for (const combo of combinations) {
-      //   const variantValueIds = Object.entries(combo.values)
-      //     .map(([type, value]) => variantValueMap[`${type}:${value}`]?.id)
-      //     .filter(Boolean);
-
-      //   if (variantValueIds.length !== Object.entries(combo.values).length) {
-      //     throw new Error("Some variant values are invalid or missing");
-      //   }
-
-      //   let combination;
-
-      //   if (combo.id) {
-      //     // Update existing combination by ID
-      //     combination = await ProductCombination.findOne({
-      //       where: { id: combo.id, productId: id },
-      //       transaction,
-      //     });
-
-      //     if (!combination) {
-      //       throw new Error(`Combination with ID ${combo.id} not found`);
-      //     }
-
-      //     console.log(11, combination, combo);
-      //     await combination.update({ ...combo }, { transaction });
-      //     // Optional: update variant values if changed
-      //     await combination.setValues(variantValueIds, { transaction });
-      //   } else {
-      //     // Create new combination if no ID
-      //     console.log("else");
-
-      //     combination = await ProductCombination.create(
-      //       { productId: id, ...combo },
-      //       { transaction }
-      //     );
-      //     await combination.addValues(variantValueIds, { transaction });
-      //   }
-
-      //   // Upsert Inventory
-      //   const [inventory] = await Inventory.findOrCreate({
-      //     where: { combinationId: combination.id },
-      //     defaults: {
-      //       combinationId: combination.id,
-      //       quantity: combo.quantity ?? 0,
-      //       // price: combo.price ?? 0,
-      //     },
-      //     transaction,
-      //   });
-
-      //   // Update inventory price/qty if different
-      //   const updateFields: any = {};
-      //   if (combo.price != null && inventory.price !== combo.price) {
-      //     updateFields.price = combo.price;
-      //   }
-      //   if (combo.quantity != null && inventory.quantity !== combo.quantity) {
-      //     updateFields.quantity = combo.quantity;
-      //   }
-
-      //   if (Object.keys(updateFields).length > 0) {
-      //     await inventory.update(updateFields, { transaction });
-      //   }
-      // }
 
       await transaction.commit();
       return product; // { message: "Product updated successfully" };

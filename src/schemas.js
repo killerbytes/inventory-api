@@ -232,7 +232,20 @@ export const salesOrderItemSchema = salesOrderStatusSchema
 export const salesOrderSchema = Joi.object({
   salesOrderNumber: Joi.string().required(),
   customerId: Joi.number().required(),
-  deliveryDate: Joi.date().required(),
+  orderDate: Joi.date().required(),
+  isDelivery: Joi.boolean().optional(),
+  isDeliveryCompleted: Joi.boolean().optional(),
+  deliveryAddress: Joi.string().when("isDelivery", {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  deliveryInstructions: Joi.string().optional(),
+  deliveryDate: Joi.date().when("isDelivery", {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   salesOrderItems: Joi.array().items(salesOrderItemSchema).required().messages({

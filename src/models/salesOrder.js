@@ -36,6 +36,11 @@ module.exports = (sequelize) => {
         type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
         defaultValue: ORDER_STATUS.PENDING,
       },
+      orderDate: DataTypes.DATE,
+      isDelivery: DataTypes.BOOLEAN,
+      isDeliveryCompleted: DataTypes.BOOLEAN,
+      deliveryAddress: DataTypes.TEXT,
+      deliveryInstructions: DataTypes.TEXT,
       deliveryDate: {
         type: DataTypes.DATE,
       },
