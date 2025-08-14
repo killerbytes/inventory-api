@@ -1,21 +1,23 @@
-import { Transaction, Op, or } from "sequelize";
+import { Transaction, Op, or, where } from "sequelize";
 import db, { sequelize } from "../models";
 import { purchaseOrderSchema } from "../schemas";
 import {
   INVENTORY_MOVEMENT_TYPE,
-  PURCHASE_ORDER_STATUS,
+  ORDER_STATUS,
+  ORDER_TYPE,
   PAGINATION,
 } from "../definitions.js";
 import authService from "./auth.service";
 import { processInventoryUpdates } from "./inventory.service";
 import { getMappedVariantValues } from "../utils";
+import ApiError from "./ApiError";
 const {
   VariantValue,
   PurchaseOrder,
   PurchaseOrderItem,
   ProductCombination,
   Product,
-  PurchaseOrderStatusHistory,
+  OrderStatusHistory,
   VariantType,
   Category,
 } = db;
@@ -39,8 +41,8 @@ const purchaseOrderService = {
             as: "supplier",
           },
           {
-            model: db.PurchaseOrderStatusHistory,
-            as: "statusHistory",
+            model: db.OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
             include: [
               {
                 model: db.User,
@@ -53,7 +55,7 @@ const purchaseOrderService = {
         nest: true,
       });
       if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
+        throw ApiError.notFound("PurchaseOrder not found");
       }
       return purchaseOrder;
     } catch (error) {
@@ -160,10 +162,10 @@ const purchaseOrderService = {
           transaction,
         }
       );
-      await PurchaseOrderStatusHistory.create(
+      await OrderStatusHistory.create(
         {
           purchaseOrderId: result.id,
-          status: PURCHASE_ORDER_STATUS.PENDING,
+          status: ORDER_STATUS.PENDING,
           changedBy: user.id,
           changedAt: new Date(),
         },
@@ -212,16 +214,16 @@ const purchaseOrderService = {
     }
 
     switch (true) {
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
-        payload.status === PURCHASE_ORDER_STATUS.RECEIVED:
+      case purchaseOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.RECEIVED:
         await processReceivedOrder(payload, purchaseOrder);
         break;
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.RECEIVED &&
-        payload.status === PURCHASE_ORDER_STATUS.COMPLETED:
+      case purchaseOrder.status === ORDER_STATUS.RECEIVED &&
+        payload.status === ORDER_STATUS.COMPLETED:
         await processCompletedOrder(payload, purchaseOrder);
         break;
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
-        payload.status === PURCHASE_ORDER_STATUS.PENDING:
+      case purchaseOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.PENDING:
         await processUpdateOrder(payload, purchaseOrder);
         break;
       default:
@@ -238,7 +240,7 @@ const purchaseOrderService = {
         throw new Error("PurchaseOrder not found");
       }
 
-      if (purchaseOrder.status !== PURCHASE_ORDER_STATUS.PENDING) {
+      if (purchaseOrder.status !== ORDER_STATUS.PENDING) {
         await purchaseOrder.destroy();
       } else {
         throw new Error("PurchaseOrder is not in a valid state");
@@ -291,8 +293,8 @@ const purchaseOrderService = {
       const order = [
         [
           {
-            model: PurchaseOrderStatusHistory,
-            as: "statusHistory",
+            model: OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
           },
           "id",
           "ASC",
@@ -314,8 +316,8 @@ const purchaseOrderService = {
             as: "purchaseOrderItems",
           },
           {
-            model: db.PurchaseOrderStatusHistory,
-            as: "statusHistory",
+            model: db.OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
             include: [
               {
                 model: db.User,
@@ -365,17 +367,17 @@ const processCompletedOrder = async (payload, purchaseOrder) => {
     await updateOrder(
       {
         ...payload,
-        status: PURCHASE_ORDER_STATUS.COMPLETED,
+        status: ORDER_STATUS.COMPLETED,
       },
       purchaseOrder,
       transaction,
       true
     );
 
-    await PurchaseOrderStatusHistory.create(
+    await OrderStatusHistory.create(
       {
         purchaseOrderId: purchaseOrder.id,
-        status: PURCHASE_ORDER_STATUS.COMPLETED,
+        status: ORDER_STATUS.COMPLETED,
         changedBy: user.id,
         changedAt: new Date(),
         createdAt: new Date(),
@@ -401,7 +403,7 @@ const processCancelledOrder = async (purchaseOrder, payload) => {
   try {
     await updateOrder(
       {
-        status: PURCHASE_ORDER_STATUS.CANCELLED,
+        status: ORDER_STATUS.CANCELLED,
         cancellationReason: payload.reason,
       },
       purchaseOrder,
@@ -422,10 +424,10 @@ const processCancelledOrder = async (purchaseOrder, payload) => {
       })
     );
 
-    await PurchaseOrderStatusHistory.create(
+    await OrderStatusHistory.create(
       {
         purchaseOrderId: purchaseOrder.id,
-        status: PURCHASE_ORDER_STATUS.CANCELLED,
+        status: ORDER_STATUS.CANCELLED,
         changedBy: user.id,
         changedAt: new Date(),
         createdAt: new Date(),
@@ -458,7 +460,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
     await updateOrder(
       {
         ...payload,
-        status: PURCHASE_ORDER_STATUS.RECEIVED,
+        status: ORDER_STATUS.RECEIVED,
         totalAmount,
       },
       purchaseOrder,
@@ -482,10 +484,10 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
       })
     );
 
-    await PurchaseOrderStatusHistory.create(
+    await OrderStatusHistory.create(
       {
         purchaseOrderId: purchaseOrder.id,
-        status: PURCHASE_ORDER_STATUS.RECEIVED,
+        status: ORDER_STATUS.RECEIVED,
         changedBy: user.id,
         changedAt: new Date(),
         createdAt: new Date(),

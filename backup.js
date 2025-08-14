@@ -141,7 +141,7 @@ if (command === "backup") {
   }
   restore(restoreFile).then(() => {
     console.log("Starting dev server...");
-    return runCommand("npm run dev");
+    runCommand("npm run dev");
   });
 } else if (command === "import-sequelize") {
   if (!file)

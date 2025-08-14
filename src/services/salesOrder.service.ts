@@ -1,47 +1,61 @@
-import { Transaction } from "sequelize";
-import ApiError from "./ApiError";
-import db from "../models";
-import { salesOrderSchema, salesOrderStatusSchema } from "../schemas";
+import { Transaction, Op, or } from "sequelize";
+import db, { sequelize } from "../models";
+import { salesOrderSchema } from "../schemas";
 import {
-  ORDER_TYPE,
   INVENTORY_MOVEMENT_TYPE,
-  SALES_ORDER_STATUS,
+  ORDER_STATUS,
+  ORDER_TYPE,
   PAGINATION,
 } from "../definitions.js";
-import { Op } from "sequelize";
 import authService from "./auth.service";
-const { SalesOrder, SalesOrderItem, Product, Inventory } = db;
+import { processInventoryUpdates } from "./inventory.service";
+import { getMappedVariantValues } from "../utils";
+import ApiError from "./ApiError";
+const {
+  VariantValue,
+  SalesOrder,
+  SalesOrderItem,
+  ProductCombination,
+  Product,
+  OrderStatusHistory,
+  VariantType,
+  Category,
+} = db;
 
 const salesOrderService = {
   async get(id) {
     try {
       const salesOrder = await SalesOrder.findByPk(id, {
+        // attributes: {
+        //   exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
+        // },
         include: [
           {
             model: SalesOrderItem,
             as: "salesOrderItems",
+            // where: { orderId: id },
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+          },
+          {
+            model: db.Customer,
+            as: "customer",
+          },
+          {
+            model: db.OrderStatusHistory,
+            as: "salesOrderStatusHistory",
             include: [
               {
-                model: Inventory,
-                as: "inventory",
-                include: [
-                  {
-                    model: Product,
-                    as: "product",
-                  },
-                ],
+                model: db.User,
+                as: "user",
               },
             ],
           },
-          {
-            model: db.User,
-            as: "receivedByUser",
-          },
         ],
+        // raw: true,
         nest: true,
       });
       if (!salesOrder) {
-        throw new Error("SalesOrder not found");
+        throw ApiError.notFound("SalesOrder not found");
       }
       return salesOrder;
     } catch (error) {
@@ -49,70 +63,120 @@ const salesOrderService = {
     }
   },
   async create(payload) {
-    const user = await authService.getCurrent();
     const { error } = salesOrderSchema.validate(payload, {
       abortEarly: false,
     });
     if (error) {
       throw error;
     }
-
+    const user = await authService.getCurrent();
+    const transaction = await sequelize.transaction();
     try {
-      const { customer, orderDate, deliveryDate, notes, salesOrderItems } =
-        payload;
+      const {
+        salesOrderNumber,
+        customerId,
+        orderDate,
+        deliveryDate,
+        notes,
+        internalNotes,
+        salesOrderItems,
+        modeOfPayment,
+        checkNumber,
+        dueDate,
+      } = payload;
 
       const totalAmount = salesOrderItems.reduce(
-        (total: number, item: any) => total + item.unitPrice * item.quantity,
+        (total: number, item: any) =>
+          total + item.purchasePrice * item.quantity,
         0
       );
 
-      const items = await Promise.all(
+      const processedItems = await Promise.all(
         salesOrderItems.map(async (item) => {
-          const inventory = await Inventory.findByPk(item.inventoryId);
-          return {
+          const productCombination = await ProductCombination.findByPk(
+            item.combinationId,
+            {
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+              transaction,
+            }
+          );
+
+          const props = {
             ...item,
-            originalPrice: inventory.price,
+            originalPrice: productCombination.price,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
           };
+
+          return props;
         })
       );
 
-      // throw new Error(JSON.stringify(items));
-      const result = await db.sequelize.transaction(
-        async (transaction: Transaction) => {
-          try {
-            const salesOrder = await SalesOrder.create(
-              {
-                customer,
-                orderDate,
-                status: SALES_ORDER_STATUS.COMPLETED,
-                deliveryDate,
-                receivedDate: new Date(),
-                totalAmount,
-                receivedBy: user.id,
-                notes,
-                salesOrderItems: items,
-              },
-              {
-                transaction,
-                include: [
-                  {
-                    model: SalesOrderItem,
-                    as: "salesOrderItems",
-                  },
-                ],
-              }
-            );
-            if (salesOrder.status === SALES_ORDER_STATUS.COMPLETED) {
-              await processCompletedOrder(salesOrder, user.id, transaction);
-            }
-            return salesOrder;
-          } catch (error) {
-            throw error;
-          }
+      const result = await SalesOrder.create(
+        {
+          salesOrderNumber,
+          customerId,
+          orderDate,
+          deliveryDate,
+          totalAmount,
+          notes,
+          internalNotes,
+          salesOrderItems: processedItems,
+          modeOfPayment,
+          checkNumber,
+          dueDate,
+        },
+        {
+          include: [
+            {
+              model: SalesOrderItem,
+              as: "salesOrderItems",
+            },
+          ],
+          transaction,
         }
       );
+      await OrderStatusHistory.create(
+        {
+          salesOrderId: result.id,
+          status: ORDER_STATUS.PENDING,
+
+          changedBy: user.id,
+          changedAt: new Date(),
+        },
+        { transaction }
+      );
+      transaction.commit();
       return result;
     } catch (error) {
+      transaction.rollback();
+
       throw error;
     }
   },
@@ -138,45 +202,54 @@ const salesOrderService = {
   },
 
   async update(id, payload) {
-    const { error } = salesOrderSchema.validate(payload, {
-      abortEarly: false,
+    const salesOrder = await SalesOrder.findByPk(id, {
+      include: [
+        {
+          model: SalesOrderItem,
+          as: "salesOrderItems",
+        },
+      ],
     });
-    if (error) {
-      throw error;
+    if (!salesOrder) {
+      throw new Error("SalesOrder not found");
     }
-    try {
-      const salesOrder = await SalesOrder.findByPk(id);
-      if (!salesOrder) {
-        throw new Error("SalesOrder not found");
-      }
 
-      const result = await db.sequelize.transaction(
-        async (transaction: Transaction) => {
-          try {
-            await salesOrder.update(payload, { transaction });
-            return salesOrder;
-          } catch (error) {
-            throw error;
-          }
-        }
-      );
-      return salesOrder;
-    } catch (error) {
-      throw error;
+    switch (true) {
+      case salesOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.RECEIVED:
+        await processReceivedOrder(payload, salesOrder);
+        break;
+      case salesOrder.status === ORDER_STATUS.RECEIVED &&
+        payload.status === ORDER_STATUS.COMPLETED:
+        await processCompletedOrder(payload, salesOrder);
+        break;
+      case salesOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.PENDING:
+        await processUpdateOrder(payload, salesOrder);
+        break;
+      default:
+        throw new Error(
+          `Invalid status change from ${salesOrder.status} to ${payload.status}`
+        );
     }
   },
+
   async delete(id) {
     try {
       const salesOrder = await SalesOrder.findByPk(id);
       if (!salesOrder) {
         throw new Error("SalesOrder not found");
       }
-      await salesOrder.destroy();
+
+      if (salesOrder.status !== ORDER_STATUS.PENDING) {
+        await salesOrder.destroy();
+      } else {
+        throw new Error("SalesOrder is not in a valid state");
+      }
     } catch (error) {
       throw error;
     }
   },
-
   async getPaginated(params) {
     const {
       limit = PAGINATION.LIMIT,
@@ -218,11 +291,20 @@ const salesOrderService = {
     const offset = (page - 1) * limit;
 
     try {
-      const order = [];
-      if (sort) {
-        order.push([sort as string, order || "ASC"]);
-      }
+      const order = [
+        [
+          {
+            model: OrderStatusHistory,
+            as: "salesOrderStatusHistory",
+          },
+          "id",
+          "ASC",
+        ],
+      ];
 
+      // if (sort) {
+      //   order.push([sort as string, order || "ASC"]);
+      // }
       const { count, rows } = await SalesOrder.findAndCountAll({
         limit,
         offset,
@@ -231,18 +313,22 @@ const salesOrderService = {
         nest: true,
         include: [
           {
-            model: SalesOrderItem,
+            model: db.SalesOrderItem,
             as: "salesOrderItems",
+          },
+          {
+            model: db.OrderStatusHistory,
+            as: "salesOrderStatusHistory",
             include: [
               {
-                model: Inventory,
-                as: "inventory",
+                model: db.User,
+                as: "user",
               },
             ],
           },
           {
-            model: db.User,
-            as: "receivedByUser",
+            model: db.Customer,
+            as: "customer",
           },
         ],
       });
@@ -254,183 +340,253 @@ const salesOrderService = {
         currentPage: page,
       };
     } catch (error) {
+      console.log(error);
       throw error;
     }
   },
 
-  async updateStatus(id, payload, user) {
-    const { error } = salesOrderStatusSchema.validate(payload, {
-      abortEarly: false,
+  async cancelOrder(id, payload) {
+    const salesOrder = await SalesOrder.findByPk(id, {
+      include: [
+        {
+          model: SalesOrderItem,
+          as: "salesOrderItems",
+        },
+      ],
     });
-    if (error) {
-      throw error;
+    if (!salesOrder) {
+      throw new Error("SalesOrder not found");
     }
+    await processCancelledOrder(salesOrder, payload);
+  },
+};
 
-    try {
-      const salesOrder = await SalesOrder.findByPk(id, {
-        include: [
+const processCompletedOrder = async (payload, salesOrder) => {
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        ...payload,
+        status: ORDER_STATUS.COMPLETED,
+      },
+      salesOrder,
+      transaction,
+      true
+    );
+
+    await OrderStatusHistory.create(
+      {
+        salesOrderId: salesOrder.id,
+        status: ORDER_STATUS.COMPLETED,
+
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCompletedOrder");
+  }
+};
+
+const processCancelledOrder = async (salesOrder, payload) => {
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        status: ORDER_STATUS.CANCELLED,
+        cancellationReason: payload.reason,
+      },
+      salesOrder,
+      transaction
+    );
+
+    const { salesOrderItems, id } = salesOrder;
+    await Promise.all(
+      salesOrderItems.map(async (item) => {
+        await processInventoryUpdates(
+          item,
+          id,
+          payload.reason,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
+          transaction,
+          false
+        );
+      })
+    );
+
+    await OrderStatusHistory.create(
+      {
+        salesOrderId: salesOrder.id,
+        status: ORDER_STATUS.CANCELLED,
+
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCancelledOrder");
+  }
+};
+
+const processReceivedOrder = async (payload, salesOrder) => {
+  const transaction = await db.sequelize.transaction();
+  const user = await authService.getCurrent();
+  try {
+    const totalAmount = payload.salesOrderItems.reduce(
+      (total: number, item: any) => total + item.purchasePrice * item.quantity,
+      0
+    );
+
+    await updateOrder(
+      {
+        ...payload,
+        status: ORDER_STATUS.RECEIVED,
+        totalAmount,
+      },
+      salesOrder,
+      transaction,
+      true
+    );
+
+    const { salesOrderItems, id } = salesOrder;
+    await Promise.all(
+      salesOrderItems.map(async (item) => {
+        await processInventoryUpdates(
           {
-            model: SalesOrderItem,
-            as: "salesOrderItems",
-            include: [
-              {
-                model: Inventory,
-                as: "inventory",
-                include: [
-                  {
-                    model: Product,
-                    as: "product",
-                  },
-                ],
-              },
-            ],
+            combinationId: item.combinationId,
+            quantity: item.quantity,
           },
-        ],
+          id,
+          null,
+          INVENTORY_MOVEMENT_TYPE.IN,
+          transaction
+        );
+      })
+    );
+
+    await OrderStatusHistory.create(
+      {
+        salesOrderId: salesOrder.id,
+        status: ORDER_STATUS.RECEIVED,
+
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processInventoryUpdates");
+  }
+};
+const processUpdateOrder = async (payload, salesOrder) => {
+  await db.sequelize.transaction(async (transaction: Transaction) => {
+    try {
+      await updateOrder(payload, salesOrder, transaction, true);
+    } catch (error) {
+      throw new Error("Error in processUpdateOrder");
+    }
+  });
+};
+
+const updateOrder = async (
+  payload,
+  salesOrder,
+  transaction,
+  updateOrderItems = false
+) => {
+  try {
+    await salesOrder.update(payload, { transaction });
+    if (updateOrderItems) {
+      await SalesOrderItem.destroy({
+        where: { salesOrderId: salesOrder.id },
+        transaction,
       });
 
-      if (!salesOrder) {
-        throw new Error("Sales Order not found");
-      }
-
-      if (salesOrder.status === SALES_ORDER_STATUS.COMPLETED) {
-        await db.sequelize.transaction(async (transaction: Transaction) => {
-          const status = SALES_ORDER_STATUS.CANCELLED;
-          try {
-            await salesOrder.update(
-              {
-                status,
-                receivedBy: user.id,
-                receivedDate: new Date(),
-              },
-              {
-                transaction,
-              }
-            );
-          } catch (error) {
-            throw error;
-          }
-          try {
-            await processCancelledOrder(salesOrder, user.id, transaction);
-          } catch (error) {
-            throw error;
-          }
-        });
-      }
-
-      return salesOrder;
-    } catch (error: any) {
-      throw error;
-    }
-  },
-};
-
-const processCompletedOrder = async (salesOrder, userId, transaction) => {
-  const orderWithItems = await salesOrder.sequelize.models.SalesOrder.findByPk(
-    salesOrder.id,
-    {
-      include: [
-        {
-          association: "salesOrderItems",
-          include: ["inventory"],
-        },
-      ],
-      transaction,
-    }
-  );
-
-  await Promise.all(
-    orderWithItems.salesOrderItems.map(async (item) => {
-      const [inventory] =
-        await salesOrder.sequelize.models.Inventory.findOrCreate({
-          where: { productId: item.inventory.productId },
-          include: [
+      const items = await Promise.all(
+        payload.salesOrderItems.map(async (item) => {
+          const productCombination = await ProductCombination.findByPk(
+            item.combinationId,
             {
-              model: Product,
-              as: "product",
-            },
-          ],
-          defaults: {
-            productId: item.inventory.productId,
-            quantity: 0,
-          },
-          transaction,
-        });
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+            }
+          );
 
-      if (inventory.quantity - item.quantity < 0) {
-        throw new Error(
-          "Quantity is less than zero: " + inventory.product.name
-        );
-      }
-      //TODO
-      // await salesOrder.sequelize.models.InventoryTransaction.create(
-      //   {
-      //     inventoryId: inventory.id,
-      //     previousValue: inventory.quantity,
-      //     newValue: parseInt(inventory.quantity) - parseInt(item.quantity),
-      //     value: item.quantity,
-      //     transactionType: INVENTORY_TRANSACTION_TYPE.SALE,
-      //     orderId: orderWithItems.id,
-      //     orderType: ORDER_TYPE.SALES,
-      //     userId,
-      //   },
-      //   { transaction }
-      // );
-
-      await inventory.update(
-        {
-          quantity: parseInt(inventory.quantity) - parseInt(item.quantity),
-        },
-        { transaction }
+          const props = {
+            ...item,
+            salesOrderId: salesOrder.id,
+            originalPrice: productCombination.price,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
+          };
+          return props;
+        })
       );
-    })
-  );
-};
 
-const processCancelledOrder = async (salesOrder, userId, transaction) => {
-  const orderWithItems = await salesOrder.sequelize.models.SalesOrder.findByPk(
-    salesOrder.id,
-    {
-      include: [
-        {
-          association: "salesOrderItems",
-          include: ["inventory"],
-        },
-      ],
-      transaction,
+      await SalesOrderItem.bulkCreate(items, { transaction });
     }
-  );
-
-  await Promise.all(
-    orderWithItems.salesOrderItems.map(async (item) => {
-      const [inventory] =
-        await salesOrder.sequelize.models.Inventory.findOrCreate({
-          where: { productId: item.inventory.productId },
-          defaults: { productId: item.inventoryId, quantity: 0 },
-          transaction,
-        });
-      //TODO
-      // await salesOrder.sequelize.models.InventoryTransaction.create(
-      //   {
-      //     inventoryId: inventory.id,
-      //     previousValue: inventory.quantity,
-      //     newValue: parseInt(inventory.quantity) + parseInt(item.quantity),
-      //     value: item.quantity,
-      //     transactionType: INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-      //     orderId: orderWithItems.id,
-      //     orderType: ORDER_TYPE.SALES,
-      //     userId,
-      //   },
-      //   { transaction }
-      // );
-
-      await inventory.update(
-        {
-          quantity: parseInt(inventory.quantity) + parseInt(item.quantity),
-        },
-        { transaction }
-      );
-    })
-  );
+  } catch (error) {
+    console.log(error);
+    throw new Error("Error in updateOrderItems");
+  }
 };
 
 export default salesOrderService;

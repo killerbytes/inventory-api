@@ -1,16 +1,16 @@
 const { Model, DataTypes } = require("sequelize");
 
-class Supplier extends Model {
+class Customer extends Model {
   static associate(models) {
-    Supplier.hasMany(models.PurchaseOrder, {
-      foreignKey: "supplierId",
-      as: "purchaseOrders",
+    Customer.hasMany(models.SalesOrder, {
+      foreignKey: "customerId",
+      as: "salesOrders",
     });
   }
 }
 
 module.exports = (sequelize) => {
-  Supplier.init(
+  Customer.init(
     {
       name: { type: DataTypes.STRING, allowNull: false },
       contact: { type: DataTypes.STRING },
@@ -32,5 +32,5 @@ module.exports = (sequelize) => {
     }
   );
 
-  return Supplier;
+  return Customer;
 };

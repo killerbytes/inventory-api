@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 
 class User extends Model {
   static associate(models) {
-    // User.hasMany(models.PurchaseOrderStatusHistory, {
+    // User.hasMany(models.OrderStatusHistory, {
     //   foreignKey: "changedBy",
     //   as: "user",
     // });

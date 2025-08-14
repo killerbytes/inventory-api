@@ -152,8 +152,6 @@ export const purchaseOrderSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
-  // orderDate: Joi.date().required(),
-  // receivedDate: Joi.date().optional(),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),
@@ -216,22 +214,27 @@ export const salesOrderStatusSchema = Joi.object({
 
 export const salesOrderItemSchema = salesOrderStatusSchema
   .keys({
-    inventoryId: Joi.number().required(),
+    id: Joi.number().optional(),
+    combinationId: Joi.number().required(),
     quantity: Joi.number().required(),
-    unitPrice: Joi.number().required(),
-    originalPrice: Joi.number().allow(null),
+    originalPrice: Joi.number().optional().allow(null),
+    purchasePrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
-    inventory: Joi.object(),
+    discountNote: Joi.string().optional().allow(null, ""),
+    unit: Joi.string(),
+    skuSnapshot: Joi.string(),
+    nameSnapshot: Joi.string(),
+    variantSnapshot: Joi.object(),
   })
   .required()
   .meta({ className: "salesOrderItem" });
 
 export const salesOrderSchema = Joi.object({
-  customer: Joi.string().required(),
-  orderDate: Joi.date().required(),
+  salesOrderNumber: Joi.string().required(),
+  customerId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
-  receivedDate: Joi.date().optional(),
-  notes: Joi.string().optional().allow(null),
+  notes: Joi.string().optional().allow(null, ""),
+  internalNotes: Joi.string().optional().allow(null, ""),
   salesOrderItems: Joi.array().items(salesOrderItemSchema).required().messages({
     "array.includesRequiredUnknowns":
       "Purchase order must include at least one product.",

@@ -8,6 +8,6 @@ router.get("/", salesOrderController.getPaginated);
 router.post("/", salesOrderController.create);
 router.patch("/:id", salesOrderController.update);
 router.delete("/:id", salesOrderController.delete);
-router.patch("/:id/status", salesOrderController.updateStatus);
+router.patch("/:id/cancel", salesOrderController.cancelOrder);
 
 export default router;
