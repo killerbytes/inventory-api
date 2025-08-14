@@ -1,4 +1,4 @@
-import inventoryTransactionService from "../services/inventoryTransactions.service";
+import inventoryTransactionService from "../services/inventoryMovement.service";
 
 const inventoryTransactionController = {
   async getPaginated(req, res, next) {

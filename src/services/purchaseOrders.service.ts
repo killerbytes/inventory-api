@@ -1,68 +1,61 @@
-import { Transaction } from "sequelize";
-import ApiError from "./ApiError";
-import db from "../models";
-import { purchaseOrderSchema } from "../schema";
+import { Transaction, Op, or, where } from "sequelize";
+import db, { sequelize } from "../models";
+import { purchaseOrderSchema } from "../schemas";
 import {
-  INVENTORY_TRANSACTION_TYPE,
+  INVENTORY_MOVEMENT_TYPE,
+  ORDER_STATUS,
   ORDER_TYPE,
-  PURCHASE_ORDER_STATUS,
   PAGINATION,
 } from "../definitions.js";
-import { Op } from "sequelize";
 import authService from "./auth.service";
 import { processInventoryUpdates } from "./inventory.service";
-const { PurchaseOrder, PurchaseOrderItem, Product } = db;
+import { getMappedVariantValues } from "../utils";
+import ApiError from "./ApiError";
+const {
+  VariantValue,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  ProductCombination,
+  Product,
+  OrderStatusHistory,
+  VariantType,
+  Category,
+} = db;
 
 const purchaseOrderService = {
   async get(id) {
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id, {
-        attributes: {
-          exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
-        },
+        // attributes: {
+        //   exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
+        // },
         include: [
           {
             model: PurchaseOrderItem,
             as: "purchaseOrderItems",
-            where: { orderId: id },
+            // where: { orderId: id },
             attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-              {
-                model: Product,
-                as: "product",
-                include: [
-                  { model: db.Category, as: "category", attributes: ["name"] },
-                ],
-                attributes: { exclude: ["createdAt", "updatedAt"] },
-              },
-            ],
           },
           {
             model: db.Supplier,
             as: "supplier",
           },
           {
-            model: db.User,
-            as: "orderByUser",
-          },
-          {
-            model: db.User,
-            as: "receivedByUser",
-          },
-          {
-            model: db.User,
-            as: "completedByUser",
-          },
-          {
-            model: db.User,
-            as: "cancelledByUser",
+            model: db.OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
+            include: [
+              {
+                model: db.User,
+                as: "user",
+              },
+            ],
           },
         ],
         // raw: true,
         nest: true,
       });
       if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
+        throw ApiError.notFound("PurchaseOrder not found");
       }
       return purchaseOrder;
     } catch (error) {
@@ -74,9 +67,10 @@ const purchaseOrderService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
+    const transaction = await sequelize.transaction();
     try {
       const {
         purchaseOrderNumber,
@@ -92,8 +86,56 @@ const purchaseOrderService = {
       } = payload;
 
       const totalAmount = purchaseOrderItems.reduce(
-        (total: number, item: any) => total + item.unitPrice * item.quantity,
+        (total: number, item: any) =>
+          total + item.purchasePrice * item.quantity,
         0
+      );
+
+      const processedItems = await Promise.all(
+        purchaseOrderItems.map(async (item) => {
+          const productCombination = await ProductCombination.findByPk(
+            item.combinationId,
+            {
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+              transaction,
+            }
+          );
+
+          const props = {
+            ...item,
+            originalPrice: productCombination.price,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
+          };
+
+          return props;
+        })
       );
 
       const result = await PurchaseOrder.create(
@@ -103,10 +145,9 @@ const purchaseOrderService = {
           orderDate,
           deliveryDate,
           totalAmount,
-          orderBy: user.id,
           notes,
           internalNotes,
-          purchaseOrderItems,
+          purchaseOrderItems: processedItems,
           modeOfPayment,
           checkNumber,
           dueDate,
@@ -118,11 +159,23 @@ const purchaseOrderService = {
               as: "purchaseOrderItems",
             },
           ],
+          transaction,
         }
       );
-
+      await OrderStatusHistory.create(
+        {
+          purchaseOrderId: result.id,
+          status: ORDER_STATUS.PENDING,
+          changedBy: user.id,
+          changedAt: new Date(),
+        },
+        { transaction }
+      );
+      transaction.commit();
       return result;
     } catch (error) {
+      transaction.rollback();
+
       throw error;
     }
   },
@@ -161,23 +214,22 @@ const purchaseOrderService = {
     }
 
     switch (true) {
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
-        payload.status === PURCHASE_ORDER_STATUS.RECEIVED:
+      case purchaseOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.RECEIVED:
         await processReceivedOrder(payload, purchaseOrder);
         break;
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.RECEIVED &&
-        payload.status === PURCHASE_ORDER_STATUS.COMPLETED:
+      case purchaseOrder.status === ORDER_STATUS.RECEIVED &&
+        payload.status === ORDER_STATUS.COMPLETED:
         await processCompletedOrder(payload, purchaseOrder);
         break;
-      case purchaseOrder.status === PURCHASE_ORDER_STATUS.PENDING &&
-        payload.status === PURCHASE_ORDER_STATUS.PENDING:
+      case purchaseOrder.status === ORDER_STATUS.PENDING &&
+        payload.status === ORDER_STATUS.PENDING:
         await processUpdateOrder(payload, purchaseOrder);
         break;
       default:
         throw new Error(
           `Invalid status change from ${purchaseOrder.status} to ${payload.status}`
         );
-        break;
     }
   },
 
@@ -188,7 +240,7 @@ const purchaseOrderService = {
         throw new Error("PurchaseOrder not found");
       }
 
-      if (purchaseOrder.status !== PURCHASE_ORDER_STATUS.PENDING) {
+      if (purchaseOrder.status !== ORDER_STATUS.PENDING) {
         await purchaseOrder.destroy();
       } else {
         throw new Error("PurchaseOrder is not in a valid state");
@@ -238,10 +290,20 @@ const purchaseOrderService = {
     const offset = (page - 1) * limit;
 
     try {
-      const order = [];
-      if (sort) {
-        order.push([sort as string, order || "ASC"]);
-      }
+      const order = [
+        [
+          {
+            model: OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
+          },
+          "id",
+          "ASC",
+        ],
+      ];
+
+      // if (sort) {
+      //   order.push([sort as string, order || "ASC"]);
+      // }
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,
@@ -252,26 +314,16 @@ const purchaseOrderService = {
           {
             model: db.PurchaseOrderItem,
             as: "purchaseOrderItems",
+          },
+          {
+            model: db.OrderStatusHistory,
+            as: "purchaseOrderStatusHistory",
             include: [
               {
-                model: db.Product,
-                as: "product",
-                include: [
-                  {
-                    model: db.Category,
-                    as: "category",
-                  },
-                ],
+                model: db.User,
+                as: "user",
               },
             ],
-          },
-          {
-            model: db.User,
-            as: "receivedByUser",
-          },
-          {
-            model: db.User,
-            as: "orderByUser",
           },
           {
             model: db.Supplier,
@@ -287,6 +339,7 @@ const purchaseOrderService = {
         currentPage: page,
       };
     } catch (error) {
+      console.log(error);
       throw error;
     }
   },
@@ -303,110 +356,162 @@ const purchaseOrderService = {
     if (!purchaseOrder) {
       throw new Error("PurchaseOrder not found");
     }
-    await processCancelledOrder(payload, purchaseOrder);
+    await processCancelledOrder(purchaseOrder, payload);
   },
 };
 
 const processCompletedOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.COMPLETED,
-          completedBy: user.id,
-          completedDate: new Date(),
-        },
-        purchaseOrder,
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        ...payload,
+        status: ORDER_STATUS.COMPLETED,
+      },
+      purchaseOrder,
+      transaction,
+      true
+    );
+
+    await OrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: ORDER_STATUS.COMPLETED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
         transaction,
-        true
-      );
-    } catch (error) {
-      throw new Error("Error in processCompletedOrder");
-    }
-  });
+      }
+    );
+
+    transaction.commit();
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCompletedOrder");
+  }
 };
 
-const processCancelledOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.CANCELLED,
-          cancelledBy: user.id,
-          cancelledDate: new Date(),
-        },
-        purchaseOrder,
-        transaction
-      );
-    } catch (error) {
-      console.log(333, error);
+const processCancelledOrder = async (purchaseOrder, payload) => {
+  const user = await authService.getCurrent();
+  const transaction = await db.sequelize.transaction();
+  try {
+    await updateOrder(
+      {
+        status: ORDER_STATUS.CANCELLED,
+        cancellationReason: payload.reason,
+      },
+      purchaseOrder,
+      transaction
+    );
 
-      throw new Error("Error in processCancelledOrder");
-    }
-    try {
-      const { purchaseOrderItems, id } = purchaseOrder;
-      await Promise.all(
-        purchaseOrderItems.map(async (item) => {
-          await processInventoryUpdates(
-            item,
-            id,
-            INVENTORY_TRANSACTION_TYPE.CANCELLATION,
-            transaction,
-            false
-          );
-        })
-      );
-    } catch (error) {
-      throw new Error("Error in processInventoryUpdates");
-    }
-  });
+    const { purchaseOrderItems, id } = purchaseOrder;
+    await Promise.all(
+      purchaseOrderItems.map(async (item) => {
+        await processInventoryUpdates(
+          item,
+          id,
+          payload.reason,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
+          transaction,
+          false
+        );
+      })
+    );
+
+    await OrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: ORDER_STATUS.CANCELLED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processCancelledOrder");
+  }
 };
 
 const processReceivedOrder = async (payload, purchaseOrder) => {
-  await db.sequelize.transaction(async (transaction: Transaction) => {
-    const user = await authService.getCurrent();
-    try {
-      await updateOrder(
-        {
-          ...payload,
-          status: PURCHASE_ORDER_STATUS.RECEIVED,
-          receivedBy: user.id,
-          receivedDate: new Date(),
-        },
-        purchaseOrder,
+  const transaction = await db.sequelize.transaction();
+  const user = await authService.getCurrent();
+  try {
+    const totalAmount = payload.purchaseOrderItems.reduce(
+      (total: number, item: any) => total + item.purchasePrice * item.quantity,
+      0
+    );
+
+    await updateOrder(
+      {
+        ...payload,
+        status: ORDER_STATUS.RECEIVED,
+        totalAmount,
+      },
+      purchaseOrder,
+      transaction,
+      true
+    );
+
+    const { purchaseOrderItems, id } = purchaseOrder;
+    await Promise.all(
+      purchaseOrderItems.map(async (item) => {
+        await processInventoryUpdates(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+          },
+          id,
+          null,
+          INVENTORY_MOVEMENT_TYPE.IN,
+          transaction
+        );
+      })
+    );
+
+    await OrderStatusHistory.create(
+      {
+        purchaseOrderId: purchaseOrder.id,
+        status: ORDER_STATUS.RECEIVED,
+        changedBy: user.id,
+        changedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
         transaction,
-        true
-      );
-    } catch (error) {
-      throw error;
-    }
-    try {
-      const { purchaseOrderItems, id } = purchaseOrder;
-      await Promise.all(
-        purchaseOrderItems.map(async (item) => {
-          await processInventoryUpdates(
-            item,
-            id,
-            INVENTORY_TRANSACTION_TYPE.PURCHASE,
-            transaction
-          );
-        })
-      );
-    } catch (error) {
-      throw new Error("Error in processInventoryUpdates");
-    }
-  });
+      }
+    );
+
+    transaction.commit();
+    return;
+  } catch (error) {
+    console.log(error);
+
+    transaction.rollback();
+    throw new Error("Error in processInventoryUpdates");
+  }
 };
 const processUpdateOrder = async (payload, purchaseOrder) => {
   await db.sequelize.transaction(async (transaction: Transaction) => {
     try {
       await updateOrder(payload, purchaseOrder, transaction, true);
     } catch (error) {
-      console.log(22, error);
       throw new Error("Error in processUpdateOrder");
     }
   });
@@ -420,28 +525,62 @@ const updateOrder = async (
 ) => {
   try {
     await purchaseOrder.update(payload, { transaction });
-  } catch (error) {
-    throw new Error("Error in updateOrder");
-  }
-  try {
     if (updateOrderItems) {
       await PurchaseOrderItem.destroy({
-        where: { orderId: purchaseOrder.id },
+        where: { purchaseOrderId: purchaseOrder.id },
         transaction,
       });
 
-      const items = payload.purchaseOrderItems.map((item) => {
-        const props = {
-          ...item,
-          orderId: purchaseOrder.id,
-        };
+      const items = await Promise.all(
+        payload.purchaseOrderItems.map(async (item) => {
+          const productCombination = await ProductCombination.findByPk(
+            item.combinationId,
+            {
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                  include: [
+                    { model: Category, as: "category" },
+                    {
+                      model: VariantType,
+                      as: "variants",
+                      include: [{ model: VariantValue, as: "values" }],
+                    },
+                  ],
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                  order: [["variantTypeId", "ASC"]],
+                },
+              ],
+            }
+          );
 
-        return props;
-      });
+          const props = {
+            ...item,
+            purchaseOrderId: purchaseOrder.id,
+            originalPrice: productCombination.price,
+            totalAmount: item.purchasePrice * item.quantity,
+            unit: productCombination.product.unit,
+            nameSnapshot: productCombination.product.name,
+            categorySnapshot: productCombination.product.category,
+            variantSnapshot: getMappedVariantValues(
+              productCombination.product.variants,
+              productCombination.values
+            ),
+            skuSnapshot: productCombination.sku,
+          };
+          return props;
+        })
+      );
 
       await PurchaseOrderItem.bulkCreate(items, { transaction });
     }
   } catch (error) {
+    console.log(error);
     throw new Error("Error in updateOrderItems");
   }
 };

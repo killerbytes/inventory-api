@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import ApiError from "./ApiError";
 const { PAGINATION } = require("../definitions");
-const { userSchema, userBaseSchema } = require("../schema");
 const { Op } = require("sequelize");
 import db from "../models";
+import { userBaseSchema, userSchema } from "../schemas";
 const { User } = db;
 
 const userService = {
@@ -23,7 +23,7 @@ const userService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const { name, email, username, password } = payload;
@@ -51,7 +51,7 @@ const userService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const user = await User.findByPk(id);

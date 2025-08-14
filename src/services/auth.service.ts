@@ -13,14 +13,10 @@ const authService = {
       });
 
       if (!user || !User.validatePassword(password, user.password)) {
-        console.log("343");
-
         throw new Error("Invalid username or password");
       }
       return user;
     } catch (error) {
-      console.log(343, error);
-
       throw error;
     }
   },

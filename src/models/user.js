@@ -3,36 +3,15 @@ const bcrypt = require("bcrypt");
 
 class User extends Model {
   static associate(models) {
-    User.hasMany(models.PurchaseOrder, {
-      foreignKey: "orderBy",
-      as: "purchaseOrders",
-    });
-    User.hasMany(models.PurchaseOrder, {
-      foreignKey: "receivedBy",
-      as: "receivedPurchaseOrders",
-    });
-    User.hasMany(models.PurchaseOrder, {
-      foreignKey: "completedBy",
-      as: "completedPurchaseOrders",
-    });
-    User.hasMany(models.PurchaseOrder, {
-      foreignKey: "cancelledBy",
-      as: "cancelledPurchaseOrders",
-    });
-    User.hasMany(models.SalesOrder, {
-      foreignKey: "receivedBy",
-      as: "receivedSalesOrders",
-    });
-
-    User.hasMany(models.InventoryTransaction, {
-      foreignKey: "userId",
-      as: "userInventoryTransactions",
-    });
+    // User.hasMany(models.OrderStatusHistory, {
+    //   foreignKey: "changedBy",
+    //   as: "user",
+    // });
   }
   static generateHash(password) {
     return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
   }
-
+  x;
   static validatePassword(password, hash) {
     return bcrypt.compareSync(password, hash);
   }
@@ -56,7 +35,9 @@ module.exports = (sequelize) => {
       sequelize,
       modelName: "User",
       defaultScope: {
-        attributes: { exclude: ["password"] }, // Exclude password by default
+        attributes: {
+          exclude: ["password", "createdAt", "updatedAt", "email"],
+        }, // Exclude password by default
       },
       scopes: {
         withPassword: {

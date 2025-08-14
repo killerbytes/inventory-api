@@ -1,22 +1,20 @@
 import salesOrderService from "../services/salesOrder.service";
-import authService from "../services/auth.service";
 
-const salesOrderController = {
+const purchaseOrderController = {
   async get(req, res, next) {
     const { id } = req.params;
     try {
-      const salesOrder = await salesOrderService.get(id);
-      res.status(200).json(salesOrder);
+      const purchaseOrder = await salesOrderService.get(id);
+      res.status(200).json(purchaseOrder);
     } catch (error) {
       next(error);
     }
   },
   async create(req, res, next) {
     try {
-      const user = await authService.getCurrent();
       const result = await salesOrderService.create(req.body);
       res.status(201).json(result);
-    } catch (error: any) {
+    } catch (error) {
       next(error);
     }
   },
@@ -32,13 +30,15 @@ const salesOrderController = {
 
   async update(req, res, next) {
     const { id } = req.params;
+
     try {
-      const salesOrder = await salesOrderService.update(id, req.body);
-      res.status(200).json(salesOrder);
+      const purchaseOrder = await salesOrderService.update(id, req.body);
+      res.status(200).json(purchaseOrder);
     } catch (error) {
       next(error);
     }
   },
+
   async delete(req, res, next) {
     const { id } = req.params;
     try {
@@ -78,20 +78,17 @@ const salesOrderController = {
     }
   },
 
-  async updateStatus(req, res, next) {
+  async cancelOrder(req, res, next) {
     const { id } = req.params;
-    const user = await authService.getCurrent();
+
     try {
-      const salesOrder = await salesOrderService.updateStatus(
-        id,
-        req.body,
-        user
-      );
-      res.status(200).json(salesOrder);
-    } catch (error) {
+      const purchaseOrder = await salesOrderService.cancelOrder(id, req.body);
+
+      res.status(200).json(purchaseOrder);
+    } catch (error: any) {
       next(error);
     }
   },
 };
 
-export default salesOrderController;
+export default purchaseOrderController;

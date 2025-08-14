@@ -3,13 +3,13 @@ const { Model, DataTypes } = require("sequelize");
 class PurchaseOrderItem extends Model {
   static associate(models) {
     PurchaseOrderItem.belongsTo(models.PurchaseOrder, {
-      foreignKey: "orderId",
+      foreignKey: "purchaseOrderId",
       as: "purchaseOrder",
     });
 
-    PurchaseOrderItem.belongsTo(models.Product, {
-      foreignKey: "productId",
-      as: "product",
+    PurchaseOrderItem.belongsTo(models.ProductCombination, {
+      foreignKey: "combinationId",
+      as: "combinations",
     });
   }
 }
@@ -17,17 +17,26 @@ class PurchaseOrderItem extends Model {
 module.exports = (sequelize) => {
   PurchaseOrderItem.init(
     {
-      orderId: { type: DataTypes.INTEGER, allowNull: false },
-      productId: { type: DataTypes.INTEGER, allowNull: false },
-      quantity: { type: DataTypes.INTEGER, allowNull: false },
-      unit: { type: DataTypes.STRING, allowNull: false },
-      unitPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+      purchaseOrderId: { type: DataTypes.INTEGER },
+      combinationId: { type: DataTypes.INTEGER },
+      quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
+      originalPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+      purchasePrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+      totalAmount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
       discount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-      discountNote: { type: DataTypes.TEXT },
+      unit: DataTypes.STRING,
+      discountNote: DataTypes.TEXT,
+      skuSnapshot: DataTypes.STRING,
+      nameSnapshot: DataTypes.STRING,
+      categorySnapshot: DataTypes.JSON,
+      variantSnapshot: DataTypes.JSON,
     },
     {
       sequelize,
       modelName: "PurchaseOrderItem",
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
 

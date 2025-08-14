@@ -38,8 +38,21 @@ class ApiError extends Error {
   }
 
   // Utility methods for common errors
-  static internal(message = "Internal Server Error", details = null) {
-    return new ApiError("INTERNAL_ERROR", 500, message, [], details);
+  static internal(
+    message = "Internal Server Error",
+    statusCode = 500,
+    errors = [],
+    details = null,
+    stack
+  ) {
+    return new ApiError(
+      "INTERNAL_ERROR",
+      statusCode,
+      message,
+      errors,
+      details,
+      stack
+    );
   }
 
   static notFound(message = "Not Found", details = null) {
@@ -58,13 +71,15 @@ class ApiError extends Error {
     return new ApiError("FORBIDDEN", 403, message, [], details);
   }
 
-  static validation(error) {
-    const errors = error.details.map(({ path, message }) => ({
-      field: path[0],
-      message: message,
-    }));
-
-    return new ApiError("VALIDATION_ERROR", 400, "Bad Request", errors, null);
+  static validation(errors, statusCode, message = "Bad Request") {
+    return new ApiError(
+      "VALIDATION_ERROR",
+      statusCode,
+      message,
+      errors,
+      null,
+      null
+    );
   }
 }
 

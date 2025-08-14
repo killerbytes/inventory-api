@@ -1,23 +1,21 @@
 const { Model, DataTypes } = require("sequelize");
-const {
-  INVENTORY_TRANSACTION_TYPE,
-  SALES_ORDER_STATUS,
-  ORDER_TYPE,
-} = require("../definitions");
+const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
 
 class SalesOrder extends Model {
   static associate(models) {
+    SalesOrder.belongsTo(models.Customer, {
+      foreignKey: "customerId",
+      as: "customer",
+    });
+
     SalesOrder.hasMany(models.SalesOrderItem, {
-      foreignKey: "orderId",
+      foreignKey: "salesOrderId",
       as: "salesOrderItems",
     });
-    SalesOrder.belongsTo(models.User, {
-      foreignKey: "orderBy",
-      as: "orderByUser",
-    });
-    SalesOrder.belongsTo(models.User, {
-      foreignKey: "receivedBy",
-      as: "receivedByUser",
+
+    SalesOrder.hasMany(models.OrderStatusHistory, {
+      foreignKey: "salesOrderId",
+      as: "salesOrderStatusHistory",
     });
   }
 }
@@ -25,84 +23,65 @@ class SalesOrder extends Model {
 module.exports = (sequelize) => {
   SalesOrder.init(
     {
-      customer: { type: DataTypes.STRING, allowNull: false },
-      orderDate: { type: DataTypes.DATE, allowNull: false },
-      status: {
-        type: DataTypes.ENUM(Object.values(SALES_ORDER_STATUS)),
-        defaultValue: SALES_ORDER_STATUS.PENDING,
+      salesOrderNumber: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
       },
-      deliveryDate: { type: DataTypes.DATE },
-      receivedDate: {
+      customerId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      status: {
+        type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
+        defaultValue: ORDER_STATUS.PENDING,
+      },
+      orderDate: DataTypes.DATE,
+      isDelivery: DataTypes.BOOLEAN,
+      isDeliveryCompleted: DataTypes.BOOLEAN,
+      deliveryAddress: DataTypes.TEXT,
+      deliveryInstructions: DataTypes.TEXT,
+      deliveryDate: {
+        type: DataTypes.DATE,
+      },
+      cancellationReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      totalAmount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      notes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      internalNotes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      modeOfPayment: {
+        type: DataTypes.ENUM(Object.values(MODE_OF_PAYMENT)),
+        defaultValue: MODE_OF_PAYMENT.CASH,
+      },
+      checkNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      dueDate: {
         type: DataTypes.DATE,
         allowNull: true,
-        validate: {
-          conditionalRequired(value) {
-            if (this.status === SALES_ORDER_STATUS.COMPLETED && !value) {
-              throw new Error(
-                "receivedDate is required when status is completed"
-              );
-            }
-          },
-        },
       },
-      totalAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
-      receivedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-        validate: {
-          conditionalRequired(value) {
-            if (this.status === SALES_ORDER_STATUS.COMPLETED && !value) {
-              throw new Error(
-                "receivedBy is required when status is completed"
-              );
-            }
-          },
-        },
-      },
-      notes: { type: DataTypes.TEXT },
     },
     {
       sequelize,
       modelName: "SalesOrder",
-      // hooks: {
-      //   afterCreate: async (salesOrder, options) => {
-      //     if (!options.transaction) {
-      //       throw new Error("This operation requires a transaction");
-      //     }
-
-      //     try {
-      //       if (salesOrder.status === SALES_ORDER_STATUS.COMPLETED) {
-      //         await SalesOrder.processCompletedOrder(
-      //           salesOrder,
-      //           options.transaction
-      //         );
-      //       }
-      //     } catch (error) {
-      //       console.error("Error in afterCreate hook:", error);
-      //       throw error;
-      //     }
-      //   },
-      //   afterUpdate: async (salesOrder, options) => {
-      //     if (!options.transaction) {
-      //       throw new Error("This operation requires a transaction");
-      //     }
-
-      //     try {
-      //       // Assuming update to cancelled status triggers inventory return
-      //       if (salesOrder.status === SALES_ORDER_STATUS.CANCELLED) {
-      //         await SalesOrder.processCancelledOrder(
-      //           salesOrder,
-      //           options.transaction
-      //         );
-      //       }
-      //     } catch (error) {
-      //       console.error("Error in afterUpdate hook:", error);
-      //       throw error;
-      //     }
-      //   },
-      // },
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
+
   return SalesOrder;
 };

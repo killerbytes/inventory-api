@@ -1,13 +1,16 @@
+const env = process.env.NODE_ENV || "development";
+const envPath = `.env.${env}`;
+require("dotenv").config({ path: envPath });
 // config/config.js
-require("dotenv").config(); // Optional, if you're using .env
+// require("dotenv").config(); // Optional, if you're using .env
 
 module.exports = {
   development: {
-    username: process.env.DB_USERNAME || "root",
-    password: process.env.DB_PASSWORD || "killer",
-    database: process.env.DB_NAME || "inventory_db",
-    host: process.env.DB_HOST || "localhost",
-    dialect: process.env.DB_DIALECT || "mysql",
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT,
     logging: false,
   },
   production: {

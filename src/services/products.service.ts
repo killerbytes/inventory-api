@@ -1,270 +1,502 @@
-import db from "../models";
-const { Product, Category } = db;
+import { Op } from "sequelize";
+import db, { Sequelize, sequelize } from "../models";
+import { productSchema } from "../schemas";
 import ApiError from "./ApiError";
-import { productSchema } from "../schema";
-import { PAGINATION } from "../definitions.js";
-import { Op, where } from "sequelize";
-
-type GroupedProduct = {
-  categoryId: number;
-  categoryName: string;
-  categoryOrder: number;
-  products: any[]; // or use your Product type if defined
-};
+import { product } from "../interfaces";
+import { getSKU } from "../utils";
+const {
+  Product,
+  VariantType,
+  VariantValue,
+  ProductVariantCombination,
+  Inventory,
+  Category,
+  ProductCombination,
+  CombinationValue,
+} = db;
 
 const productService = {
+  async create(payload) {
+    const { name, description, unit, categoryId, variants, combinations } =
+      payload;
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      const product = await Product.create(
+        { name, description, unit, categoryId },
+        { transaction }
+      );
+
+      // // Create variant types and values
+      // const variantTypeMap = {};
+      // const variantValueMap = {};
+
+      // for (const variant of variants) {
+      //   const type = await VariantType.create(
+      //     { name: variant.name, productId: product.id },
+      //     { transaction }
+      //   );
+      //   variantTypeMap[variant.name] = type;
+
+      //   variantValueMap[variant.name] = {};
+      //   for (const value of variant.values) {
+      //     const val = await VariantValue.create(
+      //       { value, variantTypeId: type.id },
+      //       { transaction }
+      //     );
+      //     variantValueMap[variant.name][value] = val;
+      //   }
+      // }
+
+      // // Create combinations and inventory
+      // for (const combo of combinations) {
+      //   const productCombo = await ProductCombination.create(
+      //     { productId: product.id, ...combo },
+      //     { transaction }
+      //   );
+
+      //   for (const [variantName, value] of Object.entries(combo.values)) {
+      //     const val = variantValueMap[variantName]?.[value];
+      //     if (val) {
+      //       await CombinationValue.create(
+      //         { combinationId: productCombo.id, variantValueId: val.id },
+      //         { transaction }
+      //       );
+      //     }
+      //   }
+
+      //   await Inventory.create(
+      //     { combinationId: productCombo.id, quantity: combo.quantity },
+      //     { transaction }
+      //   );
+      // }
+
+      await transaction.commit();
+      return product;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  },
+
   async get(id) {
     try {
       const product = await Product.findByPk(id, {
         include: [
-          { model: Category, as: "category" },
-          { model: Product, as: "subProducts" },
+          {
+            model: VariantType,
+            as: "variants",
+            include: [{ model: VariantValue, as: "values" }],
+          },
+          {
+            model: ProductCombination,
+            as: "combinations",
+            include: [
+              {
+                model: Inventory,
+                as: "inventory",
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
+          },
         ],
-
-        nested: true,
+        order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
       });
-      if (!product) {
-        throw new Error("Product not found");
-      }
+
+      if (!product) throw ApiError.notFound("Product not found");
+
       return product;
     } catch (error) {
       throw error;
     }
   },
-  async create(payload) {
+
+  async getAllBySku(sku) {
+    const product = await Product.findAll({
+      where: { sku },
+      include: [
+        {
+          model: VariantType,
+          as: "variants",
+          include: [{ model: VariantValue, as: "values" }],
+        },
+        {
+          model: ProductCombination,
+          as: "combinations",
+          include: [
+            {
+              model: Inventory,
+              as: "inventory",
+            },
+            {
+              model: VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+      order: [
+        [{ model: VariantType, as: "variants" }, "id", "ASC"],
+        [
+          { model: ProductCombination, as: "combinations" },
+          { model: VariantValue, as: "values" },
+          "id",
+          "ASC",
+        ],
+      ],
+    });
+
+    if (!product) throw ApiError.notFound("Product not found");
+
+    return product;
+  },
+
+  async update(id, payload) {
+    const {
+      name,
+      description,
+      unit,
+      categoryId,
+      variants = [],
+      combinations = [],
+    } = payload;
+
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
 
-    const { name, description, categoryId, parentId, reorderLevel } = payload;
-    if (parentId) {
-      const parent = await Product.findByPk(parentId, {
-        include: [{ model: Product, as: "subProducts" }],
-      });
+    const transaction = await sequelize.transaction();
 
-      // if (
-      //   (parent && parent.unit === unit) ||
-      //   (parent.subProducts && parent.subProducts.some((p) => p.unit === unit))
-      // ) {
-      //   throw ApiError.validation({
-      //     details: [
-      //       {
-      //         path: ["unit"],
-      //         message: "Unit already exists",
-      //       },
-      //     ],
-      //   });
-      // }
-    }
     try {
-      const result = await Product.create({
-        name,
-        description,
-        categoryId,
-        parentId,
-        reorderLevel,
-      });
-      return result;
-    } catch (error) {
-      switch (error.parent.code) {
-        case "ER_DUP_ENTRY":
-          throw ApiError.validation({
-            details: [
-              {
-                path: ["name"],
-                message: "Product already exists",
-              },
-            ],
-          });
-        default:
-          throw error;
-      }
-    }
-  },
+      const product = await Product.findByPk(id, { transaction });
+      if (!product) throw new Error("Product not found");
 
-  async list() {
-    try {
-      const order = [];
-      order.push([{ model: Category, as: "category" }, "order", "ASC"]);
-
-      const products = await Product.findAll({
-        where: {
-          parentId: null,
-        },
-        include: [
-          {
-            model: Category,
-            as: "category",
-            attributes: ["name", "id", "order"],
-          },
-          // {
-          //   model: Product,
-          //   as: "subProducts",
-          // },
-        ],
-        nested: true,
-        order: [[{ model: Category, as: "category" }, "order", "ASC"]],
-      });
-
-      const groupedByCategory: Record<number, GroupedProduct> = {};
-
-      products.forEach((product) => {
-        const category = product.category;
-        if (!category) return;
-
-        const catId = category.id;
-
-        if (!groupedByCategory[catId]) {
-          groupedByCategory[catId] = {
-            categoryId: category.id,
-            categoryName: category.name,
-            categoryOrder: category.order,
-            products: [],
-          };
-        }
-
-        groupedByCategory[catId].products.push(product);
-      });
-
-      const result = Object.values(groupedByCategory).sort(
-        (a, b) => a.categoryOrder - b.categoryOrder
+      // 1. Update base product info
+      await product.update(
+        { name, description, unit, categoryId },
+        { transaction }
       );
-      return result;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  async update(id, payload) {
-    const { id: _id, ...params } = payload;
-    const { error } = productSchema.validate(params, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw ApiError.validation(error);
-    }
-    try {
-      const product = await Product.findByPk(id);
-      if (!product) {
-        throw new Error("Product not found");
-      }
-      await product.update(params);
-      return product;
-    } catch (error) {
-      throw error;
+      await transaction.commit();
+      return product; // { message: "Product updated successfully" };
+    } catch (err) {
+      await transaction.rollback();
+
+      throw err;
     }
   },
   async delete(id) {
+    const transaction = await sequelize.transaction();
+
     try {
-      const product = await Product.findByPk(id, {
-        include: [{ model: Product, as: "subProducts" }],
+      const product = await Product.findByPk(id, { transaction });
+      if (!product) throw new Error("Product not found");
+
+      const combinations = await ProductCombination.findAll({
+        where: { productId: id },
+        transaction,
       });
-      if (!product) {
-        throw new Error("Product not found");
-      }
-      if (product.subProducts.length > 0) {
-        throw new Error("Cannot delete product with sub products");
+
+      for (const combo of combinations) {
+        await Inventory.destroy({
+          where: { combinationId: combo.id },
+          transaction,
+        });
+        await CombinationValue.destroy({
+          where: { combinationId: combo.id },
+          transaction,
+        });
       }
 
-      await product.destroy();
-    } catch (error) {
-      throw error;
+      await ProductCombination.destroy({
+        where: { productId: id },
+        transaction,
+      });
+      await VariantValue.destroy({
+        where: {},
+        transaction,
+        include: [{ model: VariantType, where: { productId: id } }],
+      });
+      await VariantType.destroy({ where: { productId: id }, transaction });
+      await product.destroy({ transaction });
+
+      await transaction.commit();
+      return true;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
     }
   },
   async getPaginated(query) {
-    const { q = null, sort, categoryId = null } = query;
-    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
-    const page = parseInt(query.page) || PAGINATION.PAGE;
+    const products = await Product.findAll({
+      include: [
+        { model: Category, as: "category" },
+        {
+          model: VariantType,
+          as: "variants",
+          include: [{ model: VariantValue, as: "values" }],
+        },
+        {
+          model: ProductCombination,
+          as: "combinations",
+          include: [
+            {
+              model: Inventory,
+              as: "inventory",
+            },
+            {
+              model: VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+      // order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+      order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
+    });
 
-    try {
-      const where = {
-        parentId: null,
-      };
-      if (categoryId) {
-        where["categoryId"] = categoryId;
+    const groupedByCategory: Map<number, any> = new Map();
+    const categories = await Category.findAll({
+      order: [["order", "ASC"]],
+    });
+    categories.forEach((category) => {
+      const catId = category.id;
+      if (!groupedByCategory[catId]) {
+        groupedByCategory[catId] = {
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryOrder: category.order,
+          products: [],
+        };
       }
-      if (q) {
-        where[Op.or] = [
-          { name: { [Op.like]: `%${q}%` } },
-          { description: { [Op.like]: `%${q}%` } },
-        ];
-      }
+      // groupedByCategory[catId].products.push(products);
+    });
 
-      // const offset = (page - 1) * limit;
-      const order = [];
-      // order.push([{ model: Category, as: "category" }, "order", "ASC"]);
-      order.push(["name", "ASC"]); // Default sort
+    products.forEach((product) => {
+      const category = product.category;
+      if (!category) return;
 
-      // if (sort) {
-      //   switch (sort) {
-      //     case "category.name":
-      //       order.push(["category", "name", query.order || "ASC"]);
-      //       break;
-      //     default:
-      //       order.push([sort, query.order || "ASC"]);
-      //       break;
-      //   }
-      // } else {
-      //   order.push(["name", "ASC"]); // Default sort
+      const catId = category.id;
+
+      // if (!groupedByCategory[catId]) {
+      //   groupedByCategory[catId] = {
+      //     categoryId: category.id,
+      //     categoryName: category.name,
+      //     categoryOrder: category.order,
+      //     products: [],
+      //   };
       // }
 
-      const { count, rows } = await Product.findAndCountAll({
-        where,
-        order,
-        include: [
-          {
-            model: Category,
-            as: "category",
-            attributes: ["name", "id", "order"],
-          },
-          {
-            model: Product,
-            as: "subProducts",
-            attributes: ["id", "name", "categoryId", "description"], // adjust as needed
-          },
-        ],
-        nested: true,
-        // order: [[{ model: Category, as: "category" }, "order", "ASC"]],
-        distinct: true,
-      });
+      groupedByCategory[catId].products.push(product);
+    });
 
-      const groupedByCategory: Record<number, GroupedProduct> = {};
+    const result = Object.values(groupedByCategory).sort(
+      (a, b) => a.categoryOrder - b.categoryOrder
+    );
 
-      rows.forEach((product) => {
-        const category = product.category;
-        if (!category) return;
+    return {
+      data: result,
+      // total: count,
+      // totalPages: Math.ceil(count / limit),
+      // currentPage: page,
+    };
 
-        const catId = category.id;
+    return products;
+  },
+  async list() {
+    const products = await Product.findAll({
+      include: [
+        {
+          model: Category,
+          as: "category",
+        },
+        {
+          model: VariantType,
+          as: "variants",
+          include: { model: VariantValue, as: "values" },
+        },
+        {
+          model: ProductCombination,
+          as: "combinations",
+          include: [
+            {
+              model: Inventory,
+              as: "inventory",
+            },
+            {
+              model: VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+    });
 
-        if (!groupedByCategory[catId]) {
-          groupedByCategory[catId] = {
-            categoryId: category.id,
-            categoryName: category.name,
-            categoryOrder: category.order,
-            products: [],
-          };
+    const groupedByCategory: Map<number, any> = new Map();
+
+    products.forEach((product) => {
+      const category = product.category;
+      if (!category) return;
+
+      const catId = category.id;
+
+      if (!groupedByCategory[catId]) {
+        groupedByCategory[catId] = {
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryOrder: category.order,
+          products: [],
+        };
+      }
+
+      groupedByCategory[catId].products.push(product);
+    });
+
+    const result = Object.values(groupedByCategory).sort(
+      (a, b) => a.categoryOrder - b.categoryOrder
+    );
+
+    return result;
+  },
+
+  async cloneToUnit(id, payload) {
+    const { unit } = payload;
+
+    const transaction = await sequelize.transaction();
+    try {
+      const product = await Product.findByPk(
+        id,
+        {
+          include: [
+            {
+              model: VariantType,
+              as: "variants",
+              include: [{ model: VariantValue, as: "values" }],
+            },
+            {
+              model: ProductCombination,
+              as: "combinations",
+              include: [
+                {
+                  model: Inventory,
+                  as: "inventory",
+                },
+                {
+                  model: VariantValue,
+                  as: "values",
+                  through: { attributes: [] },
+                },
+              ],
+            },
+          ],
+          order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+        },
+        {
+          transaction,
         }
+      );
+      if (!product) throw new Error("Product not found");
 
-        groupedByCategory[catId].products.push(product);
-      });
+      const { combinations, variants } = product;
+      const variantValueMap = {};
 
-      const result = Object.values(groupedByCategory).sort(
-        (a, b) => a.categoryOrder - b.categoryOrder
+      const newProduct = await Product.create(
+        {
+          name: product.name,
+          description: product.description,
+          categoryId: product.categoryId,
+          unit,
+        },
+        { transaction }
       );
 
-      return {
-        data: result,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-      };
+      for (const variant of variants) {
+        const variantType = await VariantType.create(
+          {
+            name: variant.name,
+            productId: newProduct.id,
+          },
+          { transaction }
+        );
+
+        for (const value of variant.values) {
+          const val = await VariantValue.create(
+            {
+              value: value.value,
+              variantTypeId: variantType.id,
+            },
+            { transaction }
+          );
+          variantValueMap[value.value] = val;
+        }
+      }
+
+      for (const combo of combinations) {
+        const productCombo = await ProductCombination.create(
+          {
+            productId: newProduct.id,
+            sku: getSKU(product.name, product.categoryId, unit, combo.values),
+            price: 0,
+          },
+          { transaction }
+        );
+
+        for (const value of combo.values) {
+          const val = variantValueMap[value.value];
+          if (val) {
+            await CombinationValue.create(
+              { combinationId: productCombo.id, variantValueId: val.id },
+              { transaction }
+            );
+          }
+        }
+      }
+      transaction.commit();
+
+      return newProduct;
     } catch (error) {
+      transaction.rollback();
       throw error;
     }
   },
 };
 
 export default productService;
+
+function validateCombinations(product) {
+  const seen = new Map();
+  const duplicates = [];
+  const conflicts = [];
+
+  for (const combo of product.combinations) {
+    const key = Object.entries(combo.values)
+      .map(([type, value]: [string, string]) => `${type}:${value}`)
+      .sort()
+      .join("|");
+
+    if (seen.has(key)) {
+      const existing = seen.get(key);
+      // Check if SKU is different → conflict
+      if (existing.sku !== combo.sku) {
+        conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
+      } else {
+        duplicates.push({ key, sku: combo.sku });
+      }
+    } else {
+      seen.set(key, combo);
+    }
+  }
+
+  return { duplicates, conflicts };
+}

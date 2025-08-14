@@ -1,6 +1,6 @@
 import db from "../models";
 import ApiError from "./ApiError";
-import { supplierSchema } from "../schema";
+import { supplierSchema } from "../schemas";
 import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
 const { Supplier } = db;
@@ -22,7 +22,7 @@ const supplierService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const { name, contact, email, phone, address } = payload;
@@ -54,7 +54,7 @@ const supplierService = {
       abortEarly: false,
     });
     if (error) {
-      throw ApiError.validation(error);
+      throw error;
     }
     try {
       const supplier = await Supplier.findByPk(id);

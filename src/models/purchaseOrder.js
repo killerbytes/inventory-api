@@ -1,5 +1,5 @@
 const { Model, DataTypes } = require("sequelize");
-const { PURCHASE_ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
+const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
 
 class PurchaseOrder extends Model {
   static associate(models) {
@@ -9,28 +9,13 @@ class PurchaseOrder extends Model {
     });
 
     PurchaseOrder.hasMany(models.PurchaseOrderItem, {
-      foreignKey: "orderId",
+      foreignKey: "purchaseOrderId",
       as: "purchaseOrderItems",
     });
 
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "orderBy",
-      as: "orderByUser",
-    });
-
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "receivedBy",
-      as: "receivedByUser",
-    });
-
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "completedBy",
-      as: "completedByUser",
-    });
-
-    PurchaseOrder.belongsTo(models.User, {
-      foreignKey: "cancelledBy",
-      as: "cancelledByUser",
+    PurchaseOrder.hasMany(models.OrderStatusHistory, {
+      foreignKey: "purchaseOrderId",
+      as: "purchaseOrderStatusHistory",
     });
   }
 }
@@ -41,61 +26,18 @@ module.exports = (sequelize) => {
       purchaseOrderNumber: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true,
       },
       supplierId: {
         type: DataTypes.INTEGER,
         allowNull: false,
       },
       status: {
-        type: DataTypes.ENUM(Object.values(PURCHASE_ORDER_STATUS)),
-        defaultValue: PURCHASE_ORDER_STATUS.PENDING,
+        type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
+        defaultValue: ORDER_STATUS.PENDING,
       },
       deliveryDate: {
         type: DataTypes.DATE,
-      },
-      orderBy: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
-      orderDate: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
-      receivedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-      },
-      receivedDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        validate: {
-          conditionalRequired(value) {
-            if (this.status === PURCHASE_ORDER_STATUS.COMPLETED && !value) {
-              throw new Error(
-                "receivedDate is required when status is completed"
-              );
-            }
-          },
-        },
-      },
-      completedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-      },
-      completedDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
-      cancelledBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: null,
-      },
-      cancelledDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
       },
       cancellationReason: {
         type: DataTypes.TEXT,
@@ -120,6 +62,7 @@ module.exports = (sequelize) => {
       checkNumber: {
         type: DataTypes.STRING,
         allowNull: true,
+        unique: true,
       },
       dueDate: {
         type: DataTypes.DATE,
@@ -129,6 +72,9 @@ module.exports = (sequelize) => {
     {
       sequelize,
       modelName: "PurchaseOrder",
+      defaultScope: {
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      },
     }
   );
 

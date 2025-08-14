@@ -5,10 +5,13 @@ import authRouter from "./routes/auth.router";
 import categoriesRouter from "./routes/categories.router";
 import productsRouter from "./routes/products.router";
 import suppliersRouter from "./routes/supplier.router";
+import customersRouter from "./routes/customer.router";
 import inventoryRouter from "./routes/inventory.router";
 import purchaseRouter from "./routes/purchaseOrder.router";
 import salesRouter from "./routes/salesOrder.router";
-
+import variantTypesRouter from "./routes/variantTypes.router";
+import inventoryMovementRouter from "./routes/inventoryMovement.router";
+import productCombinationRouter from "./routes/productCombination.router";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { verifyToken } from "./middlewares/verifyToken";
@@ -18,6 +21,7 @@ import db from "./models";
 import ApiError from "./services/ApiError";
 import dotenv from "dotenv";
 import { ValidationError } from "sequelize";
+import { errorHandler } from "./middlewares/errorHandler";
 dotenv.config();
 
 const { User } = db;
@@ -64,47 +68,52 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", verifyToken, usersRouter);
 app.use("/api/categories", verifyToken, categoriesRouter);
 app.use("/api/products", verifyToken, productsRouter);
+app.use("/api/customers", verifyToken, customersRouter);
 app.use("/api/suppliers", verifyToken, suppliersRouter);
 app.use("/api/inventory", verifyToken, inventoryRouter);
 app.use("/api/purchase", verifyToken, purchaseRouter);
 app.use("/api/sales", verifyToken, salesRouter);
+app.use("/api/variantTypes", verifyToken, variantTypesRouter);
+app.use("/api/productCombinations", verifyToken, productCombinationRouter);
+app.use("/api/inventoryMovements", verifyToken, inventoryMovementRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.use((err, req, res, next) => {
-  // If this isn't our custom error, convert it
+app.use(errorHandler);
+// app.use((err, req, res, next) => {
+//   // If this isn't our custom error, convert it
 
-  let errors = err.errors;
-  if (err instanceof ValidationError) {
-    errors = err.errors.map((err) => ({
-      field: err.path,
-      message: err.message,
-    }));
-  }
+//   let errors = err.errors;
+//   if (err instanceof ValidationError) {
+//     errors = err.errors.map((err) => ({
+//       field: err.path,
+//       message: err.message,
+//     }));
+//   }
 
-  if (!(err instanceof ApiError)) {
-    err = ApiError.internal(err.message, {
-      originalError: err,
-      // originalError: process.env.NODE_ENV === "development" ? err : undefined,
-    });
-  }
+//   if (!(err instanceof ApiError)) {
+//     err = ApiError.internal(err.message, {
+//       originalError: err,
+//       // originalError: process.env.NODE_ENV === "development" ? err : undefined,
+//     });
+//   }
 
-  // Log the error (in production you might want to use a proper logger)
-  console.error(err);
+//   // Log the error (in production you might want to use a proper logger)
+//   console.error(err);
 
-  // Send the error response
-  res.status(err.statusCode).json({
-    code: err.code,
-    details: err.details,
-    statusCode: err.statusCode,
-    message: err.message,
-    errors,
-    // ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    stack: err.stack,
-  });
-});
+//   // Send the error response
+//   res.status(err.statusCode).json({
+//     code: err.code,
+//     details: err.details,
+//     statusCode: err.statusCode,
+//     message: err.message,
+//     errors,
+//     // ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+//     stack: err.stack,
+//   });
+// });
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
