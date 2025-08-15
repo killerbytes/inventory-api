@@ -22,10 +22,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    reason: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+    reason: DataTypes.STRING,
   });
 
   InventoryMovement.associate = (models) => {

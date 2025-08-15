@@ -4,10 +4,10 @@ module.exports = (sequelize, DataTypes) => {
   const ProductCombination = sequelize.define(
     "ProductCombination",
     {
-      productId: DataTypes.INTEGER,
+      productId: { type: DataTypes.INTEGER, allowNull: false },
       sku: { type: DataTypes.STRING, unique: true },
       price: DataTypes.DECIMAL(10, 2),
-      reorderLevel: { type: DataTypes.INTEGER, defaultvalue: 0 },
+      reorderLevel: DataTypes.INTEGER,
     },
     {
       defaultScope: {
@@ -32,26 +32,6 @@ module.exports = (sequelize, DataTypes) => {
       as: "inventory",
     });
   };
-
-  ProductCombination.beforeCreate(async (productCombination, options) => {
-    // const { Product, ProductCombination, VariantValue } = require("./index"); // Lazy load to avoid circular import
-    // Fetch associated Product (if needed)
-    // const product = await Product.findByPk(productCombination.productId, {});
-    // const combo = await ProductCombination.findByPk(productCombination.id);
-    // console.log(12, productCombination);
-    // productCombination.price = 999;
-    // await productCombination.save();
-    // if (!product) throw new Error("Product not found");
-    // console.log(21, values);
-    // You must provide `values` for SKU. Make sure it’s passed to the model
-    // const values = product.combinations.values || []; // usually manually injected before .create()
-    // productCombination.sku = getSKU(
-    //   product.name,
-    //   product.categoryId,
-    //   product.unit,
-    //   values
-    // );
-  });
 
   return ProductCombination;
 };

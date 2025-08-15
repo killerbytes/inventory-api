@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
   const VariantType = sequelize.define(
     "VariantType",
     {
-      name: DataTypes.STRING,
+      name: { type: DataTypes.STRING, allowNull: false },
       productId: DataTypes.INTEGER,
       isTemplate: DataTypes.BOOLEAN,
     },

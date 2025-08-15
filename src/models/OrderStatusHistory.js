@@ -6,9 +6,12 @@ module.exports = (sequelize, DataTypes) => {
     {
       purchaseOrderId: DataTypes.INTEGER,
       salesOrderId: DataTypes.INTEGER,
-      status: DataTypes.ENUM(Object.values(ORDER_STATUS)),
-      changedBy: DataTypes.INTEGER,
-      changedAt: DataTypes.DATE,
+      status: {
+        type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
+        allowNull: false,
+      },
+      changedBy: { type: DataTypes.INTEGER, allowNull: false },
+      changedAt: { type: DataTypes.DATE, allowNull: false },
     },
     {
       defaultScope: {

@@ -2,16 +2,11 @@ const { Model, DataTypes } = require("sequelize");
 const bcrypt = require("bcrypt");
 
 class User extends Model {
-  static associate(models) {
-    // User.hasMany(models.OrderStatusHistory, {
-    //   foreignKey: "changedBy",
-    //   as: "user",
-    // });
-  }
+  static associate(models) {}
   static generateHash(password) {
     return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
   }
-  x;
+
   static validatePassword(password, hash) {
     return bcrypt.compareSync(password, hash);
   }

@@ -36,38 +36,23 @@ module.exports = (sequelize) => {
         type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
         defaultValue: ORDER_STATUS.PENDING,
       },
-      deliveryDate: {
-        type: DataTypes.DATE,
-      },
-      cancellationReason: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
+      deliveryDate: DataTypes.DATE,
+      cancellationReason: DataTypes.TEXT,
       totalAmount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
-      notes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
-      internalNotes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
+      notes: DataTypes.TEXT,
+      internalNotes: DataTypes.TEXT,
       modeOfPayment: {
         type: DataTypes.ENUM(Object.values(MODE_OF_PAYMENT)),
         defaultValue: MODE_OF_PAYMENT.CHECK,
       },
       checkNumber: {
         type: DataTypes.STRING,
-        allowNull: true,
         unique: true,
       },
-      dueDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
+      dueDate: DataTypes.DATE,
     },
     {
       sequelize,

@@ -17,19 +17,31 @@ class SalesOrderItem extends Model {
 module.exports = (sequelize) => {
   SalesOrderItem.init(
     {
-      salesOrderId: { type: DataTypes.INTEGER },
-      combinationId: { type: DataTypes.INTEGER },
-      quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
-      originalPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-      purchasePrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-      totalAmount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+      salesOrderId: { type: DataTypes.INTEGER, allowNull: false },
+      combinationId: { type: DataTypes.INTEGER, allowNull: false },
+      quantity: { type: DataTypes.INTEGER, defaultValue: 0, allowNull: false },
+      originalPrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0,
+        allowNull: false,
+      },
+      purchasePrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0,
+        allowNull: false,
+      },
+      totalAmount: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0,
+        allowNull: false,
+      },
       discount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-      unit: DataTypes.STRING,
+      unit: { type: DataTypes.STRING, allowNull: false },
       discountNote: DataTypes.TEXT,
-      skuSnapshot: DataTypes.STRING,
-      nameSnapshot: DataTypes.STRING,
-      categorySnapshot: DataTypes.JSON,
-      variantSnapshot: DataTypes.JSON,
+      skuSnapshot: { type: DataTypes.STRING, allowNull: false },
+      nameSnapshot: { type: DataTypes.STRING, allowNull: false },
+      categorySnapshot: { type: DataTypes.JSON, allowNull: false },
+      variantSnapshot: { type: DataTypes.JSON, allowNull: false },
     },
     {
       sequelize,

@@ -1,16 +1,18 @@
 import db, { sequelize } from "../models";
-import {
-  inventoryPriceAdjustmentSchema,
-  inventorySchema,
-  repackInventorySchema,
-} from "../schemas";
-import { Op, Transaction, where } from "sequelize";
+import { inventorySchema } from "../schemas";
+import { Op } from "sequelize";
 import { PAGINATION } from "../definitions.js";
-import ApiError from "./ApiError";
-import inventoryTransactionService from "./inventoryMovement.service";
-import { INVENTORY_MOVEMENT_TYPE } from "../definitions.js";
 import authService from "./auth.service";
-const { Inventory, Product, Category, ProductCombination } = db;
+const {
+  Inventory,
+  Product,
+  Category,
+  ProductCombination,
+  InventoryMovement,
+  VariantType,
+  VariantValue,
+  User,
+} = db;
 
 const inventoryService = {
   async get(id) {
@@ -191,123 +193,85 @@ const inventoryService = {
       throw error;
     }
   },
-  async updatePrice(id, payload) {
-    const { price } = payload;
-    const { error } = inventoryPriceAdjustmentSchema.validate(
-      { price },
-      {
-        abortEarly: false,
-      }
-    );
-    if (error) {
-      throw error;
-    }
+  async getMovements(query) {
+    const {
+      q = null,
+      transactionType = null,
+      sort = "updatedAt",
+      startDate,
+      endDate,
+    } = query;
+    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
+    const page = parseInt(query.page) || PAGINATION.PAGE;
+
     try {
-      const inventories = await Inventory.findByPk(id);
-      if (!inventories) {
-        throw new Error("Inventory not found");
+      const where: any = {
+        [Op.and]: [
+          ...(q
+            ? [{ "$inventory.product.name$": { [Op.like]: `%${q}%` } }]
+            : []),
+          ...(transactionType
+            ? [{ transactionType: { [Op.like]: `%${transactionType}%` } }]
+            : []),
+        ],
+      };
+      if (startDate || endDate) {
+        where.updatedAt = {};
+
+        if (startDate) {
+          const start = new Date(startDate as string);
+          start.setHours(0, 0, 0, 0);
+          where.updatedAt[Op.gte] = start;
+        }
+        if (endDate) {
+          const end = new Date(endDate as string);
+          end.setHours(23, 59, 59, 999);
+          where.updatedAt[Op.lte] = end;
+        }
       }
-      // Create Price History
-      // await db.sequelize.transaction(async (transaction: Transaction) => {
-      //   try {
-      //     await inventoryTransactionService.create(
-      //       {
-      //         type: INVENTORY_TRANSACTION_TYPE.PRICE_ADJUSTMENT,
-      //       },
-      //       { transaction }
-      //     );
-      //   } catch (error) {
-      //     console.log(error);
-      //     throw new Error(JSON.stringify(error));
-      //   }
-      //   try {
-      //     await inventories.update({ price }, { transaction });
-      //   } catch (error) {
-      //     throw new Error("Error in updateInventory");
-      //   }
-      // });
-      return inventories;
+
+      const offset = (page - 1) * limit;
+      const order = [];
+      order.push([sort, query.order || "DESC"]);
+
+      const { count, rows } = await InventoryMovement.findAndCountAll({
+        limit,
+        offset,
+        order,
+        where,
+        nest: true,
+        include: [
+          {
+            model: User,
+            as: "user",
+          },
+          {
+            model: ProductCombination,
+            as: "combination",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [{ model: VariantType, as: "variants" }],
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
+          },
+        ],
+      });
+      return {
+        data: rows,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+      };
     } catch (error) {
       throw error;
     }
-  },
-  async repackage(payload) {
-    const { error } = repackInventorySchema.validate(payload, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw error;
-    }
-    const {
-      name,
-      description,
-      categoryId,
-      unit,
-      price,
-      repackQuantity,
-      pullOutQuantity,
-      parentId,
-    } = payload;
-
-    const inventories = await Inventory.findByPk(parentId);
-
-    if (inventories.quantity < pullOutQuantity) {
-      throw new Error("Not enough inventory");
-    }
-
-    if (inventories.parentId) {
-      throw new Error("Cannot repack a repack");
-    }
-
-    await db.sequelize.transaction(async (transaction: Transaction) => {
-      //TODO
-      // try {
-      //   //Deduct inventory
-      //   await processInventoryUpdates(
-      //     {
-      //       productId: inventories.productId,
-      //       quantity: pullOutQuantity,
-      //     },
-      //     parentId,
-      //     INVENTORY_TRANSACTION_TYPE.BREAK_PACK,
-      //     transaction,
-      //     false
-      //   );
-      // } catch (error) {
-      //   throw new Error(JSON.stringify(error));
-      // }
-
-      try {
-        const product = await Product.create(
-          {
-            name,
-            description,
-            categoryId,
-            parentId: inventories.productId,
-          },
-          { transaction }
-        );
-        //TODO
-        // Add inventory
-        // const inventory = await processInventoryUpdates(
-        //   {
-        //     productId: product.id,
-        //     unit,
-        //     parentId,
-        //     price,
-        //     quantity: repackQuantity,
-        //   },
-        //   parentId,
-        //   INVENTORY_TRANSACTION_TYPE.REPACKAGE,
-        //   transaction,
-        //   true
-        // );
-
-        // return inventory;
-      } catch (error) {
-        throw error;
-      }
-    });
   },
 };
 

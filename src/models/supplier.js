@@ -13,15 +13,15 @@ module.exports = (sequelize) => {
   Supplier.init(
     {
       name: { type: DataTypes.STRING, allowNull: false },
-      contact: { type: DataTypes.STRING },
+      contact: DataTypes.STRING,
       email: {
         type: DataTypes.STRING,
         unique: true,
         validate: { isEmail: true },
       },
-      phone: { type: DataTypes.TEXT },
-      address: { type: DataTypes.STRING, allowNull: false },
-      notes: { type: DataTypes.TEXT },
+      phone: DataTypes.TEXT,
+      address: DataTypes.STRING,
+      notes: DataTypes.TEXT,
       isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
     },
     {

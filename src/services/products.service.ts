@@ -105,7 +105,7 @@ const productService = {
             ],
           },
         ],
-        order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+        order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
       });
 
       if (!product) throw ApiError.notFound("Product not found");
@@ -261,8 +261,10 @@ const productService = {
           ],
         },
       ],
-      // order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
-      order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
+      order: [
+        [{ model: VariantType, as: "variants" }, "name", "ASC"],
+        [{ model: ProductCombination, as: "combinations" }, "id", "ASC"],
+      ],
     });
 
     const groupedByCategory: Map<number, any> = new Map();

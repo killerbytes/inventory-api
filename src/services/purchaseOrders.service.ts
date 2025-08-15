@@ -87,7 +87,9 @@ const purchaseOrderService = {
 
       const totalAmount = purchaseOrderItems.reduce(
         (total: number, item: any) =>
-          total + item.purchasePrice * item.quantity,
+          total +
+          item.purchasePrice * item.quantity -
+          Number(item.discount || 0),
         0
       );
 
@@ -122,8 +124,8 @@ const purchaseOrderService = {
 
           const props = {
             ...item,
-            originalPrice: productCombination.price,
-            totalAmount: item.purchasePrice * item.quantity,
+            totalAmount:
+              item.purchasePrice * item.quantity - Number(item.discount || 0),
             unit: productCombination.product.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
@@ -562,7 +564,6 @@ const updateOrder = async (
           const props = {
             ...item,
             purchaseOrderId: purchaseOrder.id,
-            originalPrice: productCombination.price,
             totalAmount: item.purchasePrice * item.quantity,
             unit: productCombination.product.unit,
             nameSnapshot: productCombination.product.name,

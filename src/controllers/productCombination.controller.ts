@@ -2,13 +2,7 @@ import productCombinationService from "../services/productCombination.service";
 
 const productCombinationController = {
   async create(req, res, next) {
-    const { id } = req.params;
-    try {
-      const result = await productCombinationService.create(id, req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
+    throw new Error("Method not implemented.");
   },
   async get(req, res, next) {
     const { id } = req.params;

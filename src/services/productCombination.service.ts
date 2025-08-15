@@ -18,69 +18,6 @@ const {
 } = db;
 
 const productCombinationService = {
-  async create(id, payload: productCombinations[]) {
-    const combinations = payload;
-
-    const transaction = await sequelize.transaction();
-
-    // try {
-    //   // const product = await Product.create(
-    //   //   { name, description, unit, categoryId },
-    //   //   { transaction }
-    //   // );
-
-    //   // // Create variant types and values
-    //   // const variantTypeMap = {};
-    //   // const variantValueMap = {};
-
-    //   // for (const variant of variants) {
-    //   //   const type = await VariantType.create(
-    //   //     { name: variant.name, productId: product.id },
-    //   //     { transaction }
-    //   //   );
-    //   //   variantTypeMap[variant.name] = type;
-
-    //   //   variantValueMap[variant.name] = {};
-    //   //   for (const value of variant.values) {
-    //   //     const val = await VariantValue.create(
-    //   //       { value, variantTypeId: type.id },
-    //   //       { transaction }
-    //   //     );
-    //   //     variantValueMap[variant.name][value] = val;
-    //   //   }
-    //   // }
-
-    //   // Create combinations and inventory
-    //   for (const combo of combinations) {
-    //     const productCombo = await ProductCombination.create(
-    //       { productId: id, ...combo },
-    //       { transaction }
-    //     );
-
-    //     for (const [variantName, value] of Object.entries(combo.values)) {
-    //       const val = variantValueMap[variantName]?.[value];
-    //       if (val) {
-    //         await CombinationValue.create(
-    //           { combinationId: productCombo.id, variantValueId: val.id },
-    //           { transaction }
-    //         );
-    //       }
-    //     }
-
-    //     // await Inventory.create(
-    //     //   { combinationId: productCombo.id, quantity: combo.quantity },
-    //     //   { transaction }
-    //     // );
-    //   }
-
-    //   await transaction.commit();
-    //   return product;
-    // } catch (err) {
-    //   await transaction.rollback();
-    //   throw err;
-    // }
-  },
-
   async get(id) {
     const productCombination = await ProductCombination.findByPk(id, {
       include: [
@@ -497,33 +434,6 @@ const productCombinationService = {
 };
 
 export default productCombinationService;
-
-function xxxvalidateCombinations(payload) {
-  const seen = new Map();
-  const duplicates = [];
-  const conflicts = [];
-
-  for (const combo of payload.combinations) {
-    const key = Object.entries(combo.values)
-      .map(([type, value]: [string, string]) => `${type}:${value}`)
-      .sort()
-      .join("|");
-
-    if (seen.has(key)) {
-      const existing = seen.get(key);
-      // Check if SKU is different → conflict
-      if (existing.sku !== combo.sku) {
-        conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
-      } else {
-        duplicates.push({ key, sku: combo.sku });
-      }
-    } else {
-      seen.set(key, combo);
-    }
-  }
-
-  return { duplicates, conflicts };
-}
 
 function validateCombinations(payload: {
   combinations: productCombinations[];

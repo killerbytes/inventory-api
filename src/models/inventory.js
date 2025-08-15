@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Inventory.init(
     {
-      combinationId: DataTypes.INTEGER,
+      combinationId: { type: DataTypes.INTEGER, allowNull: false },
       quantity: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
