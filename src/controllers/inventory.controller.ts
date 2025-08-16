@@ -60,6 +60,15 @@ const inventoryController = {
       next(error);
     }
   },
+
+  async getBreakPacks(req, res, next) {
+    try {
+      const breakPacks = await inventoryService.getBreakPacks(req.body);
+      return res.status(200).json(breakPacks);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default inventoryController;

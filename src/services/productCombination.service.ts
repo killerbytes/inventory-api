@@ -15,6 +15,7 @@ const {
   Inventory,
   ProductCombination,
   CombinationValue,
+  BreakPack,
 } = db;
 
 const productCombinationService = {
@@ -29,11 +30,20 @@ const productCombinationService = {
         {
           model: Product,
           as: "product",
+          include: [{ model: VariantType, as: "variants" }],
         },
         {
           model: Inventory,
           as: "inventory",
         },
+      ],
+      order: [
+        [
+          { model: Product, as: "product" },
+          { model: VariantType, as: "variants" },
+          "name",
+          "ASC",
+        ],
       ],
     });
 
@@ -50,21 +60,20 @@ const productCombinationService = {
           model: VariantValue,
           as: "values",
           through: { attributes: [] },
-          order: [["variantTypeId", "ASC"]],
         },
         {
           model: Inventory,
           as: "inventory",
         },
       ],
-      // order: [[{ model: ProductCombination, as: "combinations" }, "id", "ASC"]],
+      order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
     });
 
     if (!combinations) throw new Error("Combination not found");
 
     const variants = await VariantType.findAll({
       where: { productId: id },
-      order: [["id", "ASC"]],
+      order: [["name", "ASC"]],
       include: [
         {
           model: VariantValue,
@@ -169,12 +178,12 @@ const productCombinationService = {
 
       const deletableIds = deleteCandidates
         .filter((comb) => {
-          return !comb.Inventory || comb.Inventory.quantity <= 0;
+          return !comb.inventory || comb.inventory.quantity <= 0;
         })
         .map((comb) => comb.id);
 
       const blockedIds = deleteCandidates
-        .filter((comb) => comb.Inventory && comb.Inventory.quantity > 0)
+        .filter((comb) => comb.inventory && comb.inventory.quantity > 0)
         .map((comb) => comb.id);
 
       if (blockedIds.length > 0) {
@@ -334,21 +343,27 @@ const productCombinationService = {
   },
 
   async breakPack(payload) {
-    console.log(payload);
-    const { fromComboId, toComboId, packsCount, unitsPerPack, reason } =
-      payload;
+    const { fromCombinationId, quantity, toCombinationId } = payload;
 
     const transaction = await sequelize.transaction();
     try {
-      const fromInventory = await ProductCombination.findByPk(fromComboId, {
-        include: {
-          model: Inventory,
-          as: "inventory",
-        },
-        transaction,
-      });
+      const fromInventory = await ProductCombination.findByPk(
+        fromCombinationId,
+        {
+          include: [
+            {
+              model: Inventory,
+              as: "inventory",
+            },
+            { model: Product, as: "product" },
+          ],
+          transaction,
+        }
+      );
 
-      const toInventory = await ProductCombination.findByPk(toComboId, {
+      const conversionFactor = fromInventory.product.conversionFactor;
+
+      const toInventory = await ProductCombination.findByPk(toCombinationId, {
         include: {
           model: Inventory,
           as: "inventory",
@@ -359,18 +374,18 @@ const productCombinationService = {
       if (toInventory && !toInventory.inventory?.quantity) {
         toInventory.inventory = await Inventory.create(
           {
-            combinationId: toComboId,
+            combinationId: toCombinationId,
             quantity: 0,
           },
           { transaction }
         );
       }
 
-      if (fromInventory && fromInventory.inventory.quantity < packsCount) {
+      if (fromInventory && fromInventory.inventory.quantity < quantity) {
         throw ApiError.validation(
           [
             {
-              path: ["packsCount"],
+              path: ["quantity"],
               message: "Combinations are invalid",
             },
           ],
@@ -379,18 +394,18 @@ const productCombinationService = {
       }
       const user = await authService.getCurrent();
 
-      const totalQuantity = packsCount * unitsPerPack;
+      const totalQuantity = quantity * conversionFactor;
       // Log BreakPack movement
       await InventoryMovement.create(
         {
           type: INVENTORY_MOVEMENT_TYPE.BREAK_PACK,
           previous: fromInventory.inventory.quantity,
-          new: fromInventory.inventory.quantity - packsCount,
-          quantity: packsCount,
+          new: fromInventory.inventory.quantity - quantity,
+          quantity: quantity,
           reference: fromInventory.inventory.id,
           reason: "Break pack",
           userId: user.id,
-          combinationId: fromComboId,
+          combinationId: fromCombinationId,
         },
         { transaction }
       );
@@ -404,7 +419,20 @@ const productCombinationService = {
           reference: fromInventory.inventory.id,
           reason: "Repack",
           userId: user.id,
-          combinationId: toComboId,
+          combinationId: toCombinationId,
+        },
+        { transaction }
+      );
+
+      await BreakPack.create(
+        {
+          fromCombinationId,
+          toCombinationId,
+          quantity,
+          conversionFactor,
+          createdBy: user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
         { transaction }
       );
@@ -412,7 +440,7 @@ const productCombinationService = {
       // Update Inventory
       await fromInventory.inventory.update(
         {
-          quantity: fromInventory.inventory.quantity - packsCount,
+          quantity: fromInventory.inventory.quantity - quantity,
         },
         { transaction }
       );

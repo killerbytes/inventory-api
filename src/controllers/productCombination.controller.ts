@@ -1,9 +1,6 @@
 import productCombinationService from "../services/productCombination.service";
 
 const productCombinationController = {
-  async create(req, res, next) {
-    throw new Error("Method not implemented.");
-  },
   async get(req, res, next) {
     const { id } = req.params;
     try {
