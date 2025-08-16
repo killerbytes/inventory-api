@@ -1,16 +1,17 @@
-import db, { sequelize } from "../models";
-import { inventorySchema } from "../schemas";
 import { Op } from "sequelize";
-import { PAGINATION } from "../definitions.js";
+import { PAGINATION } from "../definitions";
+import db, { sequelize } from "../models";
+import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schemas";
 import authService from "./auth.service";
 const {
   Inventory,
   Product,
   Category,
   ProductCombination,
-  InventoryMovement,
-  VariantType,
+  BreakPack,
   VariantValue,
+  VariantType,
+  InventoryMovement,
   User,
 } = db;
 
@@ -271,6 +272,55 @@ const inventoryService = {
       };
     } catch (error) {
       throw error;
+    }
+  },
+
+  async getBreakPacks(payload) {
+    try {
+      function getCombinationInclude() {
+        return [
+          {
+            model: Product,
+            as: "product",
+            include: [
+              {
+                model: VariantType,
+                as: "variants",
+                include: [{ model: VariantValue, as: "values" }],
+              },
+            ],
+            order: [
+              ["name", "ASC"],
+              [{ model: VariantType, as: "variants" }, "name", "ASC"],
+            ],
+          },
+          { model: VariantValue, as: "values" },
+        ];
+      }
+
+      const breakPacks = await BreakPack.findAll({
+        nest: true,
+        include: [
+          {
+            model: ProductCombination,
+            as: "toCombination",
+            ...getCombinationInclude(),
+            include: [...getCombinationInclude()],
+          },
+          {
+            model: ProductCombination,
+            as: "fromCombination",
+            include: [...getCombinationInclude()],
+          },
+          { model: User, as: "user" },
+        ],
+      });
+
+      return {
+        data: breakPacks,
+      };
+    } catch (error) {
+      console.log(1, error);
     }
   },
 };

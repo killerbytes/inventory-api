@@ -4,6 +4,7 @@ import { productSchema } from "../schemas";
 import ApiError from "./ApiError";
 import { product } from "../interfaces";
 import { getSKU } from "../utils";
+import { get } from "http";
 const {
   Product,
   VariantType,
@@ -81,31 +82,11 @@ const productService = {
   },
 
   async get(id) {
+    const order = [...getDefaultOrder()];
     try {
       const product = await Product.findByPk(id, {
-        include: [
-          {
-            model: VariantType,
-            as: "variants",
-            include: [{ model: VariantValue, as: "values" }],
-          },
-          {
-            model: ProductCombination,
-            as: "combinations",
-            include: [
-              {
-                model: Inventory,
-                as: "inventory",
-              },
-              {
-                model: VariantValue,
-                as: "values",
-                through: { attributes: [] },
-              },
-            ],
-          },
-        ],
-        order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
+        include: [...getDefaultIncludes()],
+        order,
       });
 
       if (!product) throw ApiError.notFound("Product not found");
@@ -117,39 +98,12 @@ const productService = {
   },
 
   async getAllBySku(sku) {
+    const order = [...getDefaultOrder()];
+
     const product = await Product.findAll({
       where: { sku },
-      include: [
-        {
-          model: VariantType,
-          as: "variants",
-          include: [{ model: VariantValue, as: "values" }],
-        },
-        {
-          model: ProductCombination,
-          as: "combinations",
-          include: [
-            {
-              model: Inventory,
-              as: "inventory",
-            },
-            {
-              model: VariantValue,
-              as: "values",
-              through: { attributes: [] },
-            },
-          ],
-        },
-      ],
-      order: [
-        [{ model: VariantType, as: "variants" }, "id", "ASC"],
-        [
-          { model: ProductCombination, as: "combinations" },
-          { model: VariantValue, as: "values" },
-          "id",
-          "ASC",
-        ],
-      ],
+      include: [...getDefaultIncludes()],
+      order,
     });
 
     if (!product) throw ApiError.notFound("Product not found");
@@ -158,14 +112,7 @@ const productService = {
   },
 
   async update(id, payload) {
-    const {
-      name,
-      description,
-      unit,
-      categoryId,
-      variants = [],
-      combinations = [],
-    } = payload;
+    const { name, description, unit, categoryId, conversionFactor } = payload;
 
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
@@ -182,7 +129,7 @@ const productService = {
 
       // 1. Update base product info
       await product.update(
-        { name, description, unit, categoryId },
+        { name, description, unit, categoryId, conversionFactor },
         { transaction }
       );
 
@@ -238,33 +185,11 @@ const productService = {
   },
   async getPaginated(query) {
     const products = await Product.findAll({
-      include: [
-        { model: Category, as: "category" },
-        {
-          model: VariantType,
-          as: "variants",
-          include: [{ model: VariantValue, as: "values" }],
-        },
-        {
-          model: ProductCombination,
-          as: "combinations",
-          include: [
-            {
-              model: Inventory,
-              as: "inventory",
-            },
-            {
-              model: VariantValue,
-              as: "values",
-              through: { attributes: [] },
-            },
-          ],
-        },
-      ],
-      order: [
-        [{ model: VariantType, as: "variants" }, "name", "ASC"],
-        [{ model: ProductCombination, as: "combinations" }, "id", "ASC"],
-      ],
+      include: [...getDefaultIncludes(), { model: Category, as: "category" }],
+      order: [...getDefaultOrder()],
+      attributes: {
+        include: [[sequelize.literal("category.name"), "inventoryQuantity"]],
+      },
     });
 
     const groupedByCategory: Map<number, any> = new Map();
@@ -322,27 +247,9 @@ const productService = {
           model: Category,
           as: "category",
         },
-        {
-          model: VariantType,
-          as: "variants",
-          include: { model: VariantValue, as: "values" },
-        },
-        {
-          model: ProductCombination,
-          as: "combinations",
-          include: [
-            {
-              model: Inventory,
-              as: "inventory",
-            },
-            {
-              model: VariantValue,
-              as: "values",
-              through: { attributes: [] },
-            },
-          ],
-        },
+        ...getDefaultIncludes(),
       ],
+      order: [...getDefaultOrder()],
     });
 
     const groupedByCategory: Map<number, any> = new Map();
@@ -380,29 +287,8 @@ const productService = {
       const product = await Product.findByPk(
         id,
         {
-          include: [
-            {
-              model: VariantType,
-              as: "variants",
-              include: [{ model: VariantValue, as: "values" }],
-            },
-            {
-              model: ProductCombination,
-              as: "combinations",
-              include: [
-                {
-                  model: Inventory,
-                  as: "inventory",
-                },
-                {
-                  model: VariantValue,
-                  as: "values",
-                  through: { attributes: [] },
-                },
-              ],
-            },
-          ],
-          order: [[{ model: VariantType, as: "variants" }, "id", "ASC"]],
+          include: [...getDefaultIncludes()],
+          order: [...getDefaultOrder()],
         },
         {
           transaction,
@@ -476,29 +362,38 @@ const productService = {
 
 export default productService;
 
-function validateCombinations(product) {
-  const seen = new Map();
-  const duplicates = [];
-  const conflicts = [];
-
-  for (const combo of product.combinations) {
-    const key = Object.entries(combo.values)
-      .map(([type, value]: [string, string]) => `${type}:${value}`)
-      .sort()
-      .join("|");
-
-    if (seen.has(key)) {
-      const existing = seen.get(key);
-      // Check if SKU is different → conflict
-      if (existing.sku !== combo.sku) {
-        conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
-      } else {
-        duplicates.push({ key, sku: combo.sku });
-      }
-    } else {
-      seen.set(key, combo);
-    }
-  }
-
-  return { duplicates, conflicts };
+function getDefaultIncludes() {
+  return [
+    {
+      model: VariantType,
+      as: "variants",
+      include: [{ model: VariantValue, as: "values" }],
+    },
+    {
+      model: ProductCombination,
+      as: "combinations",
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+        },
+        {
+          model: VariantValue,
+          as: "values",
+          through: { attributes: [] },
+        },
+      ],
+    },
+  ];
+}
+function getDefaultOrder() {
+  return [
+    [{ model: VariantType, as: "variants" }, "name", "ASC"],
+    [
+      { model: ProductCombination, as: "combinations" },
+      { model: VariantValue, as: "values" },
+      "id",
+      "ASC",
+    ],
+  ];
 }
