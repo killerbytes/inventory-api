@@ -3,8 +3,8 @@ module.exports = (sequelize, DataTypes) => {
   const VariantValue = sequelize.define(
     "VariantValue",
     {
-      value: DataTypes.STRING,
-      variantTypeId: DataTypes.INTEGER,
+      value: { type: DataTypes.STRING, allowNull: false },
+      variantTypeId: { type: DataTypes.INTEGER, allowNull: false },
     },
     {
       defaultScope: {

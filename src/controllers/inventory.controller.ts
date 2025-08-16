@@ -34,15 +34,6 @@ const inventoryController = {
     }
   },
 
-  // async update(req, res, next) {
-  //   const { id } = req.params;
-  //   try {
-  //     const inventories = await inventoryService.update(id, req.body);
-  //     return res.status(200).json(inventories);
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // },
   async delete(req, res, next) {
     const { id } = req.params;
     try {
@@ -60,34 +51,11 @@ const inventoryController = {
       next(error);
     }
   },
-  async getReorderList(req, res, next) {
-    try {
-      const inventories = await Inventory.findAll({
-        raw: true,
-        nest: true,
-      });
 
-      return res.status(200).json(inventories);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async updatePrice(req, res, next) {
-    const { id } = req.params;
+  async getMovements(req, res, next) {
     try {
-      const inventories = await inventoryService.updatePrice(id, req.body);
-      return res.status(200).json(inventories);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async repackage(req, res, next) {
-    const { id } = req.params;
-    try {
-      const inventories = await inventoryService.repackage(req.body);
-      return res.status(200).json(inventories);
+      const result = await inventoryService.getMovements(req.query);
+      return res.status(200).json(result);
     } catch (error) {
       next(error);
     }

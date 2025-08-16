@@ -28,51 +28,35 @@ module.exports = (sequelize) => {
         allowNull: false,
         unique: true,
       },
-      customerId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-      },
+      customerId: DataTypes.INTEGER,
       status: {
         type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
         defaultValue: ORDER_STATUS.PENDING,
+        allowNull: false,
       },
-      orderDate: DataTypes.DATE,
-      isDelivery: DataTypes.BOOLEAN,
+      orderDate: { type: DataTypes.DATE, allowNull: false },
+      isDelivery: { type: DataTypes.BOOLEAN, defaultValue: false },
       isDeliveryCompleted: DataTypes.BOOLEAN,
       deliveryAddress: DataTypes.TEXT,
       deliveryInstructions: DataTypes.TEXT,
-      deliveryDate: {
-        type: DataTypes.DATE,
-      },
-      cancellationReason: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
+      deliveryDate: DataTypes.DATE,
+      cancellationReason: DataTypes.TEXT,
       totalAmount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
-      notes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
-      internalNotes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
+      notes: DataTypes.TEXT,
+      internalNotes: DataTypes.TEXT,
       modeOfPayment: {
         type: DataTypes.ENUM(Object.values(MODE_OF_PAYMENT)),
+        allowNull: false,
         defaultValue: MODE_OF_PAYMENT.CASH,
       },
       checkNumber: {
         type: DataTypes.STRING,
-        allowNull: true,
         unique: true,
       },
-      dueDate: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
+      dueDate: DataTypes.DATE,
     },
     {
       sequelize,
