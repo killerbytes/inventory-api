@@ -57,6 +57,14 @@ const productCombinationController = {
       next(error);
     }
   },
+  async stockAdjustment(req, res, next) {
+    try {
+      const result = await productCombinationService.stockAdjustment(req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default productCombinationController;

@@ -25,3 +25,4 @@ logs
 
 # Environment variables
 .env*
+./src/config/config.js

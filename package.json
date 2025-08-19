@@ -34,9 +34,10 @@
   "main": "index.ts",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "tsc && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
-    "sync": "node src/sync.js && npm run dev",
-    "sync:prod": "cross-env NODE_ENV=production node src/sync.js",
+    "xbuild": "tsc && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
+    "build": "tsc && cpx \"config/**/*.js\" dist/config && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
+    "xsync": "node src/sync.js && npm run dev",
+    "xsync:prod": "cross-env NODE_ENV=production node src/sync.js",
     "dev": "cross-env NODE_ENV=development ts-node-dev src/index.ts",
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",

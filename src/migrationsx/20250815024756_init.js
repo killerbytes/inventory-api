@@ -1,4 +1,9 @@
 const Sequelize = require("sequelize");
+const {
+  ORDER_STATUS,
+  MODE_OF_PAYMENT,
+  INVENTORY_MOVEMENT_TYPE,
+} = require("../definitions");
 
 /**
  * Actions summary:
@@ -370,7 +375,7 @@ const migrationCommands = (transaction) => [
           allowNull: false,
         },
         status: {
-          type: Sequelize.ENUM("PENDING", "RECEIVED", "COMPLETED", "CANCELLED"),
+          type: Sequelize.STRING,
           field: "status",
           defaultValue: "PENDING",
         },
@@ -387,7 +392,7 @@ const migrationCommands = (transaction) => [
         notes: { type: Sequelize.TEXT, field: "notes" },
         internalNotes: { type: Sequelize.TEXT, field: "internalNotes" },
         modeOfPayment: {
-          type: Sequelize.ENUM("CASH", "CHECK"),
+          type: Sequelize.STRING,
           field: "modeOfPayment",
           defaultValue: "CHECK",
         },
@@ -464,15 +469,7 @@ const migrationCommands = (transaction) => [
           allowNull: false,
         },
         type: {
-          type: Sequelize.ENUM(
-            "IN",
-            "OUT",
-            "ADJUST",
-            "RETURN",
-            "CANCEL_PURCHASE",
-            "BREAK_PACK",
-            "RE_PACK"
-          ),
+          type: Sequelize.STRING,
           field: "type",
           allowNull: false,
         },
@@ -550,7 +547,7 @@ const migrationCommands = (transaction) => [
           field: "customerId",
         },
         status: {
-          type: Sequelize.ENUM("PENDING", "RECEIVED", "COMPLETED", "CANCELLED"),
+          type: Sequelize.STRING,
           field: "status",
           allowNull: false,
           defaultValue: "PENDING",
@@ -587,7 +584,7 @@ const migrationCommands = (transaction) => [
         notes: { type: Sequelize.TEXT, field: "notes" },
         internalNotes: { type: Sequelize.TEXT, field: "internalNotes" },
         modeOfPayment: {
-          type: Sequelize.ENUM("CASH", "CHECK"),
+          type: Sequelize.STRING,
           field: "modeOfPayment",
           defaultValue: "CASH",
           allowNull: false,
@@ -728,7 +725,7 @@ const migrationCommands = (transaction) => [
           field: "salesOrderId",
         },
         status: {
-          type: Sequelize.ENUM("PENDING", "RECEIVED", "COMPLETED", "CANCELLED"),
+          type: Sequelize.STRING,
           field: "status",
           allowNull: false,
         },
@@ -950,6 +947,58 @@ const migrationCommands = (transaction) => [
 ];
 
 const rollbackCommands = (transaction) => [
+  {
+    fn: "removeConstraint",
+    params: ["Products", "products_ibfk_1", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: [
+      "ProductCombinations",
+      "productcombinations_ibfk_1",
+      { transaction },
+    ],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["salesorders", "salesorders_ibfk_1", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["salesorderitems", "salesorderitems_ibfk_3", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["varianttypes", "varianttypes_ibfk_1", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: [
+      "purchaseorderitems",
+      "purchaseorderitems_ibfk_1",
+      { transaction },
+    ],
+  },
+  {
+    fn: "removeConstraint",
+    params: [
+      "purchaseorderitems",
+      "purchaseorderitems_ibfk_2",
+      { transaction },
+    ],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["salesorderitems", "salesorderitems_ibfk_1", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["salesorderitems", "salesorderitems_ibfk_2", { transaction }],
+  },
+  {
+    fn: "removeConstraint",
+    params: ["variantvalues", "variantvalues_ibfk_1", { transaction }],
+  },
   {
     fn: "dropTable",
     params: ["Categories", { transaction }],

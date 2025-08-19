@@ -12,6 +12,7 @@ const {
   VariantValue,
   VariantType,
   InventoryMovement,
+  StockAdjustment,
   User,
 } = db;
 
@@ -318,6 +319,43 @@ const inventoryService = {
 
       return {
         data: breakPacks,
+      };
+    } catch (error) {
+      console.log(1, error);
+    }
+  },
+
+  async getStockAdjustments(payload) {
+    try {
+      const stockAdjustments = await StockAdjustment.findAll({
+        nest: true,
+        include: [
+          {
+            model: User,
+            as: "user",
+          },
+          {
+            model: ProductCombination,
+            as: "combination",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [{ model: VariantType, as: "variants" }],
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      return {
+        data: stockAdjustments,
       };
     } catch (error) {
       console.log(1, error);
