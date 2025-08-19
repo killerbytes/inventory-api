@@ -1,11 +1,12 @@
-import { convertFromDirectory } from "joi-to-typescript";
+// import { convertFromDirectory } from "joi-to-typescript";
+import * as joi2ts from "joi-to-typescript";
 
 async function types(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log("Running joi-to-typescript...");
 
   // Configure your settings here
-  const result = await convertFromDirectory({
+  const result = await joi2ts.convertFromDirectory({
     schemaDirectory: "./src/schemas",
     typeOutputDirectory: "./src/interfaces",
     debug: true,

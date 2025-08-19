@@ -3,6 +3,13 @@
  * Do not modify this file manually
  */
 
+export interface breakPack {
+  conversionFactor: number;
+  fromCombinationId: number;
+  quantity: number;
+  toCombinationId: number;
+}
+
 export interface category {
   description?: string;
   name: string;
@@ -24,18 +31,12 @@ export interface inventory {
   quantity: number;
 }
 
-export interface inventoryPriceAdjustment {
-  price: number;
+export interface inventoryMovement {
+  type: 'IN' | 'OUT' | 'STOCK_ADJUSTMENT' | 'RETURN' | 'CANCEL_PURCHASE' | 'BREAK_PACK' | 'RE_PACK';
 }
 
-export interface inventoryTransaction {
-  inventoryId: number;
-  newValue: number;
-  orderId?: number;
-  orderType?: string;
-  previousValue: number;
-  transactionType: string;
-  value: number;
+export interface inventoryPriceAdjustment {
+  price: number;
 }
 
 export interface login {
@@ -57,7 +58,7 @@ export interface productCombinations {
   price: number;
   productId?: number;
   reorderLevel: number;
-  sku: string;
+  sku?: string | null;
   values?: variantValue[];
 }
 
@@ -68,10 +69,8 @@ export interface purchaseOrder {
   internalNotes?: string | null | '';
   modeOfPayment: string;
   notes?: string | null | '';
-  orderDate: Date;
   purchaseOrderItems: purchaseOrderItem[];
   purchaseOrderNumber: string;
-  receivedDate?: Date;
   supplierId: number;
 }
 
@@ -85,10 +84,14 @@ export interface purchaseOrderItem {
   discount?: number | null;
   discountNote?: string | null | '';
   id?: number;
+  nameSnapshot?: string;
   originalPrice?: number | null;
+  purchasePrice: number;
   quantity: number;
+  skuSnapshot?: string;
   status?: 'PENDING' | 'RECEIVED' | 'COMPLETED' | 'CANCELLED';
-  unitPrice: number;
+  unit?: string;
+  variantSnapshot?: object;
 }
 
 export interface purchaseOrderStatus {
@@ -108,38 +111,49 @@ export interface purchaseOrderUpdate {
   supplierId: number;
 }
 
-export interface repackInventory {
-  categoryId: number;
-  description?: string | null;
-  name: string;
-  parentId: number;
-  price: number;
-  pullOutQuantity: number;
-  repackQuantity: number;
-  unit: string;
-}
-
 export interface salesOrder {
-  customer: string;
-  deliveryDate: Date;
-  notes?: string | null;
+  customerId: number;
+  deliveryAddress?: string;
+  deliveryDate?: Date;
+  deliveryInstructions?: string;
+  internalNotes?: string | null | '';
+  isDelivery?: boolean;
+  isDeliveryCompleted?: boolean;
+  notes?: string | null | '';
   orderDate: Date;
-  receivedDate?: Date;
   salesOrderItems: salesOrderItem[];
+  salesOrderNumber: string;
 }
 
 export interface salesOrderItem {
+  combinationId: number;
   discount?: number | null;
-  inventory?: object;
-  inventoryId: number;
+  discountNote?: string | null | '';
+  id?: number;
+  nameSnapshot?: string;
   originalPrice?: number | null;
+  purchasePrice: number;
   quantity: number;
+  skuSnapshot?: string;
   status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
-  unitPrice: number;
+  unit?: string;
+  variantSnapshot?: object;
 }
 
 export interface salesOrderStatus {
   status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+}
+
+export interface stockAdjustmentSchema {
+  combinationId: number;
+  createdAt: Date;
+  createdBy: number;
+  difference: number;
+  newQuantity: number;
+  notes?: string | null | '';
+  reason: string;
+  referenceNo: string;
+  systemQuantity: number;
 }
 
 export interface supplier {
@@ -169,6 +183,7 @@ export interface userBase {
 
 export interface variant {
   id?: number;
+  isTemplate?: boolean | null;
   name: string;
   productId?: number;
   values: (variantValue | variantValuePayload)[];
