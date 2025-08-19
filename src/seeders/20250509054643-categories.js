@@ -93,5 +93,6 @@ module.exports = {
      * await queryInterface.bulkDelete('People', null, {});
      */
     order: 1;
+    await queryInterface.bulkDelete("Categories", null, {});
   },
 };

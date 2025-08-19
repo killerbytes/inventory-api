@@ -1,4 +1,4 @@
-import { STOCK_ADJUSTMENT_TYPE } from "../definitions";
+const { STOCK_ADJUSTMENT_TYPE } = require("../definitions");
 
 module.exports = (sequelize, DataTypes) => {
   const StockAdjustment = sequelize.define(

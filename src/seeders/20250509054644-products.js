@@ -79,8 +79,12 @@ module.exports = {
         transaction,
         returning: true,
       });
+
+      // ✅ Quoted table + column names
       const insertedValues = await queryInterface.sequelize.query(
-        `SELECT id, value, variantTypeId FROM VariantValues WHERE variantTypeId IN (${colorTypeId}, ${sizeTypeId});`,
+        `SELECT "id", "value", "variantTypeId"
+         FROM "VariantValues"
+         WHERE "variantTypeId" IN (${colorTypeId}, ${sizeTypeId});`,
         { type: Sequelize.QueryTypes.SELECT, transaction }
       );
 
@@ -123,7 +127,6 @@ module.exports = {
           quantity: 5,
         },
       ];
-      console.log(combinations);
 
       for (const combo of combinations) {
         const [comboId] = await queryInterface
