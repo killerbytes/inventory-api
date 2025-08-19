@@ -3,8 +3,11 @@ const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
 module.exports = (sequelize, DataTypes) => {
   const InventoryMovement = sequelize.define("InventoryMovement", {
     type: {
-      type: DataTypes.ENUM(Object.keys(INVENTORY_MOVEMENT_TYPE)),
+      type: DataTypes.STRING,
       allowNull: false,
+      validate: {
+        isIn: [Object.values(INVENTORY_MOVEMENT_TYPE)],
+      },
     },
     previous: {
       type: DataTypes.INTEGER,
@@ -33,6 +36,10 @@ module.exports = (sequelize, DataTypes) => {
     InventoryMovement.belongsTo(models.ProductCombination, {
       foreignKey: "combinationId",
       as: "combination",
+    });
+
+    InventoryMovement.belongsTo(models.StockAdjustment, {
+      foreignKey: "referenceId",
     });
   };
 

@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ES2017", // Avoid ES5 – ES6+ retains proper `class` behavior
+        "target": "ES2017",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "rootDir": "src",
@@ -8,12 +8,11 @@
         "allowJs": true
     },
     "include": [
-        "src",
-        "config"
-    ],
+        "src"
+    ], // ⬅️ only src is compiled
     "exclude": [
         "node_modules",
         "dist",
-        "**/*.test.ts"
+        "src/config"
     ]
 }

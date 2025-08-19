@@ -30,9 +30,12 @@ module.exports = (sequelize) => {
       },
       customerId: DataTypes.INTEGER,
       status: {
-        type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
+        type: DataTypes.STRING,
         defaultValue: ORDER_STATUS.PENDING,
         allowNull: false,
+        validate: {
+          isIn: [Object.values(MODE_OF_PAYMENT)],
+        },
       },
       orderDate: { type: DataTypes.DATE, allowNull: false },
       isDelivery: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -48,9 +51,12 @@ module.exports = (sequelize) => {
       notes: DataTypes.TEXT,
       internalNotes: DataTypes.TEXT,
       modeOfPayment: {
-        type: DataTypes.ENUM(Object.values(MODE_OF_PAYMENT)),
+        type: DataTypes.STRING,
         allowNull: false,
         defaultValue: MODE_OF_PAYMENT.CASH,
+        validate: {
+          isIn: [Object.values(MODE_OF_PAYMENT)],
+        },
       },
       checkNumber: {
         type: DataTypes.STRING,

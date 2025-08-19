@@ -7,8 +7,11 @@ module.exports = (sequelize, DataTypes) => {
       purchaseOrderId: DataTypes.INTEGER,
       salesOrderId: DataTypes.INTEGER,
       status: {
-        type: DataTypes.ENUM(Object.values(ORDER_STATUS)),
+        type: DataTypes.STRING,
         allowNull: false,
+        validate: {
+          isIn: [Object.values(ORDER_STATUS)],
+        },
       },
       changedBy: { type: DataTypes.INTEGER, allowNull: false },
       changedAt: { type: DataTypes.DATE, allowNull: false },

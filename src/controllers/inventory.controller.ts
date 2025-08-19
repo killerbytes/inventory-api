@@ -69,6 +69,17 @@ const inventoryController = {
       next(error);
     }
   },
+
+  async getStockAdjustments(req, res, next) {
+    try {
+      const stockAdjustments = await inventoryService.getStockAdjustments(
+        req.body
+      );
+      return res.status(200).json(stockAdjustments);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 export default inventoryController;
