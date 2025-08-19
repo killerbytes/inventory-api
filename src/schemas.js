@@ -268,13 +268,21 @@ export const inventoryPriceAdjustmentSchema = Joi.object({
   price: Joi.number().required(),
 }).meta({ className: "inventoryPriceAdjustment" });
 
-export const repackInventorySchema = Joi.object({
-  name: Joi.string().required(),
-  description: Joi.string().optional().allow(null),
-  categoryId: Joi.number().required(),
-  unit: Joi.string().required(),
-  price: Joi.number().required(),
-  pullOutQuantity: Joi.number().required(),
-  repackQuantity: Joi.number().required(),
-  parentId: Joi.number().required(),
-}).meta({ className: "repackInventory" });
+export const breakPackSchema = Joi.object({
+  fromCombinationId: Joi.number().required(),
+  quantity: Joi.number().required(),
+  toCombinationId: Joi.number().required(),
+  conversionFactor: Joi.number().required(),
+}).meta({ className: "breakPack" });
+
+export const stockAdjustmentSchema = Joi.object({
+  referenceNo: Joi.string().required(),
+  combinationId: Joi.number().required(),
+  systemQuantity: Joi.number().required(),
+  newQuantity: Joi.number().required(),
+  difference: Joi.number().required(),
+  reason: Joi.string().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  createdAt: Joi.date().required(),
+  createdBy: Joi.number().required(),
+});

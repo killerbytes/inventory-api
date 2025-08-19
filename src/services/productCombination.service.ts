@@ -1,6 +1,10 @@
 import { Op } from "sequelize";
 import db, { Sequelize, sequelize } from "../models";
-import { productCombinationSchema } from "../schemas";
+import {
+  breakPackSchema,
+  productCombinationSchema,
+  stockAdjustmentSchema,
+} from "../schemas";
 import ApiError from "./ApiError";
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
@@ -16,6 +20,7 @@ const {
   ProductCombination,
   CombinationValue,
   BreakPack,
+  StockAdjustment,
 } = db;
 
 const productCombinationService = {
@@ -343,6 +348,13 @@ const productCombinationService = {
   },
 
   async breakPack(payload) {
+    const { error } = breakPackSchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw error;
+    }
+
     const { fromCombinationId, quantity, toCombinationId } = payload;
 
     const transaction = await sequelize.transaction();
@@ -455,6 +467,93 @@ const productCombinationService = {
       return toInventory;
     } catch (error) {
       console.log(1, error);
+      transaction.rollback();
+      throw error;
+    }
+  },
+
+  async stockAdjustment(payload) {
+    const partialSchema = Joi.object({
+      combinationId: stockAdjustmentSchema.extract("combinationId"),
+      newQuantity: stockAdjustmentSchema.extract("newQuantity"),
+      reason: stockAdjustmentSchema.extract("reason"),
+      notes: stockAdjustmentSchema.extract("notes"),
+    });
+    const { error } = partialSchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw error;
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+      const { combinationId, newQuantity, reason, notes } = payload;
+      const combination = await ProductCombination.findByPk(combinationId, {
+        include: [
+          {
+            model: Inventory,
+            as: "inventory",
+          },
+          { model: Product, as: "product" },
+        ],
+        transaction,
+      });
+      if (!combination) throw new Error("Combination not found");
+      const user = await authService.getCurrent();
+
+      await StockAdjustment.create(
+        {
+          referenceNo: "REF" + Math.random(),
+          combinationId: combination.id,
+          systemQuantity: combination.inventory?.quantity || 0,
+          newQuantity,
+          difference: newQuantity - combination.inventory?.quantity || 0,
+          reason,
+          notes,
+          createdAt: new Date(),
+          createdBy: user.id,
+        },
+        { transaction }
+      );
+
+      await InventoryMovement.create(
+        {
+          previous: combination.inventory?.quantity || 0,
+          new: newQuantity,
+          quantity: newQuantity,
+          reference: combination.id,
+          type: INVENTORY_MOVEMENT_TYPE.STOCK_ADJUSTMENT,
+          reason,
+          combinationId: combination.id,
+          userId: user.id,
+        },
+        { transaction }
+      );
+      if (combination.inventory) {
+        console.log(2, combination.inventory);
+
+        await combination.inventory.update(
+          {
+            quantity: newQuantity,
+          },
+          { transaction }
+        );
+      } else {
+        combination.inventory = await Inventory.create(
+          {
+            combinationId: combination.id,
+            quantity: newQuantity,
+          },
+          { transaction }
+        );
+      }
+
+      transaction.commit();
+      return combination;
+    } catch (error) {
+      console.log(error);
+
       transaction.rollback();
       throw error;
     }

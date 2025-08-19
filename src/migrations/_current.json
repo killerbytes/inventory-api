@@ -1,5 +1,71 @@
 {
     "tables": {
+        "BreakPacks": {
+            "tableName": "BreakPacks",
+            "schema": {
+                "id": {
+                    "allowNull": false,
+                    "primaryKey": true,
+                    "autoIncrement": true,
+                    "field": "id",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "fromCombinationId": {
+                    "allowNull": false,
+                    "field": "fromCombinationId",
+                    "references": {
+                        "model": "ProductCombinations",
+                        "key": "id"
+                    },
+                    "onDelete": "NO ACTION",
+                    "onUpdate": "CASCADE",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "toCombinationId": {
+                    "allowNull": false,
+                    "field": "toCombinationId",
+                    "references": {
+                        "model": "ProductCombinations",
+                        "key": "id"
+                    },
+                    "onDelete": "NO ACTION",
+                    "onUpdate": "CASCADE",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "quantity": {
+                    "allowNull": false,
+                    "field": "quantity",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "conversionFactor": {
+                    "allowNull": false,
+                    "field": "conversionFactor",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "createdBy": {
+                    "allowNull": false,
+                    "field": "createdBy",
+                    "references": {
+                        "model": "Users",
+                        "key": "id"
+                    },
+                    "onDelete": "NO ACTION",
+                    "onUpdate": "CASCADE",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "createdAt": {
+                    "allowNull": false,
+                    "field": "createdAt",
+                    "seqType": "Sequelize.DATE"
+                },
+                "updatedAt": {
+                    "allowNull": false,
+                    "field": "updatedAt",
+                    "seqType": "Sequelize.DATE"
+                }
+            },
+            "indexes": []
+        },
         "Categories": {
             "tableName": "Categories",
             "schema": {
@@ -221,7 +287,7 @@
                 "type": {
                     "allowNull": false,
                     "field": "type",
-                    "seqType": "Sequelize.ENUM('IN', 'OUT', 'ADJUST', 'RETURN', 'CANCEL_PURCHASE', 'BREAK_PACK', 'RE_PACK')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "previous": {
                     "allowNull": false,
@@ -278,6 +344,17 @@
                     "onUpdate": "CASCADE",
                     "field": "combinationId",
                     "seqType": "Sequelize.INTEGER"
+                },
+                "referenceId": {
+                    "allowNull": true,
+                    "references": {
+                        "model": "StockAdjustments",
+                        "key": "id"
+                    },
+                    "onDelete": "SET NULL",
+                    "onUpdate": "CASCADE",
+                    "field": "referenceId",
+                    "seqType": "Sequelize.INTEGER"
                 }
             },
             "indexes": []
@@ -317,7 +394,7 @@
                 "status": {
                     "allowNull": false,
                     "field": "status",
-                    "seqType": "Sequelize.ENUM('PENDING', 'RECEIVED', 'COMPLETED', 'CANCELLED')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "changedBy": {
                     "allowNull": false,
@@ -510,7 +587,7 @@
                         "value": "PENDING"
                     },
                     "field": "status",
-                    "seqType": "Sequelize.ENUM('PENDING', 'RECEIVED', 'COMPLETED', 'CANCELLED')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "deliveryDate": {
                     "field": "deliveryDate",
@@ -538,7 +615,7 @@
                         "value": "CHECK"
                     },
                     "field": "modeOfPayment",
-                    "seqType": "Sequelize.ENUM('CASH', 'CHECK')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "checkNumber": {
                     "unique": true,
@@ -700,7 +777,7 @@
                     },
                     "allowNull": false,
                     "field": "status",
-                    "seqType": "Sequelize.ENUM('PENDING', 'RECEIVED', 'COMPLETED', 'CANCELLED')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "orderDate": {
                     "allowNull": false,
@@ -753,7 +830,7 @@
                         "value": "CASH"
                     },
                     "field": "modeOfPayment",
-                    "seqType": "Sequelize.ENUM('CASH', 'CHECK')"
+                    "seqType": "Sequelize.STRING"
                 },
                 "checkNumber": {
                     "unique": true,
@@ -897,6 +974,66 @@
                     "onUpdate": "CASCADE",
                     "field": "inventoryId",
                     "seqType": "Sequelize.INTEGER"
+                }
+            },
+            "indexes": []
+        },
+        "StockAdjustments": {
+            "tableName": "StockAdjustments",
+            "schema": {
+                "id": {
+                    "allowNull": false,
+                    "primaryKey": true,
+                    "autoIncrement": true,
+                    "field": "id",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "referenceNo": {
+                    "field": "referenceNo",
+                    "seqType": "Sequelize.STRING"
+                },
+                "combinationId": {
+                    "field": "combinationId",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "systemQuantity": {
+                    "field": "systemQuantity",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "newQuantity": {
+                    "field": "newQuantity",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "difference": {
+                    "field": "difference",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "reason": {
+                    "field": "reason",
+                    "seqType": "Sequelize.STRING"
+                },
+                "notes": {
+                    "field": "notes",
+                    "seqType": "Sequelize.STRING"
+                },
+                "createdBy": {
+                    "allowNull": false,
+                    "field": "createdBy",
+                    "seqType": "Sequelize.INTEGER"
+                },
+                "createdAt": {
+                    "allowNull": false,
+                    "field": "createdAt",
+                    "seqType": "Sequelize.DATE"
+                },
+                "updatedAt": {
+                    "allowNull": false,
+                    "field": "updatedAt",
+                    "seqType": "Sequelize.DATE"
+                },
+                "deletedAt": {
+                    "field": "deletedAt",
+                    "seqType": "Sequelize.DATE"
                 }
             },
             "indexes": []
