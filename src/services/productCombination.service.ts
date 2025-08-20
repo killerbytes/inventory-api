@@ -8,7 +8,7 @@ import {
 import ApiError from "./ApiError";
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
-import { getSKU } from "../utils";
+import { getMappedProductComboName, getSKU } from "../utils";
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
 import authService from "./auth.service";
 const {
@@ -107,7 +107,15 @@ const productCombinationService = {
     if (error) {
       throw error;
     }
-    const product = await Product.findByPk(productId);
+    const product = await Product.findByPk(productId, {
+      include: [
+        {
+          model: VariantType,
+          as: "variants",
+          include: [{ model: VariantValue, as: "values" }],
+        },
+      ],
+    });
     if (!product) throw new Error("Product not found");
 
     const issue = validateCombinations(payload);
@@ -228,7 +236,13 @@ const productCombinationService = {
             throw new Error(`Combination with ID ${combo.id} not found`);
           }
 
-          await combination.update({ ...combo }, { transaction });
+          await combination.update(
+            {
+              ...combo,
+              name: getMappedProductComboName(product, combo.values),
+            },
+            { transaction }
+          );
           // Optional: update variant values if changed
           await combination.setValues(variantValueIds, { transaction });
         } else {
@@ -237,6 +251,7 @@ const productCombinationService = {
             {
               productId,
               ...combo,
+              name: getMappedProductComboName(product, combo.values),
               sku: getSKU(
                 product.name,
                 product.categoryId,
@@ -531,8 +546,6 @@ const productCombinationService = {
         { transaction }
       );
       if (combination.inventory) {
-        console.log(2, combination.inventory);
-
         await combination.inventory.update(
           {
             quantity: newQuantity,

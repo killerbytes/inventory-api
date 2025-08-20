@@ -38,3 +38,10 @@ export const getMappedVariantValues = (variants, values) => {
   });
   return mappedVariantValues;
 };
+
+export const getMappedProductComboName = (product, values) => {
+  const mapped = getMappedVariantValues(product?.variants, values);
+  return `${product?.name} - ${Object.keys(mapped)
+    .map((key) => `${mapped[key]}`)
+    .join(" | ")}`;
+};

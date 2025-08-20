@@ -3,7 +3,7 @@ import db, { Sequelize, sequelize } from "../models";
 import { productSchema } from "../schemas";
 import ApiError from "./ApiError";
 import { product } from "../interfaces";
-import { getSKU } from "../utils";
+import { getMappedProductComboName, getSKU } from "../utils";
 import { get } from "http";
 const {
   Product,
@@ -18,60 +18,17 @@ const {
 
 const productService = {
   async create(payload) {
-    const { name, description, unit, categoryId, variants, combinations } =
-      payload;
+    const { error } = productSchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw error;
+    }
 
     const transaction = await sequelize.transaction();
 
     try {
-      const product = await Product.create(
-        { name, description, unit, categoryId },
-        { transaction }
-      );
-
-      // // Create variant types and values
-      // const variantTypeMap = {};
-      // const variantValueMap = {};
-
-      // for (const variant of variants) {
-      //   const type = await VariantType.create(
-      //     { name: variant.name, productId: product.id },
-      //     { transaction }
-      //   );
-      //   variantTypeMap[variant.name] = type;
-
-      //   variantValueMap[variant.name] = {};
-      //   for (const value of variant.values) {
-      //     const val = await VariantValue.create(
-      //       { value, variantTypeId: type.id },
-      //       { transaction }
-      //     );
-      //     variantValueMap[variant.name][value] = val;
-      //   }
-      // }
-
-      // // Create combinations and inventory
-      // for (const combo of combinations) {
-      //   const productCombo = await ProductCombination.create(
-      //     { productId: product.id, ...combo },
-      //     { transaction }
-      //   );
-
-      //   for (const [variantName, value] of Object.entries(combo.values)) {
-      //     const val = variantValueMap[variantName]?.[value];
-      //     if (val) {
-      //       await CombinationValue.create(
-      //         { combinationId: productCombo.id, variantValueId: val.id },
-      //         { transaction }
-      //       );
-      //     }
-      //   }
-
-      //   await Inventory.create(
-      //     { combinationId: productCombo.id, quantity: combo.quantity },
-      //     { transaction }
-      //   );
-      // }
+      const product = await Product.create(payload, { transaction });
 
       await transaction.commit();
       return product;
@@ -248,6 +205,26 @@ const productService = {
           as: "category",
         },
         ...getDefaultIncludes(),
+        {
+          model: ProductCombination,
+          as: "combinations",
+          include: [
+            {
+              model: Product,
+              as: "product",
+              include: [{ model: VariantType, as: "variants" }],
+            },
+            {
+              model: Inventory,
+              as: "inventory",
+            },
+            {
+              model: VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
       ],
       order: [...getDefaultOrder()],
     });
@@ -334,6 +311,7 @@ const productService = {
         const productCombo = await ProductCombination.create(
           {
             productId: newProduct.id,
+            name: getMappedProductComboName(product, combo.values),
             sku: getSKU(product.name, product.categoryId, unit, combo.values),
             price: 0,
           },
@@ -388,6 +366,7 @@ function getDefaultIncludes() {
 }
 function getDefaultOrder() {
   return [
+    ["name", "ASC"],
     [{ model: VariantType, as: "variants" }, "name", "ASC"],
     [
       { model: ProductCombination, as: "combinations" },

@@ -42,7 +42,8 @@
     "joi2ts": "ts-node src/joi2ts.ts",
     "backup": "node backup.js backup",
     "restore": "node backup.js restore",
-    "restore-and-dev": "node backup.js restore-and-dev"
+    "restore-and-dev": "node backup.js restore-and-dev",
+    "sync": "node ./src/sync.js"
   },
   "author": "",
   "license": "ISC",
