@@ -31,7 +31,7 @@ module.exports = (sequelize) => {
       modelName: "User",
       defaultScope: {
         attributes: {
-          exclude: ["password", "createdAt", "updatedAt", "email"],
+          exclude: ["password", "createdAt", "updatedAt"],
         }, // Exclude password by default
       },
       scopes: {

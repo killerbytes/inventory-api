@@ -1,3 +1,12 @@
+/**
+ * backup.js
+ *
+ * Backup and restore MySQL database with options:
+ *  - full (schema + data)
+ *  - data-only (no DROP/CREATE TABLE, safe for schema changes)
+ *  - restore-and-dev (restore then start dev server)
+ */
+
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
 require("dotenv").config({ path: envPath });
@@ -6,13 +15,12 @@ const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
-const { Sequelize } = require("sequelize");
 
 const { DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, BACKUP_DIR } = process.env;
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR);
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
 function runCommand(cmd) {
@@ -37,16 +45,20 @@ function getLatestBackup() {
   return files.length ? path.join(BACKUP_DIR, files[0].name) : null;
 }
 
-// 1️⃣ Backup
-async function backup() {
+// 1️⃣ Backup (full or data-only)
+async function backup({ dataOnly = false } = {}) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const suffix = dataOnly ? "data-only" : "full";
   const compressedFile = path.join(
     BACKUP_DIR,
-    `${DB_NAME}-${timestamp}.sql.gz`
+    `${DB_NAME}-${suffix}-${timestamp}.sql.gz`
   );
 
-  const dumpCmd = `mysqldump -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} ${DB_NAME}`;
-  console.log("Creating backup...");
+  const dumpCmd = dataOnly
+    ? `mysqldump -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} --no-create-info ${DB_NAME}`
+    : `mysqldump -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} ${DB_NAME}`;
+
+  console.log(`Creating ${dataOnly ? "data-only" : "full"} backup...`);
 
   try {
     const dumpProcess = exec(dumpCmd);
@@ -62,13 +74,13 @@ async function backup() {
   }
 }
 
-// 2️⃣ Restore
+// 2️⃣ Restore (works with .sql or .sql.gz)
 async function restore(filePath) {
   console.log(`Restoring from ${filePath}...`);
   try {
     let sqlFilePath = filePath;
 
-    // If compressed, decompress
+    // If compressed, decompress first
     if (filePath.endsWith(".gz")) {
       const decompressedFile = filePath.replace(/\.gz$/, "");
       const input = fs.createReadStream(filePath);
@@ -91,7 +103,7 @@ async function restore(filePath) {
     await runCommand(restoreCmd);
     console.log("Restore complete!");
 
-    // Delete temp file if decompressed
+    // Delete temp decompressed file
     if (sqlFilePath !== filePath) {
       fs.unlinkSync(sqlFilePath);
     }
@@ -100,57 +112,50 @@ async function restore(filePath) {
   }
 }
 
-// 3️⃣ Import to Sequelize (optional)
-async function importToSequelize(filePath) {
-  console.log(`Importing into Sequelize from ${filePath}...`);
-
-  const sequelize = new Sequelize(DB_NAME, DB_USERNAME, DB_PASSWORD, {
-    host: DB_HOST,
-    dialect: "mysql",
-    logging: false,
-  });
-
-  try {
-    let sql = fs.readFileSync(filePath, "utf8");
-    await sequelize.query(sql);
-    console.log("Import complete via Sequelize!");
-  } catch (err) {
-    console.error("Sequelize import failed:", err);
-  } finally {
-    await sequelize.close();
-  }
+// 3️⃣ Restore and start dev server
+async function restoreAndDev(filePath) {
+  await restore(filePath);
+  console.log("Starting dev server...");
+  runCommand("npm run dev");
 }
 
-// CLI
+// CLI entry
 const [, , command, file] = process.argv;
 
-if (command === "backup") {
-  backup();
-} else if (command === "restore") {
-  const restoreFile = file || getLatestBackup();
-  if (!restoreFile) {
-    console.error("No backup file found!");
-    process.exit(1);
+(async () => {
+  try {
+    if (command === "backup") {
+      await backup();
+    } else if (command === "backup-data") {
+      await backup({ dataOnly: true });
+    } else if (command === "restore") {
+      const restoreFile = file || getLatestBackup();
+      if (!restoreFile) {
+        console.error("No backup file found!");
+        process.exit(1);
+      }
+      await restore(restoreFile);
+    } else if (command === "restore-and-dev") {
+      const restoreFile = file || getLatestBackup();
+      if (!restoreFile) {
+        console.error("No backup file found!");
+        process.exit(1);
+      }
+      await restoreAndDev(restoreFile);
+    } else {
+      console.log("Commands:");
+      console.log(
+        "  node backup.js backup          # Full backup (schema+data)"
+      );
+      console.log("  node backup.js backup-data     # Data-only backup");
+      console.log(
+        "  node backup.js restore [file]  # Restore full/data backup"
+      );
+      console.log(
+        "  node backup.js restore-and-dev [file] # Restore then start dev"
+      );
+    }
+  } catch (err) {
+    console.error("Error:", err);
   }
-  restore(restoreFile);
-} else if (command === "restore-and-dev") {
-  const restoreFile = file || getLatestBackup();
-  if (!restoreFile) {
-    console.error("No backup file found!");
-    process.exit(1);
-  }
-  restore(restoreFile).then(() => {
-    console.log("Starting dev server...");
-    runCommand("npm run dev");
-  });
-} else if (command === "import-sequelize") {
-  if (!file)
-    return console.error("Usage: node backup.js import-sequelize <file.sql>");
-  importToSequelize(file);
-} else {
-  console.log("Commands:");
-  console.log("  node backup.js backup");
-  console.log("  node backup.js restore [file]");
-  console.log("  node backup.js restore-and-dev [file]");
-  console.log("  node backup.js import-sequelize <file.sql>");
-}
+})();

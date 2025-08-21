@@ -5,6 +5,7 @@ import ApiError from "./ApiError";
 import { product } from "../interfaces";
 import { getMappedProductComboName, getSKU } from "../utils";
 import { get } from "http";
+import { required } from "joi";
 const {
   Product,
   VariantType,
@@ -15,6 +16,13 @@ const {
   ProductCombination,
   CombinationValue,
 } = db;
+
+interface GroupedCategory {
+  categoryId: number;
+  categoryName: string;
+  categoryOrder: number;
+  products: any[]; // or Product[]
+}
 
 const productService = {
   async create(payload) {
@@ -141,61 +149,63 @@ const productService = {
     }
   },
   async getPaginated(query) {
-    const products = await Product.findAll({
-      include: [...getDefaultIncludes(), { model: Category, as: "category" }],
-      order: [...getDefaultOrder()],
-      attributes: {
-        include: [[sequelize.literal("category.name"), "inventoryQuantity"]],
-      },
-    });
+    const { q, page = 1, limit = 10, categoryId } = query;
+    const offset = (page - 1) * limit;
 
-    const groupedByCategory: Map<number, any> = new Map();
-    const categories = await Category.findAll({
-      order: [["order", "ASC"]],
-    });
-    categories.forEach((category) => {
-      const catId = category.id;
-      if (!groupedByCategory[catId]) {
-        groupedByCategory[catId] = {
+    const where = {};
+
+    if (categoryId) {
+      where["$product.categoryId$"] = categoryId;
+    }
+
+    if (q) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${q}%` } }, // Product.name
+        { "$combinations.name$": { [Op.like]: `%${q}%` } }, // Combination.name
+      ];
+    }
+
+    try {
+      const { rows: products, count } = await Product.findAndCountAll({
+        where,
+        subQuery: false, // ✅ important
+
+        include: [...getDefaultIncludes(), { model: Category, as: "category" }],
+        order: [...getDefaultOrder()],
+        distinct: true, // ✅ important: prevents inflated count when many combinations
+      });
+
+      const groupedByCategory: Record<number, GroupedCategory> = {};
+      const categories = await Category.findAll({ order: [["order", "ASC"]] });
+
+      categories.forEach((category) => {
+        groupedByCategory[category.id] = {
           categoryId: category.id,
           categoryName: category.name,
           categoryOrder: category.order,
           products: [],
         };
-      }
-      // groupedByCategory[catId].products.push(products);
-    });
+      });
 
-    products.forEach((product) => {
-      const category = product.category;
-      if (!category) return;
+      products.forEach((product) => {
+        const category = product.category;
+        if (!category) return;
+        groupedByCategory[category.id].products.push(product);
+      });
 
-      const catId = category.id;
+      const result = Object.values(groupedByCategory).sort(
+        (a, b) => a.categoryOrder - b.categoryOrder
+      );
 
-      // if (!groupedByCategory[catId]) {
-      //   groupedByCategory[catId] = {
-      //     categoryId: category.id,
-      //     categoryName: category.name,
-      //     categoryOrder: category.order,
-      //     products: [],
-      //   };
-      // }
-
-      groupedByCategory[catId].products.push(product);
-    });
-
-    const result = Object.values(groupedByCategory).sort(
-      (a, b) => a.categoryOrder - b.categoryOrder
-    );
-
-    return {
-      data: result,
-      // total: count,
-      // totalPages: Math.ceil(count / limit),
-      // currentPage: page,
-    };
-
-    return products;
+      return {
+        data: result,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+      };
+    } catch (error) {
+      console.log(1123, error);
+    }
   },
   async list() {
     const products = await Product.findAll({
@@ -350,6 +360,7 @@ function getDefaultIncludes() {
     {
       model: ProductCombination,
       as: "combinations",
+      required: true,
       include: [
         {
           model: Inventory,

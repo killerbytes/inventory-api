@@ -30,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
       unique: ["productVariantId"],
+      paranoid: true,
     }
   );
 

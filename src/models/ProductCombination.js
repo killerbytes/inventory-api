@@ -5,7 +5,8 @@ module.exports = (sequelize, DataTypes) => {
     "ProductCombination",
     {
       productId: { type: DataTypes.INTEGER, allowNull: false },
-      sku: { type: DataTypes.STRING, unique: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+      sku: { type: DataTypes.STRING },
       price: DataTypes.DECIMAL(10, 2),
       reorderLevel: DataTypes.INTEGER,
     },
@@ -14,6 +15,15 @@ module.exports = (sequelize, DataTypes) => {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
       paranoid: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ["name", "sku"],
+          where: {
+            deletedAt: null, // enforce uniqueness only for active rows
+          },
+        },
+      ],
     }
   );
 

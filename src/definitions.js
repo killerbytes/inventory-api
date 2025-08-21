@@ -20,11 +20,6 @@ export const INVENTORY_MOVEMENT_TYPE = {
   RE_PACK: "RE_PACK",
 };
 
-export const REF_TYPE = {
-  SALES: "SALES",
-  PURCHASE: "PURCHASE",
-};
-
 export const PAGINATION = {
   LIMIT: 25,
   PAGE: 1,
@@ -33,6 +28,8 @@ export const PAGINATION = {
 export const MODE_OF_PAYMENT = {
   CASH: "CASH",
   CHECK: "CHECK",
+  EWALLET: "EWALLET",
+  BANK: "BANK",
 };
 
 export const UNIT = {

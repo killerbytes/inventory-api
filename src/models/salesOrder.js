@@ -34,7 +34,7 @@ module.exports = (sequelize) => {
         defaultValue: ORDER_STATUS.PENDING,
         allowNull: false,
         validate: {
-          isIn: [Object.values(MODE_OF_PAYMENT)],
+          isIn: [Object.values(ORDER_STATUS)],
         },
       },
       orderDate: { type: DataTypes.DATE, allowNull: false },
