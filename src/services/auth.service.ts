@@ -23,7 +23,6 @@ const authService = {
   // me: async (id) => {
   //   const user = await User.findByPk(id, { raw: true });
   //   const { userId }: any = authStorage.getStore();
-  //   console.log(999, user);
   //   if (!user) {
   //     throw ApiError.forbidden("User not found");
   //   }

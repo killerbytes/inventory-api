@@ -15,7 +15,6 @@ module.exports = (sequelize) => {
       name: { type: DataTypes.STRING, allowNull: false },
       email: {
         type: DataTypes.STRING,
-        unique: true,
         validate: { isEmail: true },
       },
       phone: DataTypes.TEXT,
@@ -28,6 +27,16 @@ module.exports = (sequelize) => {
       defaultScope: {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
+      indexes: [
+        {
+          unique: true,
+          fields: ["email"],
+          where: {
+            deletedAt: null, // enforce uniqueness only for active rows
+          },
+        },
+      ],
+      paranoid: true,
     }
   );
 

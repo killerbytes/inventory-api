@@ -32,9 +32,8 @@ export const getSKU = (name, category, unit, values) => {
 export const getMappedVariantValues = (variants, values) => {
   const mappedVariantValues = {};
   variants.forEach((val) => {
-    mappedVariantValues[val.name] = values.find(
-      (v) => v.variantTypeId === val.id
-    ).value;
+    const found = values.find((v) => v.variantTypeId === val.id);
+    mappedVariantValues[val.name] = found.value;
   });
   return mappedVariantValues;
 };
@@ -42,6 +41,7 @@ export const getMappedVariantValues = (variants, values) => {
 export const getMappedProductComboName = (product, values) => {
   const mapped = getMappedVariantValues(product?.variants, values);
   return `${product?.name} - ${Object.keys(mapped)
+    .sort()
     .map((key) => `${mapped[key]}`)
     .join(" | ")}`;
 };

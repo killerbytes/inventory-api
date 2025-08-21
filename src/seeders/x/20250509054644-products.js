@@ -80,12 +80,14 @@ module.exports = {
         returning: true,
       });
 
-      // ✅ Quoted table + column names
-      const insertedValues = await queryInterface.sequelize.query(
-        `SELECT "id", "value", "variantTypeId"
-         FROM "VariantValues"
-         WHERE "variantTypeId" IN (${colorTypeId}, ${sizeTypeId});`,
-        { type: Sequelize.QueryTypes.SELECT, transaction }
+      const insertedValues = await queryInterface.select(
+        null,
+        "VariantValues",
+        {
+          attributes: ["id", "value", "variantTypeId"],
+          where: { variantTypeId: [colorTypeId, sizeTypeId] },
+          transaction,
+        }
       );
 
       const sizeMap = {};

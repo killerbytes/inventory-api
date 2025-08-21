@@ -40,10 +40,8 @@
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "joi2ts": "ts-node src/joi2ts.ts",
-    "backup": "node backup.js backup",
-    "restore": "node backup.js restore",
-    "restore-and-dev": "node backup.js restore-and-dev",
-    "sync": "node ./src/sync.js"
+    "backup": "node backup.js backup-data",
+    "restore": "node backup.js restore"
   },
   "author": "",
   "license": "ISC",

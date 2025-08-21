@@ -20,7 +20,6 @@ module.exports = (sequelize, DataTypes) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
       },
       description: DataTypes.TEXT,
       order: DataTypes.INTEGER,
@@ -34,6 +33,15 @@ module.exports = (sequelize, DataTypes) => {
       defaultScope: {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
+      indexes: [
+        {
+          unique: true,
+          fields: ["name"],
+          where: {
+            deletedAt: null, // enforce uniqueness only for active rows
+          },
+        },
+      ],
     }
   );
 
