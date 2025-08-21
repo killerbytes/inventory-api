@@ -1,7 +1,7 @@
 /**
- * backup.js
+ * backup.js (Postgres version)
  *
- * Backup and restore MySQL database with options:
+ * Backup and restore PostgreSQL database with options:
  *  - full (schema + data)
  *  - data-only (no DROP/CREATE TABLE, safe for schema changes)
  *  - restore-and-dev (restore then start dev server)
@@ -16,19 +16,30 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const { DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, BACKUP_DIR } = process.env;
+const {
+  DB_HOST,
+  DB_USERNAME,
+  DB_PASSWORD,
+  DB_NAME,
+  DB_PORT = 5432,
+} = process.env;
+const BACKUP_DIR = process.env.BACKUP_DIR || "./backups";
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
-function runCommand(cmd) {
+function runCommand(cmd, envOverrides = {}) {
   return new Promise((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
-      if (error) return reject(stderr || error.message);
-      resolve(stdout);
-    });
+    exec(
+      cmd,
+      { env: { ...process.env, PGPASSWORD: DB_PASSWORD, ...envOverrides } },
+      (error, stdout, stderr) => {
+        if (error) return reject(stderr || error.message);
+        resolve(stdout);
+      }
+    );
   });
 }
 
@@ -55,13 +66,15 @@ async function backup({ dataOnly = false } = {}) {
   );
 
   const dumpCmd = dataOnly
-    ? `mysqldump -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} --no-create-info ${DB_NAME}`
-    : `mysqldump -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} ${DB_NAME}`;
+    ? `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} --data-only ${DB_NAME}`
+    : `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} ${DB_NAME}`;
 
   console.log(`Creating ${dataOnly ? "data-only" : "full"} backup...`);
 
   try {
-    const dumpProcess = exec(dumpCmd);
+    const dumpProcess = exec(dumpCmd, {
+      env: { ...process.env, PGPASSWORD: DB_PASSWORD },
+    });
     const gzip = zlib.createGzip();
     const outStream = fs.createWriteStream(compressedFile);
     dumpProcess.stdout.pipe(gzip).pipe(outStream);
@@ -98,8 +111,8 @@ async function restore(filePath) {
       sqlFilePath = decompressedFile;
     }
 
-    // Run mysql restore
-    const restoreCmd = `mysql -h ${DB_HOST} -u ${DB_USERNAME} -p${DB_PASSWORD} ${DB_NAME} < "${sqlFilePath}"`;
+    // Run Postgres restore
+    const restoreCmd = `psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_NAME} -f "${sqlFilePath}"`;
     await runCommand(restoreCmd);
     console.log("Restore complete!");
 
