@@ -1,15 +1,15 @@
 /**
- * backup.js (Postgres version)
+ * backup.js (Postgres version, Render-safe)
  *
- * Backup and restore PostgreSQL database with options:
- *  - full (schema + data)
- *  - data-only (no DROP/CREATE TABLE, safe for schema changes)
- *  - restore-and-dev (restore then start dev server)
+ * Options:
+ *  - backup        (schema + data, safe for Render)
+ *  - backup-data   (data-only)
+ *  - restore [f]   (restore from latest or given file)
+ *  - restore-and-dev [f]
  */
 
 const env = process.env.NODE_ENV || "development";
-const envPath = `.env.${env}`;
-require("dotenv").config({ path: envPath });
+require("dotenv").config({ path: `.env.${env}` });
 
 const { exec } = require("child_process");
 const fs = require("fs");
@@ -23,18 +23,15 @@ const {
   DB_NAME,
   DB_PORT = 5432,
 } = process.env;
+
 const BACKUP_DIR = process.env.BACKUP_DIR || "./backups";
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
-// Ensure backup directory exists
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
-
-function runCommand(cmd, envOverrides = {}) {
+function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     exec(
       cmd,
-      { env: { ...process.env, PGPASSWORD: DB_PASSWORD, ...envOverrides } },
+      { env: { ...process.env, PGPASSWORD: DB_PASSWORD } },
       (error, stdout, stderr) => {
         if (error) return reject(stderr || error.message);
         resolve(stdout);
@@ -46,129 +43,109 @@ function runCommand(cmd, envOverrides = {}) {
 function getLatestBackup() {
   const files = fs
     .readdirSync(BACKUP_DIR)
-    .filter((f) => f.endsWith(".sql") || f.endsWith(".sql.gz"))
+    .filter((f) => /\.(sql|dump)(\.gz)?$/.test(f))
     .map((f) => ({
       name: f,
       time: fs.statSync(path.join(BACKUP_DIR, f)).mtime.getTime(),
     }))
     .sort((a, b) => b.time - a.time);
-
   return files.length ? path.join(BACKUP_DIR, files[0].name) : null;
 }
 
-// 1️⃣ Backup (full or data-only)
+// 1️⃣ Backup
 async function backup({ dataOnly = false } = {}) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const suffix = dataOnly ? "data-only" : "full";
-  const compressedFile = path.join(
+  const outFile = path.join(
     BACKUP_DIR,
-    `${DB_NAME}-${suffix}-${timestamp}.sql.gz`
+    `${DB_NAME}-${suffix}-${ts}.${dataOnly ? "sql" : "dump"}.gz`
   );
 
   const dumpCmd = dataOnly
-    ? `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} --data-only ${DB_NAME}`
-    : `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} ${DB_NAME}`;
+    ? `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} \
+       --data-only --no-owner --no-acl ${DB_NAME}`
+    : `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} \
+       --no-owner --no-acl --clean --if-exists -Fc ${DB_NAME}`;
 
-  console.log(`Creating ${dataOnly ? "data-only" : "full"} backup...`);
+  console.log(`Creating ${suffix} backup...`);
+  const dumpProcess = exec(dumpCmd, {
+    env: { ...process.env, PGPASSWORD: DB_PASSWORD },
+  });
 
-  try {
-    const dumpProcess = exec(dumpCmd, {
-      env: { ...process.env, PGPASSWORD: DB_PASSWORD },
-    });
-    const gzip = zlib.createGzip();
-    const outStream = fs.createWriteStream(compressedFile);
-    dumpProcess.stdout.pipe(gzip).pipe(outStream);
+  const gzip = zlib.createGzip();
+  const outStream = fs.createWriteStream(outFile);
+  dumpProcess.stdout.pipe(gzip).pipe(outStream);
 
-    outStream.on("finish", () => {
-      console.log(`Backup saved: ${compressedFile}`);
-    });
-  } catch (err) {
-    console.error("Backup failed:", err);
-  }
+  outStream.on("finish", () => console.log(`Backup saved: ${outFile}`));
 }
 
-// 2️⃣ Restore (works with .sql or .sql.gz)
+// 2️⃣ Restore
 async function restore(filePath) {
   console.log(`Restoring from ${filePath}...`);
+  let sqlFilePath = filePath;
+
+  if (filePath.endsWith(".gz")) {
+    const decompressed = filePath.replace(/\.gz$/, "");
+    await new Promise((resolve, reject) =>
+      fs
+        .createReadStream(filePath)
+        .pipe(zlib.createGunzip())
+        .pipe(fs.createWriteStream(decompressed))
+        .on("finish", resolve)
+        .on("error", reject)
+    );
+    sqlFilePath = decompressed;
+  }
+
+  let restoreCmd;
+  if (sqlFilePath.endsWith(".dump")) {
+    restoreCmd = `pg_restore -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} \
+      --no-owner --no-acl --clean --if-exists -d ${DB_NAME} "${sqlFilePath}"`;
+  } else {
+    restoreCmd = `psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} \
+      -d ${DB_NAME} -f "${sqlFilePath}"`;
+  }
   try {
-    let sqlFilePath = filePath;
-
-    // If compressed, decompress first
-    if (filePath.endsWith(".gz")) {
-      const decompressedFile = filePath.replace(/\.gz$/, "");
-      const input = fs.createReadStream(filePath);
-      const output = fs.createWriteStream(decompressedFile);
-      const gunzip = zlib.createGunzip();
-
-      await new Promise((resolve, reject) => {
-        input
-          .pipe(gunzip)
-          .pipe(output)
-          .on("finish", resolve)
-          .on("error", reject);
-      });
-
-      sqlFilePath = decompressedFile;
-    }
-
-    // Run Postgres restore
-    const restoreCmd = `psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} -d ${DB_NAME} -f "${sqlFilePath}"`;
     await runCommand(restoreCmd);
     console.log("Restore complete!");
-
-    // Delete temp decompressed file
-    if (sqlFilePath !== filePath) {
-      fs.unlinkSync(sqlFilePath);
-    }
   } catch (err) {
-    console.error("Restore failed:", err);
+    console.error("Restore failed:\n", err);
   }
+
+  if (sqlFilePath !== filePath) fs.unlinkSync(sqlFilePath);
 }
 
-// 3️⃣ Restore and start dev server
+// 3️⃣ Restore and dev
 async function restoreAndDev(filePath) {
   await restore(filePath);
   console.log("Starting dev server...");
   runCommand("npm run dev");
 }
 
-// CLI entry
-const [, , command, file] = process.argv;
-
+// CLI
+const [, , cmd, file] = process.argv;
 (async () => {
-  try {
-    if (command === "backup") {
-      await backup();
-    } else if (command === "backup-data") {
-      await backup({ dataOnly: true });
-    } else if (command === "restore") {
-      const restoreFile = file || getLatestBackup();
-      if (!restoreFile) {
-        console.error("No backup file found!");
-        process.exit(1);
-      }
-      await restore(restoreFile);
-    } else if (command === "restore-and-dev") {
-      const restoreFile = file || getLatestBackup();
-      if (!restoreFile) {
-        console.error("No backup file found!");
-        process.exit(1);
-      }
-      await restoreAndDev(restoreFile);
-    } else {
+  const f = file || getLatestBackup();
+  switch (cmd) {
+    case "backup":
+      return backup();
+    case "backup-data":
+      return backup({ dataOnly: true });
+    case "restore":
+      if (!f) return console.error("No backup file found!");
+      return restore(f);
+    case "restore-and-dev":
+      if (!f) return console.error("No backup file found!");
+      return restoreAndDev(f);
+    default:
       console.log("Commands:");
       console.log(
         "  node backup.js backup          # Full backup (schema+data)"
       );
       console.log("  node backup.js backup-data     # Data-only backup");
-      console.log(
-        "  node backup.js restore [file]  # Restore full/data backup"
-      );
+      console.log("  node backup.js restore [file]  # Restore backup");
       console.log(
         "  node backup.js restore-and-dev [file] # Restore then start dev"
       );
-    }
-  } catch (err) {
-    console.error("Error:", err);
   }
 })();

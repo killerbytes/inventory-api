@@ -53,7 +53,6 @@ const productService = {
         include: [...getDefaultIncludes()],
         // order,
       });
-      console.log(123, product);
       if (!product) throw ApiError.notFound("Product not found");
 
       return product;
