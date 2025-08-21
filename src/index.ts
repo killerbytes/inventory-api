@@ -64,7 +64,7 @@ app.use(passport.initialize());
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", verifyToken, usersRouter);
-app.use("/api/categories", verifyToken, categoriesRouter);
+app.use("/api/categories", categoriesRouter);
 app.use("/api/products", verifyToken, productsRouter);
 app.use("/api/customers", verifyToken, customersRouter);
 app.use("/api/suppliers", verifyToken, suppliersRouter);
