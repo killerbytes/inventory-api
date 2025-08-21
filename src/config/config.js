@@ -1,8 +1,6 @@
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
 require("dotenv").config({ path: envPath });
-// config/config.js
-// require("dotenv").config(); // Optional, if you're using .env
 
 module.exports = {
   development: {
@@ -10,16 +8,17 @@ module.exports = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    dialect: "mysql",
+    dialect: "postgres",
+    port: 5432,
     logging: false,
   },
-  postgres: {
+  mysql: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    dialect: "postgres",
-    port: 5432,
+    dialect: "mysql",
+    logging: false,
   },
   production: {
     username: process.env.DB_USERNAME,

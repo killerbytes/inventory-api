@@ -51,13 +51,15 @@ const productService = {
     try {
       const product = await Product.findByPk(id, {
         include: [...getDefaultIncludes()],
-        order,
+        // order,
       });
-
+      console.log(123, product);
       if (!product) throw ApiError.notFound("Product not found");
 
       return product;
     } catch (error) {
+      console.log(error);
+
       throw error;
     }
   },
@@ -208,62 +210,66 @@ const productService = {
     }
   },
   async list() {
-    const products = await Product.findAll({
-      include: [
-        {
-          model: Category,
-          as: "category",
-        },
-        ...getDefaultIncludes(),
-        {
-          model: ProductCombination,
-          as: "combinations",
-          include: [
-            {
-              model: Product,
-              as: "product",
-              include: [{ model: VariantType, as: "variants" }],
-            },
-            {
-              model: Inventory,
-              as: "inventory",
-            },
-            {
-              model: VariantValue,
-              as: "values",
-              through: { attributes: [] },
-            },
-          ],
-        },
-      ],
-      order: [...getDefaultOrder()],
-    });
+    try {
+      const products = await Product.findAll({
+        include: [
+          {
+            model: Category,
+            as: "category",
+          },
+          ...getDefaultIncludes(),
+          {
+            model: ProductCombination,
+            as: "combinations",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [{ model: VariantType, as: "variants" }],
+              },
+              {
+                model: Inventory,
+                as: "inventory",
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
+          },
+        ],
+        order: [...getDefaultOrder()],
+      });
 
-    const groupedByCategory: Map<number, any> = new Map();
+      const groupedByCategory: Map<number, any> = new Map();
 
-    products.forEach((product) => {
-      const category = product.category;
-      if (!category) return;
+      products.forEach((product) => {
+        const category = product.category;
+        if (!category) return;
 
-      const catId = category.id;
+        const catId = category.id;
 
-      if (!groupedByCategory[catId]) {
-        groupedByCategory[catId] = {
-          categoryId: category.id,
-          categoryName: category.name,
-          categoryOrder: category.order,
-          products: [],
-        };
-      }
+        if (!groupedByCategory[catId]) {
+          groupedByCategory[catId] = {
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryOrder: category.order,
+            products: [],
+          };
+        }
 
-      groupedByCategory[catId].products.push(product);
-    });
+        groupedByCategory[catId].products.push(product);
+      });
 
-    const result = Object.values(groupedByCategory).sort(
-      (a, b) => a.categoryOrder - b.categoryOrder
-    );
+      const result = Object.values(groupedByCategory).sort(
+        (a, b) => a.categoryOrder - b.categoryOrder
+      );
 
-    return result;
+      return result;
+    } catch (error) {
+      console.log(1, error);
+    }
   },
 
   async cloneToUnit(id, payload) {
@@ -360,7 +366,7 @@ function getDefaultIncludes() {
     {
       model: ProductCombination,
       as: "combinations",
-      required: true,
+      // required: true,
       include: [
         {
           model: Inventory,
