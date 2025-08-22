@@ -71,6 +71,9 @@ describe("Customer Service (Integration)", () => {
     await categoryService.create(data[0]);
     try {
       await categoryService.create({ ...data[1], name: data[0].name });
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
     } catch (err) {
       console.log("Unique name error:", {
         name: err.name,

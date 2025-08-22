@@ -1,4 +1,5 @@
-const { GroupedCategory } = require("../interfaces");
+import { GroupedCategory } from "../schemas/OneSchemas";
+
 const { sequelize } = require("../models");
 const { Op } = require("sequelize");
 const db = require("../models");
@@ -44,7 +45,7 @@ module.exports = {
         include: [...getDefaultIncludes()],
         // order,
       });
-      if (!product) throw ApiError.notFound("Product not found");
+      if (!product) throw new Error("Product not found");
 
       return product;
     } catch (error) {
@@ -131,10 +132,10 @@ module.exports = {
         include: [{ model: VariantType, where: { productId: id } }],
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
-      await product.destroy({ transaction });
-
+      const deleted = await Product.destroy({ where: { id }, transaction });
       await transaction.commit();
-      return true;
+      return deleted > 0;
+      
     } catch (err) {
       await transaction.rollback();
       throw err;

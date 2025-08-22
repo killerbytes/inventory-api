@@ -5,6 +5,8 @@
         "moduleResolution": "NodeNext",
         "rootDir": "src",
         "outDir": "dist",
+        "isolatedModules": true,
+        "esModuleInterop": true,
         "allowJs": true
     },
     "include": [

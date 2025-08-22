@@ -1,26 +1,25 @@
-const db = require("../models");
-const { sequelize } = db;
+// src/tests/setup.js
+const { sequelize } = require("../models");
 
-const setupDatabase = async () => {
+// ✅ Run once before all tests (authenticate)
+async function setupDatabase() {
   try {
     await sequelize.authenticate();
-    await sequelize.sync({ force: true });
+    console.log("Database connected (test).");
+  } catch (err) {
+    console.error("Sequelize connection failed:", err);
+    throw err;
+  }
+}
+
+// ✅ Reset DB before each test
+async function resetDatabase() {
+  try {
+    await sequelize.sync({ force: true }); // drop + recreate tables
   } catch (err) {
     console.error("Sequelize sync failed:", err);
     throw err;
   }
-};
+}
 
-afterAll(async () => {
-  try {
-    await sequelize.close();
-  } catch (err) {
-    console.warn("Sequelize already closed", err);
-  }
-});
-
-beforeEach(async () => {
-  await sequelize.truncate({ cascade: true });
-});
-
-module.exports = { sequelize, setupDatabase };
+module.exports = { sequelize, setupDatabase, resetDatabase };

@@ -80,6 +80,9 @@ describe("Customer Service (Integration)", () => {
 
     try {
       await supplierService.create({ ...data[1], email: data[0].email });
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
     } catch (err) {
       console.log("Unique email error:", {
         name: err.name,

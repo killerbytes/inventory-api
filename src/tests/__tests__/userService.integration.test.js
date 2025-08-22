@@ -75,6 +75,9 @@ describe("User Service (Integration)", () => {
 
     try {
       await userService.create({ ...data[0], email: "test@email.com" });
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
     } catch (err) {
       console.log("Unique username error:", {
         name: err.name,
@@ -94,6 +97,9 @@ describe("User Service (Integration)", () => {
 
     try {
       await userService.create({ ...data[1], email: data[0].email });
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
     } catch (err) {
       console.log("Unique email error:", {
         name: err.name,
