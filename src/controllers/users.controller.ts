@@ -1,4 +1,4 @@
-import userService from "../services/users.service";
+const userService = require("../services/users.service");
 
 const userController = {
   async get(req, res, next) {

@@ -30,6 +30,7 @@ export const errorHandler = (err, req, res, next) => {
   if (err instanceof ApiError) {
     res.status(err.statusCode).json(err);
   }
+  // console.log(123, err.stack);
 
   return res
     .status(500)

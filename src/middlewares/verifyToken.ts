@@ -1,4 +1,4 @@
-import { authStorage } from "../services/auth.service";
+const authStorage = require("../services/auth.service").authStorage;
 import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {

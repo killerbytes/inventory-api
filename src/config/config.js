@@ -12,13 +12,24 @@ module.exports = {
     port: 5432,
     logging: false,
   },
-  mysql: {
+  test: {
+    dialect: "sqlite",
+    storage: ":memory:",
+    logging: false,
+  },
+  railway: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    dialect: "mysql",
-    logging: false,
+    dialect: "postgres",
+    port: 30422,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   },
   production: {
     username: process.env.DB_USERNAME,

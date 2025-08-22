@@ -1,4 +1,4 @@
-import salesOrderService from "../services/salesOrder.service";
+const salesOrderService = require("../services/salesOrder.service");
 
 const purchaseOrderController = {
   async get(req, res, next) {

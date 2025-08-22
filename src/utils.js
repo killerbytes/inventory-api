@@ -17,7 +17,7 @@ function shortenNameTo(str) {
   return shortened.substring(0, 10);
 }
 
-export const getSKU = (name, category, unit, values) => {
+const getSKU = (name, category, unit, values) => {
   const parts = [String(category).padStart(2, "0"), shortenNameTo(name)];
   if (unit) {
     parts.push(shortenNameTo(unit.substring(0, 3)));
@@ -29,7 +29,7 @@ export const getSKU = (name, category, unit, values) => {
   return parts.join("|");
 };
 
-export const getMappedVariantValues = (variants, values) => {
+const getMappedVariantValues = (variants, values) => {
   const mappedVariantValues = {};
   variants.forEach((val) => {
     const found = values.find((v) => v.variantTypeId === val.id);
@@ -38,10 +38,17 @@ export const getMappedVariantValues = (variants, values) => {
   return mappedVariantValues;
 };
 
-export const getMappedProductComboName = (product, values) => {
+const getMappedProductComboName = (product, values) => {
   const mapped = getMappedVariantValues(product?.variants, values);
   return `${product?.name} - ${Object.keys(mapped)
     .sort()
     .map((key) => `${mapped[key]}`)
     .join(" | ")}`;
+};
+
+module.exports = {
+  shortenNameTo,
+  getSKU,
+  getMappedVariantValues,
+  getMappedProductComboName,
 };

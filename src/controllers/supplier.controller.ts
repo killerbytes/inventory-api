@@ -1,5 +1,5 @@
 import { PAGINATION } from "../definitions.js";
-import supplierService from "../services/supplier.service";
+const supplierService = require("../services/supplier.service");
 
 const supplierController = {
   async get(req, res, next) {

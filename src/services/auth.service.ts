@@ -5,7 +5,7 @@ import { AsyncLocalStorage } from "async_hooks";
 const asyncLocalStorage = new AsyncLocalStorage();
 const { User } = db;
 
-const authService = {
+module.exports = {
   login: async (username: string, password: string) => {
     try {
       const user = await User.scope("withPassword").findOne({
@@ -20,14 +20,6 @@ const authService = {
       throw error;
     }
   },
-  // me: async (id) => {
-  //   const user = await User.findByPk(id, { raw: true });
-  //   const { userId }: any = authStorage.getStore();
-  //   if (!user) {
-  //     throw ApiError.forbidden("User not found");
-  //   }
-  //   return user;
-  // },
 
   getCurrent: async () => {
     try {
@@ -47,12 +39,14 @@ const authService = {
 
       return user;
     } catch (error) {
+      console.log(1, error);
       throw error;
     }
   },
 };
 
 export const authStorage = asyncLocalStorage;
+module.exports.authStorage = authStorage;
 
 export const generateToken = (user) => {
   return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
@@ -63,5 +57,3 @@ export const generateToken = (user) => {
 export const decodeToken = (token) => {
   return jwt.decode(token);
 };
-
-export default authService;

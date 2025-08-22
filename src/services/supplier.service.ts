@@ -1,11 +1,10 @@
-import db from "../models";
-import ApiError from "./ApiError";
-import { supplierSchema } from "../schemas";
-import { Op } from "sequelize";
-import { PAGINATION } from "../definitions.js";
+const { PAGINATION } = require("../definitions");
+const { Op } = require("sequelize");
+const db = require("../models");
+const { supplierSchema } = require("../schemas");
 const { Supplier } = db;
 
-const supplierService = {
+module.exports = {
   async get(id) {
     try {
       const supplier = await Supplier.findByPk(id, { raw: true });
@@ -73,7 +72,8 @@ const supplierService = {
       if (!supplier) {
         throw new Error("Supplier not found");
       }
-      return await supplier.destroy();
+      const deleted = await Supplier.destroy({ where: { id } });
+      return deleted > 0;
     } catch (error) {
       throw error;
     }
@@ -127,5 +127,3 @@ const supplierService = {
     }
   },
 };
-
-export default supplierService;

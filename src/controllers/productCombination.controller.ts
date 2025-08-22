@@ -1,4 +1,4 @@
-import productCombinationService from "../services/productCombination.service";
+const productCombinationService = require("../services/productCombination.service");
 
 const productCombinationController = {
   async get(req, res, next) {

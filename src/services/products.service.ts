@@ -1,30 +1,21 @@
-import { Op } from "sequelize";
-import db, { Sequelize, sequelize } from "../models";
-import { productSchema } from "../schemas";
-import ApiError from "./ApiError";
-import { product } from "../interfaces";
-import { getMappedProductComboName, getSKU } from "../utils";
-import { get } from "http";
-import { required } from "joi";
+const { GroupedCategory } = require("../interfaces");
+const { sequelize } = require("../models");
+const { Op } = require("sequelize");
+const db = require("../models");
+const { productSchema } = require("../schemas");
+const ApiError = require("./ApiError");
+const { getMappedProductComboName, getSKU } = require("../utils");
 const {
   Product,
   VariantType,
   VariantValue,
-  ProductVariantCombination,
   Inventory,
   Category,
   ProductCombination,
   CombinationValue,
 } = db;
 
-interface GroupedCategory {
-  categoryId: number;
-  categoryName: string;
-  categoryOrder: number;
-  products: any[]; // or Product[]
-}
-
-const productService = {
+module.exports = {
   async create(payload) {
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
@@ -352,8 +343,6 @@ const productService = {
     }
   },
 };
-
-export default productService;
 
 function getDefaultIncludes() {
   return [

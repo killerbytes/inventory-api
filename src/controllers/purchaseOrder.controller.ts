@@ -1,5 +1,5 @@
-import purchaseOrderService from "../services/purchaseOrders.service";
-import authService from "../services/auth.service";
+const purchaseOrderService = require("../services/purchaseOrders.service");
+const authService = require("../services/auth.service");
 
 const purchaseOrderController = {
   async get(req, res, next) {

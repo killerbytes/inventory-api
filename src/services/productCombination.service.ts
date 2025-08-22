@@ -10,7 +10,7 @@ import { productCombinations } from "../interfaces";
 import Joi from "joi";
 import { getMappedProductComboName, getSKU } from "../utils";
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
-import authService from "./auth.service";
+const authService = require("./auth.service");
 const {
   InventoryMovement,
   Product,
@@ -23,7 +23,7 @@ const {
   StockAdjustment,
 } = db;
 
-const productCombinationService = {
+module.exports = {
   async get(id) {
     const productCombination = await ProductCombination.findByPk(id, {
       include: [
@@ -572,8 +572,6 @@ const productCombinationService = {
     }
   },
 };
-
-export default productCombinationService;
 
 function validateCombinations(payload: {
   combinations: productCombinations[];

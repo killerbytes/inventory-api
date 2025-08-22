@@ -1,7 +1,7 @@
 import { loginSchema } from "../schemas";
 import ApiError from "../services/ApiError";
 import { generateToken } from "../services/auth.service";
-import authService from "../services/auth.service";
+const authService = require("../services/auth.service");
 import passport from "passport";
 
 const authController = {

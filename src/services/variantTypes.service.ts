@@ -5,7 +5,7 @@ import ApiError from "./ApiError";
 
 const { VariantType, VariantValue } = db;
 
-const variantTypesServices = {
+module.exports = {
   create: async (payload) => {
     const { error } = variantTypesSchema.validate(payload, {
       abortEarly: false,
@@ -128,5 +128,3 @@ const variantTypesServices = {
     return variantTypes.destroy();
   },
 };
-
-export default variantTypesServices;

@@ -1,4 +1,4 @@
-import productService from "../services/products.service";
+const productService = require("../services/products.service");
 import { PAGINATION } from "../definitions.js";
 import db from "../models";
 import { Op } from "sequelize";

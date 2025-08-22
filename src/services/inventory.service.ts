@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 import { PAGINATION } from "../definitions";
 import db, { sequelize } from "../models";
 import { inventoryPriceAdjustmentSchema, inventorySchema } from "../schemas";
-import authService from "./auth.service";
+const authService = require("./auth.service");
 const {
   Inventory,
   Product,
@@ -16,7 +16,7 @@ const {
   User,
 } = db;
 
-const inventoryService = {
+module.exports = {
   async get(id) {
     try {
       const inventories = await Inventory.findByPk(id, { raw: true });
@@ -412,5 +412,3 @@ export const processInventoryUpdates = async (
   );
   return inventory;
 };
-
-export default inventoryService;
