@@ -5,6 +5,7 @@ class ApiError extends Error {
   statusCode: number;
   errors: any[];
   details: any;
+  stack?: string;
 
   /**
    * Creates a new API error
@@ -29,12 +30,26 @@ class ApiError extends Error {
     this.message = message;
     this.errors = errors;
     this.details = details;
+    this.stack = stack;
 
     if (stack) {
       this.stack = stack;
     } else {
       Error.captureStackTrace(this, this.constructor);
     }
+  }
+
+  // Serialize error for JSON responses
+  toJSON() {
+    return {
+      code: this.code,
+      statusCode: this.statusCode,
+      message: this.message,
+      errors: this.errors,
+      details: this.details,
+      // ...(process.env.NODE_ENV === "development" && { stack: this.stack }),
+      stack: this.stack,
+    };
   }
 
   // Utility methods for common errors
