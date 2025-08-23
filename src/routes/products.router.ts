@@ -1,5 +1,5 @@
 import express from "express";
-import productsController from "../controllers/products.controller";
+const productsController = require("../controllers/products.controller");
 const router = express.Router();
 
 router.post("/:id/convertToUnit", productsController.cloneToUnit);
@@ -11,4 +11,4 @@ router.post("/", productsController.create);
 router.patch("/:id", productsController.update);
 router.delete("/:id", productsController.delete);
 
-export default router;
+module.exports = router;

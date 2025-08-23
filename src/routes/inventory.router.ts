@@ -1,5 +1,5 @@
 import express from "express";
-import inventoryController from "../controllers/inventory.controller";
+const inventoryController = require("../controllers/inventory.controller");
 const router = express.Router();
 
 router.post("/movements", inventoryController.getMovements);
@@ -12,4 +12,4 @@ router.post("/stockAdjustments", inventoryController.getStockAdjustments);
 // router.delete("/:id", inventoryController.delete);
 // router.patch("/:id/price", inventoryController.updatePrice);
 
-export default router;
+module.exports = router;

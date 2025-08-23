@@ -71,4 +71,4 @@ const categoriesController = {
   },
 };
 
-export default categoriesController;
+module.exports = categoriesController;

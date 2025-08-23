@@ -7,7 +7,6 @@ beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
 });
 
-// ✅ reset DB before each test so data doesn’t leak
 beforeEach(async () => {
   await resetDatabase();
 });
@@ -37,7 +36,7 @@ const data = [
   },
 ];
 
-describe("Customer Service (Integration)", () => {
+describe("Product Service (Integration)", () => {
   it("should create and fetch product", async () => {
     const test = data[0];
     await categoryService.create(category[0]);

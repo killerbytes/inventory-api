@@ -64,4 +64,4 @@ const supplierController = {
   },
 };
 
-export default supplierController;
+module.exports = supplierController;

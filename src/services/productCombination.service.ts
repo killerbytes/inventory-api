@@ -5,7 +5,8 @@ import {
   productCombinationSchema,
   stockAdjustmentSchema,
 } from "../schemas";
-import ApiError from "./ApiError";
+const ApiError = require("./ApiError");
+
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
 import { getMappedProductComboName, getSKU } from "../utils";
@@ -92,11 +93,6 @@ module.exports = {
       variants,
     };
   },
-
-  async update(id, payload) {
-    throw new Error("Method not implemented.");
-  },
-
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
       combinations: Joi.array().items(productCombinationSchema),
@@ -240,6 +236,12 @@ module.exports = {
             {
               ...combo,
               name: getMappedProductComboName(product, combo.values),
+              sku: getSKU(
+                product.name,
+                product.categoryId,
+                product.unit,
+                combo.values
+              ),
             },
             { transaction }
           );
@@ -298,6 +300,7 @@ module.exports = {
     }
   },
   async delete(id) {
+    throw new Error("Method not implemented.");
     const transaction = await sequelize.transaction();
 
     try {
@@ -341,6 +344,7 @@ module.exports = {
   },
 
   async list() {
+    throw new Error("Method not implemented.");
     const products = await Product.findAll({
       include: [
         {

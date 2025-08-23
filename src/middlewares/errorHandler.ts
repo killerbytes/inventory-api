@@ -1,8 +1,8 @@
-import Joi from "joi";
-import ApiError from "../services/ApiError";
-import { Sequelize } from "../models";
+const Joi = require("joi");
+const ApiError = require("../services/ApiError");
+const Sequelize = require("sequelize");
 
-export const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, next) => {
   if (err instanceof Joi.ValidationError) {
     const errors = err.details.map(({ path, message }) => ({
       field: path[0],
@@ -36,3 +36,5 @@ export const errorHandler = (err, req, res, next) => {
     .status(500)
     .json(ApiError.internal(err.message, 500, [], null, err.stack));
 };
+
+module.exports = errorHandler;

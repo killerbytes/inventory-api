@@ -82,4 +82,4 @@ const inventoryController = {
   },
 };
 
-export default inventoryController;
+module.exports = inventoryController;

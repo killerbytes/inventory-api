@@ -56,4 +56,4 @@ const userController = {
   },
 };
 
-export default userController;
+module.exports = userController;

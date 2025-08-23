@@ -1,14 +1,13 @@
 const customerService = require("../../services/customer.service");
-const { sequelize, setupDatabase } = require("../setup");
+const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const { getConstraintFields } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
 });
 
-// ✅ reset DB before each test so data doesn’t leak
 beforeEach(async () => {
-  await sequelize.sync({ force: true });
+  await resetDatabase();
 });
 
 const data = [

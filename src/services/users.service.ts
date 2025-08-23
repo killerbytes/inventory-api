@@ -34,7 +34,7 @@ module.exports = {
         username,
         password: User.generateHash(password),
       });
-      return result;
+      return "User created successfully";
     } catch (error) {
       throw error;
     }

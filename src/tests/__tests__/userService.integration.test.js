@@ -1,14 +1,13 @@
 const userService = require("../../services/users.service");
-const { sequelize, setupDatabase } = require("../setup");
+const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const { getConstraintFields } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
 });
 
-// ✅ reset DB before each test so data doesn’t leak
 beforeEach(async () => {
-  await sequelize.sync({ force: true });
+  await resetDatabase();
 });
 
 const data = [
@@ -31,9 +30,8 @@ const data = [
 describe("User Service (Integration)", () => {
   it("should create and fetch a user", async () => {
     const test = data[0];
-    const created = await userService.create(test);
-    const user = await userService.get(created.id);
-
+    await userService.create(test);
+    const user = await userService.get(1);
     expect(user).not.toBeNull();
     expect(user.name).toBe(test.name);
     expect(user.email).toBe(test.email);
@@ -50,7 +48,7 @@ describe("User Service (Integration)", () => {
 
   it("should update a user email", async () => {
     const user = await userService.create(data[0]);
-    const updated = await userService.update(user.id, {
+    const updated = await userService.update(1, {
       email: "newalice@test.com",
       name: "Alice Updated",
       username: "alice_updated",
@@ -62,7 +60,8 @@ describe("User Service (Integration)", () => {
   });
 
   it("should delete a user", async () => {
-    const user = await userService.create(data[0]);
+    await userService.create(data[0]);
+    const user = await userService.get(1);
     const result = await userService.delete(user.id);
 
     expect(result).toBe(true);

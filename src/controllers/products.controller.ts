@@ -81,4 +81,4 @@ const productController = {
   },
 };
 
-export default productController;
+module.exports = productController;

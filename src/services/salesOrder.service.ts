@@ -10,7 +10,8 @@ import {
 const authService = require("./auth.service");
 import { processInventoryUpdates } from "./inventory.service";
 import { getMappedVariantValues } from "../utils";
-import ApiError from "./ApiError";
+const ApiError = require("./ApiError");
+
 const {
   VariantValue,
   SalesOrder,

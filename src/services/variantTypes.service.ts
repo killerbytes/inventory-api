@@ -1,7 +1,8 @@
-import { where } from "sequelize";
-import db, { sequelize } from "../models/index.js";
-import { variantTypesSchema } from "../schemas.js";
-import ApiError from "./ApiError";
+const { Op } = require("sequelize");
+const db = require("../models");
+const { sequelize } = require("../models");
+const { variantTypesSchema } = require("../schemas");
+const ApiError = require("./ApiError");
 
 const { VariantType, VariantValue } = db;
 
@@ -33,18 +34,19 @@ module.exports = {
       throw error;
     }
   },
-  getByProductId: async (id) => {
+  getByProductId: async (productId) => {
     try {
       const variantTypes = await VariantType.findAll({
         include: [{ model: VariantValue, as: "values" }],
         order: [["id", "ASC"]],
 
-        where: { productId: id },
+        where: { productId },
         nested: true,
       });
       if (!variantTypes) {
         throw new Error("VariantType not found");
       }
+      
       return variantTypes;
     } catch (error) {
       throw error;
@@ -110,12 +112,13 @@ module.exports = {
           }
         }
         await transaction.commit();
+        return VariantType.findByPk(id, {
+          include: [{ model: VariantValue, as: "values" }],
+        });
       } catch (err) {
         await transaction.rollback();
         throw err;
       }
-
-      return;
     } catch (error) {
       throw error;
     }
@@ -125,6 +128,7 @@ module.exports = {
     if (!variantTypes) {
       throw new Error("VariantType not found");
     }
-    return variantTypes.destroy();
+      const deleted = await VariantType.destroy({ where: { id } });
+      return deleted > 0;
   },
 };

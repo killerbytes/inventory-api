@@ -91,4 +91,4 @@ const purchaseOrderController = {
   },
 };
 
-export default purchaseOrderController;
+module.exports = purchaseOrderController;

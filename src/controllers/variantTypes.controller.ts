@@ -46,4 +46,4 @@ const variantTypesController = {
   },
 };
 
-export default variantTypesController;
+module.exports = variantTypesController;
