@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       description: DataTypes.TEXT,
       order: DataTypes.INTEGER,
+      deletedAt: { type: DataTypes.DATE, allowNull: true }, // required for paranoid index in SQLite
     },
     {
       sequelize,

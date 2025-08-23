@@ -1,5 +1,5 @@
 import express from "express";
-import customerController from "../controllers/customer.controller";
+const customerController = require("../controllers/customer.controller");
 const router = express.Router();
 
 router.get("/list", customerController.list);
@@ -9,4 +9,4 @@ router.post("/", customerController.create);
 router.patch("/:id", customerController.update);
 router.delete("/:id", customerController.delete);
 
-export default router;
+module.exports = router;

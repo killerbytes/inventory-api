@@ -1,5 +1,5 @@
 import express from "express";
-import salesOrderController from "../controllers/salesOrders.controller";
+const salesOrderController = require("../controllers/salesOrders.controller");
 const router = express.Router();
 
 router.get("/list", salesOrderController.list);
@@ -10,4 +10,4 @@ router.patch("/:id", salesOrderController.update);
 router.delete("/:id", salesOrderController.delete);
 router.patch("/:id/cancel", salesOrderController.cancelOrder);
 
-export default router;
+module.exports = router;

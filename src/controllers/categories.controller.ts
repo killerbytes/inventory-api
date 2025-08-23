@@ -1,4 +1,4 @@
-import categoryServices from "../services/categories.service";
+const categoryServices = require("../services/categories.service");
 
 const categoriesController = {
   get: async (req, res, next) => {
@@ -71,4 +71,4 @@ const categoriesController = {
   },
 };
 
-export default categoriesController;
+module.exports = categoriesController;

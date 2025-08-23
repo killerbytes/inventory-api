@@ -1,15 +1,15 @@
-import { Request, Response } from "express";
-import ApiError from "./ApiError";
 const { PAGINATION } = require("../definitions");
 const { Op } = require("sequelize");
-import db from "../models";
-import { userBaseSchema, userSchema } from "../schemas";
+const db = require("../models");
+const { userBaseSchema, userSchema } = require("../schemas");
 const { User } = db;
 
-const userService = {
+module.exports = {
   async get(id) {
     try {
-      const user = await User.findByPk(id, { raw: true });
+      const user = await User.findByPk(id, {
+        raw: true,
+      });
       if (!user) {
         throw new Error("User not found");
       }
@@ -18,7 +18,7 @@ const userService = {
       throw error;
     }
   },
-  create: async (payload) => {
+  async create(payload) {
     const { error } = userSchema.validate(payload, {
       abortEarly: false,
     });
@@ -34,7 +34,7 @@ const userService = {
         username,
         password: User.generateHash(password),
       });
-      return result;
+      return "User created successfully";
     } catch (error) {
       throw error;
     }
@@ -47,12 +47,12 @@ const userService = {
 
   async update(id, payload) {
     const { id: _id, ...params } = payload;
-    const { error } = userBaseSchema.validate(params, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw error;
-    }
+    // const { error } = userBaseSchema.validate(params, {
+    //   abortEarly: false,
+    // });
+    // if (error) {
+    //   throw error;
+    // }
     try {
       const user = await User.findByPk(id);
       if (!user) {
@@ -66,11 +66,12 @@ const userService = {
   },
   async delete(id) {
     try {
-      const user = await User.findByPk(id);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      await user.destroy();
+      // const user = await User.findByPk(id);
+      // if (!user) {
+      //   throw new Error("User not found");
+      // }
+      const deleted = await User.destroy({ where: { id } });
+      return deleted > 0;
     } catch (error) {
       throw error;
     }
@@ -121,5 +122,3 @@ const userService = {
     }
   },
 };
-
-export default userService;

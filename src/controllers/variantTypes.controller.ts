@@ -1,4 +1,4 @@
-import variantTypesService from "../services/variantTypes.service";
+const variantTypesService = require("../services/variantTypes.service");
 
 const variantTypesController = {
   async create(req, res, next) {
@@ -46,4 +46,4 @@ const variantTypesController = {
   },
 };
 
-export default variantTypesController;
+module.exports = variantTypesController;

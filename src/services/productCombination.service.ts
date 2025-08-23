@@ -5,12 +5,13 @@ import {
   productCombinationSchema,
   stockAdjustmentSchema,
 } from "../schemas";
-import ApiError from "./ApiError";
+const ApiError = require("./ApiError");
+
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
 import { getMappedProductComboName, getSKU } from "../utils";
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
-import authService from "./auth.service";
+const authService = require("./auth.service");
 const {
   InventoryMovement,
   Product,
@@ -23,7 +24,7 @@ const {
   StockAdjustment,
 } = db;
 
-const productCombinationService = {
+module.exports = {
   async get(id) {
     const productCombination = await ProductCombination.findByPk(id, {
       include: [
@@ -92,11 +93,6 @@ const productCombinationService = {
       variants,
     };
   },
-
-  async update(id, payload) {
-    throw new Error("Method not implemented.");
-  },
-
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
       combinations: Joi.array().items(productCombinationSchema),
@@ -240,6 +236,12 @@ const productCombinationService = {
             {
               ...combo,
               name: getMappedProductComboName(product, combo.values),
+              sku: getSKU(
+                product.name,
+                product.categoryId,
+                product.unit,
+                combo.values
+              ),
             },
             { transaction }
           );
@@ -298,6 +300,7 @@ const productCombinationService = {
     }
   },
   async delete(id) {
+    throw new Error("Method not implemented.");
     const transaction = await sequelize.transaction();
 
     try {
@@ -341,6 +344,7 @@ const productCombinationService = {
   },
 
   async list() {
+    throw new Error("Method not implemented.");
     const products = await Product.findAll({
       include: [
         {
@@ -572,8 +576,6 @@ const productCombinationService = {
     }
   },
 };
-
-export default productCombinationService;
 
 function validateCombinations(payload: {
   combinations: productCombinations[];

@@ -1,30 +1,22 @@
-import { Op } from "sequelize";
-import db, { Sequelize, sequelize } from "../models";
-import { productSchema } from "../schemas";
-import ApiError from "./ApiError";
-import { product } from "../interfaces";
-import { getMappedProductComboName, getSKU } from "../utils";
-import { get } from "http";
-import { required } from "joi";
+import { GroupedCategory } from "../schemas/OneSchemas";
+
+const { sequelize } = require("../models");
+const { Op } = require("sequelize");
+const db = require("../models");
+const { productSchema } = require("../schemas");
+const ApiError = require("./ApiError");
+const { getMappedProductComboName, getSKU } = require("../utils");
 const {
   Product,
   VariantType,
   VariantValue,
-  ProductVariantCombination,
   Inventory,
   Category,
   ProductCombination,
   CombinationValue,
 } = db;
 
-interface GroupedCategory {
-  categoryId: number;
-  categoryName: string;
-  categoryOrder: number;
-  products: any[]; // or Product[]
-}
-
-const productService = {
+module.exports = {
   async create(payload) {
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
@@ -53,7 +45,7 @@ const productService = {
         include: [...getDefaultIncludes()],
         // order,
       });
-      if (!product) throw ApiError.notFound("Product not found");
+      if (!product) throw new Error("Product not found");
 
       return product;
     } catch (error) {
@@ -140,10 +132,10 @@ const productService = {
         include: [{ model: VariantType, where: { productId: id } }],
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
-      await product.destroy({ transaction });
-
+      const deleted = await Product.destroy({ where: { id }, transaction });
       await transaction.commit();
-      return true;
+      return deleted > 0;
+      
     } catch (err) {
       await transaction.rollback();
       throw err;
@@ -352,8 +344,6 @@ const productService = {
     }
   },
 };
-
-export default productService;
 
 function getDefaultIncludes() {
   return [
