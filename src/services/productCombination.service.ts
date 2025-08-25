@@ -249,6 +249,11 @@ module.exports = {
           await combination.setValues(variantValueIds, { transaction });
         } else {
           // Create new combination if no ID
+          console.log(
+            1,
+            getSKU(product.name, product.categoryId, product.unit, combo.values)
+          );
+
           combination = await ProductCombination.create(
             {
               productId,
@@ -257,7 +262,7 @@ module.exports = {
               sku: getSKU(
                 product.name,
                 product.categoryId,
-                product.unit,
+                combo.unit,
                 combo.values
               ),
             },

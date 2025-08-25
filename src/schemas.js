@@ -79,6 +79,8 @@ const productCombinationSchema = Joi.object({
   id: Joi.number().optional(),
   productId: Joi.number(),
   sku: Joi.string().allow(null),
+  unit: Joi.string().required(),
+  conversionFactor: Joi.number().required(),
   price: Joi.number().required(),
   reorderLevel: Joi.number().required(),
   values: Joi.alternatives().try(
@@ -94,7 +96,7 @@ const productCombinationSchema = Joi.object({
 const productSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional().allow(null),
-  unit: Joi.string().required(),
+  baseUnit: Joi.string().required(),
   categoryId: Joi.number().required(),
   variants: Joi.array().items(variantTypesSchema).optional(),
   combinations: Joi.array().items(productCombinationSchema).optional(),
@@ -285,7 +287,7 @@ const stockAdjustmentSchema = Joi.object({
   notes: Joi.string().optional().allow(null, ""),
   createdAt: Joi.date().required(),
   createdBy: Joi.number().required(),
-});
+}).meta({ className: "stockAdjustment" });
 
 module.exports = {
   userBaseSchema,

@@ -27,10 +27,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       name: { type: DataTypes.STRING, allowNull: false },
       description: DataTypes.TEXT,
-      unit: { type: DataTypes.STRING, allowNull: false },
+      baseUnit: { type: DataTypes.STRING, allowNull: false },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
       sku: DataTypes.STRING,
-      conversionFactor: DataTypes.INTEGER,
     },
     {
       sequelize,

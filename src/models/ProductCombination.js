@@ -7,6 +7,8 @@ module.exports = (sequelize, DataTypes) => {
       productId: { type: DataTypes.INTEGER, allowNull: false },
       name: { type: DataTypes.STRING, allowNull: false },
       sku: { type: DataTypes.STRING },
+      unit: { type: DataTypes.STRING, allowNull: false },
+      conversionFactor: DataTypes.INTEGER,
       price: DataTypes.DECIMAL(10, 2),
       reorderLevel: DataTypes.INTEGER,
     },
