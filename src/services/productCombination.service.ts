@@ -113,8 +113,9 @@ module.exports = {
       ],
     });
     if (!product) throw new Error("Product not found");
+    console.log(123, payload);
 
-    const issue = validateCombinations(payload);
+    const issue = validateCombinations(payload, product);
 
     if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
       throw ApiError.badRequest("Combinations are invalid");
@@ -239,7 +240,7 @@ module.exports = {
               sku: getSKU(
                 product.name,
                 product.categoryId,
-                product.unit,
+                combo.unit,
                 combo.values
               ),
             },
@@ -249,10 +250,6 @@ module.exports = {
           await combination.setValues(variantValueIds, { transaction });
         } else {
           // Create new combination if no ID
-          console.log(
-            1,
-            getSKU(product.name, product.categoryId, product.unit, combo.values)
-          );
 
           combination = await ProductCombination.create(
             {
@@ -582,14 +579,19 @@ module.exports = {
   },
 };
 
-function validateCombinations(payload: {
-  combinations: productCombinations[];
-}) {
+function validateCombinations(
+  payload: {
+    combinations: productCombinations[];
+  },
+  product
+) {
   const seen = new Map();
   const duplicates = [];
   const conflicts = [];
 
   payload.combinations.forEach((combo) => {
+    console.log(3, combo);
+
     const key = combo.values
       .map((val) => `${val.variantTypeId}:${val.value}`)
       .sort()
@@ -598,7 +600,10 @@ function validateCombinations(payload: {
     if (seen.has(key)) {
       const existing = seen.get(key);
       // Check if SKU is different → conflict
-      if (existing.sku !== combo.sku) {
+      if (
+        existing.sku !==
+        getSKU(product.name, product.categoryId, combo.unit, combo.values)
+      ) {
         conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
       } else {
         duplicates.push({ key, sku: combo.sku });
