@@ -16,45 +16,62 @@ function xshortenNameTo(str, length = 3) {
   // Ensure length is between 3-6 characters
   return shortened.substring(0, 10);
 }
+function shortenTitleTo(str, length = 3) {
+  if (!str) return "";
 
-function shortenNameTo(str, length = 3) {
+  const words = str
+    .normalize("NFD") // normalize accents
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, "")
+    .split(" ")
+    .filter(Boolean);
+
+  const shortened = words.map((word) => word.substring(0, length)).join("_");
+
+  return shortened;
+}
+
+function shortenNameTo(str, length = 3, maxTotal = 10) {
   const name = str
-    .normalize("NFD") // normalize accented characters
+    .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase();
 
-  // Remove special characters, split into words
   const words = name
     .replace(/[^A-Z0-9 ]/g, "")
     .split(" ")
     .filter(Boolean);
-  console.log(words);
 
   if (words.length === 0) return "";
 
-  let pickedWords;
-  if (words.length === 1) {
-    pickedWords = words;
-  } else if (words.length === 2) {
-    pickedWords = words;
-  } else if (words.length === 3) {
-    pickedWords = words;
-  } else {
-    const middle = words[Math.floor(words.length / 2)];
-    pickedWords = [words[0], middle, words[words.length - 1]];
+  // Always include first + last
+  let picked = [words[0], words[words.length - 1]];
+
+  // Candidate with 2nd word in the middle (if it exists)
+  if (words.length >= 3) {
+    const withSecond = [
+      words[0].substring(0, length),
+      words[1].substring(0, length),
+      words[words.length - 1].substring(0, length),
+    ].join("_");
+
+    if (withSecond.length <= maxTotal) {
+      return withSecond;
+    }
   }
 
-  // Take first `length` chars of each selected word
-  const shortened = pickedWords
-    .map((word) => word.substring(0, length))
-    .join("_");
+  // Fallback: just first + last
+  const fallback = [
+    words[0].substring(0, length),
+    words[words.length - 1].substring(0, length),
+  ].join("_");
 
-  // Limit total length (your original code used 10 chars max)
-  return shortened.substring(0, 10);
+  return fallback.substring(0, maxTotal);
 }
 
 const getSKU = (name, category, unit, values) => {
-  const parts = [String(category).padStart(2, "0"), shortenNameTo(name, 10)];
+  const parts = [String(category).padStart(2, "0"), shortenTitleTo(name, 10)];
   if (unit) {
     parts.push(shortenNameTo(unit.substring(0, 3)));
   }
@@ -84,6 +101,7 @@ const getMappedProductComboName = (product, values) => {
 
 module.exports = {
   shortenNameTo,
+  shortenTitleTo,
   getSKU,
   getMappedVariantValues,
   getMappedProductComboName,
