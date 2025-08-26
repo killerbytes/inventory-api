@@ -11,8 +11,9 @@ export interface breakPack {
 }
 
 export interface category {
-  description?: string;
+  description?: string | null | '';
   name: string;
+  parentId?: number;
 }
 
 export interface customer {

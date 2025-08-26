@@ -1,13 +1,14 @@
-const { PAGINATION } = require("../definitions");
 const db = require("../models");
 const { categorySchema } = require("../schemas");
 const { Category } = db;
-const { Op } = require("sequelize");
 
 module.exports = {
   get: async (id) => {
     try {
-      const category = await Category.findByPk(id, { raw: true });
+      const category = await Category.findByPk(id, {
+        include: [{ model: Category, as: "subCategories" }],
+        nest: true,
+      });
       if (!category) {
         throw new Error("Category not found");
       }
@@ -24,11 +25,7 @@ module.exports = {
       throw error;
     }
     try {
-      const { name, description } = payload;
-      const result = await Category.create({
-        name,
-        description,
-      });
+      const result = await Category.create(payload);
       return result;
     } catch (error) {
       throw error;
@@ -37,7 +34,7 @@ module.exports = {
 
   list: async (query) => {
     const result = await Category.findAll({
-      raw: true,
+      // include: [{ model: Category, as: "subCategories" }],
       order: [["order", "ASC"]],
     });
     return result;

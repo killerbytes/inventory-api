@@ -9,6 +9,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await categoryService.create(category[0]);
+  await categoryService.create(category[1]);
 });
 
 const category = [
@@ -25,13 +27,13 @@ const data = [
   {
     name: "Shovel",
     description: "Shovel",
-    unit: "PCS",
+    baseUnit: "PCS",
     categoryId: 1,
   },
   {
     name: "Wire",
     description: "Wire",
-    unit: "BOX",
+    baseUnit: "BOX",
     categoryId: 2,
   },
 ];
@@ -39,35 +41,32 @@ const data = [
 describe("Product Service (Integration)", () => {
   it("should create and fetch product", async () => {
     const test = data[0];
-    await categoryService.create(category[0]);
     const created = await productService.create(test);
     const product = await productService.get(created.id);
 
     expect(product).not.toBeNull();
     expect(product.name).toBe(test.name);
     expect(product.description).toBe(test.description);
-    expect(product.unit).toBe(test.unit);
+    expect(product.baseUnit).toBe(test.baseUnit);
   });
 
   it("should update product", async () => {
-    await categoryService.create(category[0]);
     const created = await productService.create(data[0]);
+
     const updated = await productService.update(created.id, {
       name: "Wood Shovel",
       description: "Shovel Updated",
-      unit: "BOX",
+      baseUnit: "BOX",
       categoryId: 1,
     });
 
     expect(updated).not.toBeNull();
     expect(updated.name).toBe("Wood Shovel");
     expect(updated.description).toBe("Shovel Updated");
-    expect(updated.unit).toBe("BOX");
+    expect(updated.baseUnit).toBe("BOX");
   });
 
   it("should list all products", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     await productService.create(data[0]);
     await productService.create(data[1]);
 
@@ -78,7 +77,6 @@ describe("Product Service (Integration)", () => {
   });
 
   it("should delete product", async () => {
-    await categoryService.create(category[0]);
     const created = await productService.create(data[0]);
     const deleted = await productService.delete(created.id);
 
@@ -89,21 +87,17 @@ describe("Product Service (Integration)", () => {
   });
 
   it("should enforce unique name and unit constraint", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     await productService.create(data[0]);
 
     try {
       await productService.create({
-        ...data[1],
-        name: data[0].name,
-        unit: data[0].unit,
+        ...data[0],
       });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
     } catch (err) {
-      console.log("Unique sku error:", {
+      console.log("Unique name/baseUnit error:", {
         name: err.name,
         message: err.message,
         fields: err.fields,
@@ -113,13 +107,13 @@ describe("Product Service (Integration)", () => {
       expect(err.name).toBe("SequelizeUniqueConstraintError");
       expect(err.message).toBe("Validation error");
       expect(getConstraintFields(err)).toContain("name");
-      expect(getConstraintFields(err)).toContain("unit");
+      expect(getConstraintFields(err)).toEqual(
+        expect.arrayContaining(["name", "baseUnit"])
+      );
     }
   });
 
   it("should fetch all products by sku", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     await productService.create(data[0]);
     await productService.create(data[1]);
     const products = await productService.getAllBySku("01|SHO");
@@ -128,35 +122,29 @@ describe("Product Service (Integration)", () => {
   });
 
   it("should update a product's unit", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     const create = await productService.create(data[0]);
 
     const product = await productService.get(create.id);
     const updated = await productService.update(product.id, {
       name: product.name,
       categoryId: product.categoryId,
-      unit: "BOX",
+      baseUnit: "BOX",
     });
-    expect(updated.unit).toBe("BOX");
+    expect(updated.baseUnit).toBe("BOX");
   });
 
   it("should clone a product to a new unit", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     const create = await productService.create(data[0]);
 
     const product = await productService.get(create.id);
     const updated = await productService.cloneToUnit(product.id, {
-      unit: "BOX",
+      baseUnit: "BOX",
     });
 
-    expect(updated.unit).toBe("BOX");
+    expect(updated.baseUnit).toBe("BOX");
   });
 
   it("should get a paginated list of products", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
     await productService.create(data[0]);
     await productService.create(data[1]);
 

@@ -32,14 +32,21 @@ const MODE_OF_PAYMENT = {
   BANK: "BANK",
 };
 
+const BASE_UNIT = {
+  PCS: "PCS",
+  KGS: "KGS",
+  BTL: "BTL",
+  RLS: "RLS",
+  MTS: "MTS",
+  FTS: "FTS",
+  LTS: "LTS",
+};
 const UNIT = {
   BOX: "BOX",
   BAG: "BAG",
   GAL: "GAL",
-  PACK: "PACK",
+  PCK: "PCK",
   SET: "SET",
-  PCS: "PCS",
-  KGS: "KGS",
 };
 
 const STOCK_ADJUSTMENT_TYPE = {
@@ -60,6 +67,7 @@ module.exports = {
   INVENTORY_MOVEMENT_TYPE,
   PAGINATION,
   MODE_OF_PAYMENT,
+  BASE_UNIT,
   UNIT,
   STOCK_ADJUSTMENT_TYPE,
 };

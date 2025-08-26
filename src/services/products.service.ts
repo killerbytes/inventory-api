@@ -45,7 +45,7 @@ module.exports = {
         include: [...getDefaultIncludes()],
         // order,
       });
-      if (!product) throw new Error("Product not found");
+      if (!product) throw ApiError.notFound("Product not found");
 
       return product;
     } catch (error) {
@@ -86,10 +86,7 @@ module.exports = {
       if (!product) throw new Error("Product not found");
 
       // 1. Update base product info
-      await product.update(
-        { name, description, unit, categoryId, conversionFactor },
-        { transaction }
-      );
+      await product.update(payload, { transaction });
 
       await transaction.commit();
       return product; // { message: "Product updated successfully" };
@@ -135,7 +132,6 @@ module.exports = {
       const deleted = await Product.destroy({ where: { id }, transaction });
       await transaction.commit();
       return deleted > 0;
-      
     } catch (err) {
       await transaction.rollback();
       throw err;
@@ -161,31 +157,80 @@ module.exports = {
     try {
       const { rows: products, count } = await Product.findAndCountAll({
         where,
-        subQuery: false, // ✅ important
-
-        include: [...getDefaultIncludes(), { model: Category, as: "category" }],
+        subQuery: false, // ✅ avoid incorrect limits
+        include: [
+          ...getDefaultIncludes(),
+          {
+            model: Category,
+            as: "category",
+            include: [
+              {
+                model: Category,
+                as: "parent", // ✅ bring parent category
+              },
+            ],
+          },
+        ],
         order: [...getDefaultOrder()],
-        distinct: true, // ✅ important: prevents inflated count when many combinations
+        distinct: true, // ✅ avoids inflated count due to joins
+        limit,
+        offset,
       });
 
-      const groupedByCategory: Record<number, GroupedCategory> = {};
-      const categories = await Category.findAll({ order: [["order", "ASC"]] });
+      // Fetch parent + subcategories for grouping
+      const categories = await Category.findAll({
+        where: { parentId: null }, // top-level only
+        include: [
+          {
+            model: Category,
+            as: "subCategories",
+          },
+        ],
+        order: [["order", "ASC"]],
+      });
 
-      categories.forEach((category) => {
-        groupedByCategory[category.id] = {
-          categoryId: category.id,
-          categoryName: category.name,
-          categoryOrder: category.order,
-          products: [],
+      // Build grouping object
+      const groupedByCategory: Record<number, GroupedCategory> = {};
+      categories.forEach((parent) => {
+        groupedByCategory[parent.id] = {
+          categoryId: parent.id,
+          categoryName: parent.name,
+          categoryOrder: parent.order,
+          products: [], // products directly under parent
+          subCategories: (parent.subCategories || []).map((sub) => ({
+            categoryId: sub.id,
+            categoryName: sub.name,
+            products: [],
+          })),
         };
       });
 
+      // Place products into correct group
       products.forEach((product) => {
         const category = product.category;
         if (!category) return;
-        groupedByCategory[category.id].products.push(product);
+
+        if (category.parent) {
+          // Product belongs to a subcategory
+          const parent = groupedByCategory[category.parent.id];
+          if (!parent) return;
+
+          const subGroup = parent.subCategories.find(
+            (s) => s.subCategoryId === category.id
+          );
+          if (subGroup) {
+            subGroup.products.push(product);
+          }
+        } else {
+          // Product belongs directly to a parent category
+          const parent = groupedByCategory[category.id];
+          if (parent) {
+            parent.products.push(product);
+          }
+        }
       });
 
+      // Sort by category order
       const result = Object.values(groupedByCategory).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
@@ -197,7 +242,8 @@ module.exports = {
         currentPage: page,
       };
     } catch (error) {
-      console.log(1123, error);
+      console.error("getPaginated error:", error);
+      throw error;
     }
   },
   async list() {
@@ -264,7 +310,7 @@ module.exports = {
   },
 
   async cloneToUnit(id, payload) {
-    const { unit } = payload;
+    const { baseUnit } = payload;
 
     const transaction = await sequelize.transaction();
     try {
@@ -288,7 +334,7 @@ module.exports = {
           name: product.name,
           description: product.description,
           categoryId: product.categoryId,
-          unit,
+          baseUnit,
         },
         { transaction }
       );
@@ -319,7 +365,12 @@ module.exports = {
           {
             productId: newProduct.id,
             name: getMappedProductComboName(product, combo.values),
-            sku: getSKU(product.name, product.categoryId, unit, combo.values),
+            sku: getSKU(
+              product.name,
+              product.categoryId,
+              baseUnit,
+              combo.values
+            ),
             price: 0,
           },
           { transaction }

@@ -19,8 +19,8 @@ module.exports = {
       "Customers",
       [
         {
-          name: "User",
-          address: "Unknown",
+          name: "Default",
+          address: "Cabanatuan City",
           createdAt: new Date(),
           updatedAt: new Date(),
         },

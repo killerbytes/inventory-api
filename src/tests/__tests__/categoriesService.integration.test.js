@@ -13,7 +13,6 @@ beforeEach(async () => {
 const data = [
   {
     name: "Tools",
-    description: "Hardware tools",
   },
   {
     name: "Electronics",
@@ -33,7 +32,7 @@ describe("Customer Service (Integration)", () => {
 
     expect(category).not.toBeNull();
     expect(category.name).toBe(test.name);
-    expect(category.description).toBe(test.description);
+    expect(category.description).toBeNull();
     expect(category.order).toBeNull();
   });
 
@@ -86,23 +85,58 @@ describe("Customer Service (Integration)", () => {
     }
   });
 
-  if (
-    ("should update a category's sort order",
-    async () => {
-      await categoryService.create(data[0]);
-      await categoryService.create(data[1]);
-      const categories = await categoryService.list();
-      expect(categories.data.length).toBe(2);
-      expect(categories.data[0].name).toBe("Clothing");
-      expect(categories.data[1].name).toBe("Electronics");
-      await categoryService.updateSort({
-        id: categories.data[0].id,
-        order: 1,
+  it("should update a category's sort order", async () => {
+    await categoryService.create(data[0]);
+    await categoryService.create(data[1]);
+    const categories = await categoryService.list();
+
+    expect(categories.length).toBe(2);
+    expect(categories[0].name).toBe("Tools");
+    expect(categories[1].name).toBe("Electronics");
+    await categoryService.updateSort([categories[1].id, categories[0].id]);
+
+    const categories2 = await categoryService.list();
+    expect(categories2.length).toBe(2);
+    expect(categories2[0].name).toBe("Electronics");
+    expect(categories2[1].name).toBe("Tools");
+  });
+
+  it("should enforce unique name constraint on update", async () => {
+    await categoryService.create(data[0]);
+    await categoryService.create(data[1]);
+    try {
+      await categoryService.update(1, { name: data[1].name });
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
+    } catch (err) {
+      console.log("Unique name error:", {
+        name: err.name,
+        message: err.message,
+        fields: err.fields,
+        errors: err.errors?.map((e) => e.message),
       });
-      const categories2 = await categoryService.list();
-      expect(categories2.data.length).toBe(2);
-      expect(categories2.data[0].name).toBe("Electronics");
-      expect(categories2.data[1].name).toBe("Clothing");
-    })
-  );
+      expect(err.name).toBe("SequelizeUniqueConstraintError");
+      expect(err.message).toBe("Validation error");
+      expect(getConstraintFields(err)).toContain("name");
+    }
+  });
+  it("should create and fetch a category with parent", async () => {
+    const test = data[0];
+    const created = await categoryService.create(test);
+    const sub = await categoryService.create({
+      name: "Sub",
+      description: "Sub",
+      parentId: created.id,
+    });
+    const category = await categoryService.get(created.id);
+    // const category = await categoryService.list();
+
+    expect(category).not.toBeNull();
+    expect(category.name).toBe(test.name);
+    expect(category.description).toBeNull();
+    expect(category.order).toBeNull();
+    expect(category.subCategories.length).toBe(1);
+    expect(category.subCategories[0].name).toBe("Sub");
+  });
 });

@@ -25,13 +25,13 @@ const data = [
   {
     name: "Shovel",
     description: "Shovel",
-    unit: "PCS",
+    baseUnit: "PCS",
     categoryId: 1,
   },
   {
     name: "Wire",
     description: "Wire",
-    unit: "BOX",
+    baseUnit: "BOX",
     categoryId: 2,
   },
 ];

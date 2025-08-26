@@ -109,7 +109,8 @@ const productSchema = Joi.object({
 
 const categorySchema = Joi.object({
   name: Joi.string().required(),
-  description: Joi.string().optional(),
+  description: Joi.string().optional().allow(null).allow(""),
+  parentId: Joi.number().optional(),
 })
   .required()
   .meta({ className: "category" });

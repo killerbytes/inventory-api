@@ -1,4 +1,4 @@
-function shortenNameTo(str) {
+function shortenNameTo(str, length = 3) {
   const name = str
     .normalize("NFD") // normalize accented characters
     .replace(/[\u0300-\u036f]/g, "")
@@ -10,7 +10,7 @@ function shortenNameTo(str) {
   // Take first 2-3 letters of each word (max 3 words)
   const shortened = words
     .slice(0, 3)
-    .map((word) => word.substring(0, 3))
+    .map((word) => word.substring(0, length))
     .join("_");
 
   // Ensure length is between 3-6 characters
@@ -18,7 +18,7 @@ function shortenNameTo(str) {
 }
 
 const getSKU = (name, category, unit, values) => {
-  const parts = [String(category).padStart(2, "0"), shortenNameTo(name)];
+  const parts = [String(category).padStart(2, "0"), shortenNameTo(name, 6)];
   if (unit) {
     parts.push(shortenNameTo(unit.substring(0, 3)));
   }

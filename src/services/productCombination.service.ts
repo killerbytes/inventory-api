@@ -113,7 +113,6 @@ module.exports = {
       ],
     });
     if (!product) throw new Error("Product not found");
-    console.log(123, payload);
 
     const issue = validateCombinations(payload, product);
 
@@ -250,6 +249,9 @@ module.exports = {
           await combination.setValues(variantValueIds, { transaction });
         } else {
           // Create new combination if no ID
+          console.log(
+            getSKU(product.name, product.categoryId, combo.unit, combo.values)
+          );
 
           combination = await ProductCombination.create(
             {
@@ -590,12 +592,16 @@ function validateCombinations(
   const conflicts = [];
 
   payload.combinations.forEach((combo) => {
-    console.log(3, combo);
-
-    const key = combo.values
-      .map((val) => `${val.variantTypeId}:${val.value}`)
-      .sort()
-      .join("|");
+    // const key = combo.values
+    //   .map((val) => `${val.variantTypeId}:${val.value}`)
+    //   .sort()
+    //   .join("|");
+    const key = getSKU(
+      product.name,
+      product.categoryId,
+      combo.unit,
+      combo.values
+    );
 
     if (seen.has(key)) {
       const existing = seen.get(key);

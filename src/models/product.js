@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ["name", "unit"],
+          fields: ["name", "baseUnit"],
           where: {
             deletedAt: null, // enforce uniqueness only for active rows
           },

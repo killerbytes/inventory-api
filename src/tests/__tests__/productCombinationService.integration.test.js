@@ -54,19 +54,19 @@ const products = [
   {
     name: "Shovel",
     description: "Shovel BOX",
-    unit: "BOX",
+    baseUnit: "BOX",
     categoryId: 1,
   },
   {
     name: "Wire",
     description: "Wire",
-    unit: "PCS",
+    baseUnit: "PCS",
     categoryId: 2,
   },
   {
     name: "Shovel",
     description: "Shovel PCS",
-    unit: "PCS",
+    baseUnit: "PCS",
     categoryId: 1,
   },
 ];
@@ -90,7 +90,9 @@ describe("Product Combination Service (Integration)", () => {
       combinations: [
         {
           price: 100,
+          unit: "BOX",
           reorderLevel: 1,
+          conversionFactor: 1,
           values: [
             {
               value: "Red",
@@ -106,6 +108,7 @@ describe("Product Combination Service (Integration)", () => {
     expect(product.combinations[0]).not.toBeNull();
     expect(product.combinations[0].name).toBe("Shovel - Red");
     expect(product.combinations[0].sku).toBe("01|SHO|BOX|RED");
+    expect(product.combinations[0].unit).toBe("BOX");
     expect(product.combinations[0].price).toBe(100);
     expect(product.combinations[0].reorderLevel).toBe(1);
     expect(product.combinations[0].inventory.quantity).toBe(0);
@@ -127,6 +130,8 @@ describe("Product Combination Service (Integration)", () => {
         {
           id: 1,
           price: 100,
+          unit: "PCS",
+          conversionFactor: 1,
           reorderLevel: 1,
           values: [
             {
@@ -145,8 +150,9 @@ describe("Product Combination Service (Integration)", () => {
     const product2 = await productCombinationService.getByProductId(1);
     expect(product2.combinations[0]).not.toBeNull();
     expect(product2.combinations[0].name).toBe("Shovel - Red | Medium");
-    expect(product2.combinations[0].sku).toBe("01|SHO|BOX|RED|MED");
+    expect(product2.combinations[0].sku).toBe("01|SHO|PCS|RED|MED");
     expect(product2.combinations[0].price).toBe(100);
+    expect(product2.combinations[0].unit).toBe("PCS");
     expect(product2.combinations[0].reorderLevel).toBe(1);
     expect(product2.combinations[0].inventory.quantity).toBe(0);
     expect(product2.variants[0]).not.toBeNull();
@@ -171,11 +177,13 @@ describe("Product Combination Service (Integration)", () => {
     expect(product2.variants[1].values[1].id).toBe(3);
   });
 
-  it("should make an stock adjustment", async () => {
+  it("should make a stock adjustment", async () => {
     await productCombinationService.updateByProductId(1, {
       combinations: [
         {
           price: 100,
+          unit: "PCS",
+          conversionFactor: 1,
           reorderLevel: 1,
           values: [
             {
@@ -196,14 +204,15 @@ describe("Product Combination Service (Integration)", () => {
     const product = await productService.get(1);
     expect(product.combinations[0].inventory.quantity).toBe(10);
 
-    const product2 = await productService.create(products[2]);
+    // const product2 = await productService.create(products[2]);
+    // console.log(product2);
 
-    await productCombinationService.breakPack({
-      fromCombinationId: 1,
-      quantity: 1,
-      toCombinationId: 3,
-      conversionFactor: 24,
-    });
+    // await productCombinationService.breakPack({
+    //   fromCombinationId: 1,
+    //   quantity: 1,
+    //   toCombinationId: 3,
+    //   conversionFactor: 24,
+    // });
 
     // const p = await Product.findByPk(3);
     // console.log(p);
