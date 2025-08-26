@@ -155,8 +155,9 @@ module.exports = {
     }
 
     try {
-      const { rows: products, count } = await Product.findAndCountAll({
+      const products = await Product.findAll({
         where,
+        logging: console.log,
         subQuery: false, // ✅ avoid incorrect limits
         include: [
           ...getDefaultIncludes(),
@@ -172,9 +173,6 @@ module.exports = {
           },
         ],
         order: [...getDefaultOrder()],
-        distinct: true, // ✅ avoids inflated count due to joins
-        limit,
-        offset,
       });
 
       // Fetch parent + subcategories for grouping
@@ -188,6 +186,7 @@ module.exports = {
         ],
         order: [["order", "ASC"]],
       });
+      console.log(products);
 
       // Build grouping object
       const groupedByCategory: Record<number, GroupedCategory> = {};
@@ -237,9 +236,6 @@ module.exports = {
 
       return {
         data: result,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
       };
     } catch (error) {
       console.error("getPaginated error:", error);
@@ -401,26 +397,39 @@ function getDefaultIncludes() {
     {
       model: VariantType,
       as: "variants",
-      include: [{ model: VariantValue, as: "values" }],
+      required: false,
+      include: [
+        {
+          model: VariantValue,
+          as: "values",
+          required: false,
+        },
+      ],
     },
     {
       model: ProductCombination,
       as: "combinations",
-      // required: true,
+      required: false,
       include: [
         {
           model: Inventory,
           as: "inventory",
+          required: false,
         },
         {
           model: VariantValue,
           as: "values",
-          through: { attributes: [] },
+          required: false,
+          through: {
+            attributes: [],
+            where: {}, // 👈 forces LEFT JOIN
+          },
         },
       ],
     },
   ];
 }
+
 function getDefaultOrder() {
   return [
     ["name", "ASC"],
