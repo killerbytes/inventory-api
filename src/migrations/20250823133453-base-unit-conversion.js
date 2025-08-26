@@ -22,11 +22,11 @@ module.exports = {
       allowNull: false,
     });
 
-    await queryInterface.addConstraint("ProductCombinations", {
-      fields: ["sku"],
-      type: "unique",
-      name: "unique_sku_per_product_combination", // custom name
-    });
+    // await queryInterface.addConstraint("ProductCombinations", {
+    //   fields: ["sku"],
+    //   type: "unique",
+    //   name: "unique_sku_per_product_combination", // custom name
+    // });
 
     await queryInterface.addColumn("ProductCombinations", "conversionFactor", {
       type: Sequelize.STRING,
@@ -49,10 +49,10 @@ module.exports = {
     await queryInterface.removeColumn("ProductCombinations", "unit");
 
     // Drop constraint BEFORE removing sku
-    await queryInterface.removeConstraint(
-      "ProductCombinations",
-      "unique_sku_per_product_combination"
-    );
+    // await queryInterface.removeConstraint(
+    //   "ProductCombinations",
+    //   "unique_sku_per_product_combination"
+    // );
 
     await queryInterface.changeColumn("ProductCombinations", "sku", {
       type: Sequelize.STRING,

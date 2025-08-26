@@ -138,27 +138,26 @@ module.exports = {
     }
   },
   async getPaginated(query) {
-    const { q, page = 1, limit = 10, categoryId } = query;
-    const offset = (page - 1) * limit;
+    const { q, categoryId } = query;
 
-    const where = {};
+    const where = q
+      ? {
+          [Op.or]: [
+            { name: { [Op.iLike]: `%${q}%` } }, // case-insensitive on Product
+            { "$combinations.name$": { [Op.iLike]: `%${q}%` } }, // case-insensitive on Combination
+          ],
+        }
+      : {};
 
     if (categoryId) {
       where["$product.categoryId$"] = categoryId;
     }
 
-    if (q) {
-      where[Op.or] = [
-        { name: { [Op.like]: `%${q}%` } }, // Product.name
-        { "$combinations.name$": { [Op.like]: `%${q}%` } }, // Combination.name
-      ];
-    }
-
     try {
       const products = await Product.findAll({
         where,
-        logging: console.log,
-        subQuery: false, // ✅ avoid incorrect limits
+        // logging: console.log,
+        // subQuery: false, // ✅ avoid incorrect limits
         include: [
           ...getDefaultIncludes(),
           {
@@ -172,7 +171,7 @@ module.exports = {
             ],
           },
         ],
-        order: [...getDefaultOrder()],
+        // order: [...getDefaultOrder()],
       });
 
       // Fetch parent + subcategories for grouping
@@ -186,7 +185,6 @@ module.exports = {
         ],
         order: [["order", "ASC"]],
       });
-      console.log(products);
 
       // Build grouping object
       const groupedByCategory: Record<number, GroupedCategory> = {};
@@ -397,32 +395,32 @@ function getDefaultIncludes() {
     {
       model: VariantType,
       as: "variants",
-      required: false,
+      // required: false,
       include: [
         {
           model: VariantValue,
           as: "values",
-          required: false,
+          // required: false,
         },
       ],
     },
     {
       model: ProductCombination,
       as: "combinations",
-      required: false,
+      // required: true,
       include: [
         {
           model: Inventory,
           as: "inventory",
-          required: false,
+          // required: false,
         },
         {
           model: VariantValue,
           as: "values",
-          required: false,
+          // required: false,
           through: {
             attributes: [],
-            where: {}, // 👈 forces LEFT JOIN
+            // where: {}, // 👈 forces LEFT JOIN
           },
         },
       ],
