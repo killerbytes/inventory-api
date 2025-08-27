@@ -10,4 +10,4 @@ cross-env NODE_ENV=production npx sequelize db:create
 cross-env NODE_ENV=production npx sequelize db:migrate
 cross-env NODE_ENV=production npm run restore
 
-npx sequelize migration:generate --name base-unit-conversion
+npx sequelize migration:generate --name fix-product-name-unique-index

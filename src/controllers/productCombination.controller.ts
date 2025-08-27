@@ -57,6 +57,15 @@ const productCombinationController = {
       next(error);
     }
   },
+
+  async bulkUpdateSKU(req, res, next) {
+    try {
+      await productCombinationService.bulkUpdateSKU();
+      res.status(200).send();
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = productCombinationController;

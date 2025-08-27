@@ -58,5 +58,14 @@ module.exports = (sequelize, DataTypes) => {
     product.sku = getSKU(product.name, product.categoryId, null, null);
   });
 
+  Product.beforeUpdate(async (product, options) => {
+    product.sku = getSKU(
+      product.name,
+      product.categoryId,
+      product.baseUnit,
+      null
+    );
+  });
+
   return Product;
 };

@@ -302,6 +302,14 @@ module.exports = {
       console.log(1, error);
     }
   },
+  async flat() {
+    const products = await Product.findAll({
+      include: [...getDefaultIncludes()],
+      order: [...getDefaultOrder()],
+    });
+
+    return products;
+  },
 
   async cloneToUnit(id, payload) {
     const { baseUnit } = payload;

@@ -12,6 +12,7 @@ import Joi from "joi";
 import { getMappedProductComboName, getSKU } from "../utils";
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
 const authService = require("./auth.service");
+const productService = require("./products.service");
 const {
   InventoryMovement,
   Product,
@@ -101,6 +102,8 @@ module.exports = {
     });
 
     if (error) {
+      console.log(33, error);
+
       throw error;
     }
     const product = await Product.findByPk(productId, {
@@ -115,6 +118,7 @@ module.exports = {
     if (!product) throw new Error("Product not found");
 
     const issue = validateCombinations(payload, product);
+    console.log(issue);
 
     if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
       throw ApiError.badRequest("Combinations are invalid");
@@ -298,6 +302,8 @@ module.exports = {
       await transaction.commit();
       return { message: "Product updated successfully" };
     } catch (err) {
+      console.log(22, err);
+
       await transaction.rollback();
 
       throw err;
@@ -578,6 +584,17 @@ module.exports = {
       transaction.rollback();
       throw error;
     }
+  },
+
+  async bulkUpdateSKU() {
+    await productService.flat().then((products) => {
+      products.forEach(async (product) => {
+        const res = await this.updateByProductId(product.id, {
+          combinations: product.combinations,
+        });
+        console.log(res);
+      });
+    });
   },
 };
 

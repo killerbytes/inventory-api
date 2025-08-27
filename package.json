@@ -46,7 +46,6 @@
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "joi2ts": "ts-node src/joi2ts.ts",
-    "backup-data": "node backup.js backup-data",
     "backup": "node backup.js backup",
     "restore": "node backup.js restore"
   },

@@ -2,6 +2,7 @@ import express from "express";
 const productCombinationController = require("../controllers/productCombination.controller");
 const router = express.Router();
 
+router.get("/bulkUpdateSKU", productCombinationController.bulkUpdateSKU);
 router.post("/breakPack", productCombinationController.breakPack);
 router.post("/stockAdjustment", productCombinationController.stockAdjustment);
 router.get("/:id", productCombinationController.get);

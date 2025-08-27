@@ -3,6 +3,7 @@ const productsController = require("../controllers/products.controller");
 const router = express.Router();
 
 router.post("/:id/convertToUnit", productsController.cloneToUnit);
+router.get("/all", productsController.getAllProducts);
 router.get("/list", productsController.list);
 router.get("/sku/:sku", productsController.getAllBySku);
 router.get("/:id", productsController.get);
