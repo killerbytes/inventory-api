@@ -1,31 +1,19 @@
-import { loginSchema } from "../schemas";
-import ApiError from "../services/ApiError";
-import { generateToken } from "../services/auth.service";
-import authService from "../services/auth.service";
+const authService = require("../services/auth.service");
 import passport from "passport";
 
 const authController = {
   login: async (req, res, next) => {
-    const { error } = loginSchema.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      return next(ApiError.badRequest(error.message, error.details));
-    }
-
     try {
       passport.authenticate(
         "local",
         { session: false },
-        (err: any, user: any, info: any) => {
-          if (err || !user) {
-            return res
-              .status(500)
-              .json(ApiError.badRequest("Invalid username or password"));
+        async (err: any, user: any, info: any) => {
+          try {
+            const token = await authService.login(user, err, info);
+            res.status(200).json({ token });
+          } catch (error) {
+            next(error);
           }
-
-          const token = generateToken(user);
-          res.status(200).json({ token });
         }
       )(req, res, next);
     } catch (error) {
@@ -43,4 +31,4 @@ const authController = {
   },
 };
 
-export default authController;
+module.exports = authController;

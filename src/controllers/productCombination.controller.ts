@@ -1,4 +1,4 @@
-import productCombinationService from "../services/productCombination.service";
+const productCombinationService = require("../services/productCombination.service");
 
 const productCombinationController = {
   async get(req, res, next) {
@@ -19,15 +19,7 @@ const productCombinationController = {
       next(error);
     }
   },
-  async update(req, res, next) {
-    const { id } = req.params;
-    try {
-      const user = await productCombinationService.update(id, req.body);
-      res.status(200).json(user);
-    } catch (error) {
-      next(error);
-    }
-  },
+
   async updateByProductId(req, res, next) {
     const { id } = req.params;
     try {
@@ -65,6 +57,15 @@ const productCombinationController = {
       next(error);
     }
   },
+
+  async bulkUpdateSKU(req, res, next) {
+    try {
+      await productCombinationService.bulkUpdateSKU();
+      res.status(200).send();
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
-export default productCombinationController;
+module.exports = productCombinationController;

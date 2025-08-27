@@ -5,12 +5,14 @@ import {
   productCombinationSchema,
   stockAdjustmentSchema,
 } from "../schemas";
-import ApiError from "./ApiError";
+const ApiError = require("./ApiError");
+
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
 import { getMappedProductComboName, getSKU } from "../utils";
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
-import authService from "./auth.service";
+const authService = require("./auth.service");
+const productService = require("./products.service");
 const {
   InventoryMovement,
   Product,
@@ -23,7 +25,7 @@ const {
   StockAdjustment,
 } = db;
 
-const productCombinationService = {
+module.exports = {
   async get(id) {
     const productCombination = await ProductCombination.findByPk(id, {
       include: [
@@ -92,11 +94,6 @@ const productCombinationService = {
       variants,
     };
   },
-
-  async update(id, payload) {
-    throw new Error("Method not implemented.");
-  },
-
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
       combinations: Joi.array().items(productCombinationSchema),
@@ -105,6 +102,8 @@ const productCombinationService = {
     });
 
     if (error) {
+      console.log(33, error);
+
       throw error;
     }
     const product = await Product.findByPk(productId, {
@@ -118,7 +117,8 @@ const productCombinationService = {
     });
     if (!product) throw new Error("Product not found");
 
-    const issue = validateCombinations(payload);
+    const issue = validateCombinations(payload, product);
+    console.log(issue);
 
     if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
       throw ApiError.badRequest("Combinations are invalid");
@@ -240,6 +240,12 @@ const productCombinationService = {
             {
               ...combo,
               name: getMappedProductComboName(product, combo.values),
+              sku: getSKU(
+                product.name,
+                product.categoryId,
+                combo.unit,
+                combo.values
+              ),
             },
             { transaction }
           );
@@ -247,6 +253,10 @@ const productCombinationService = {
           await combination.setValues(variantValueIds, { transaction });
         } else {
           // Create new combination if no ID
+          console.log(
+            getSKU(product.name, product.categoryId, combo.unit, combo.values)
+          );
+
           combination = await ProductCombination.create(
             {
               productId,
@@ -255,7 +265,7 @@ const productCombinationService = {
               sku: getSKU(
                 product.name,
                 product.categoryId,
-                product.unit,
+                combo.unit,
                 combo.values
               ),
             },
@@ -292,12 +302,15 @@ const productCombinationService = {
       await transaction.commit();
       return { message: "Product updated successfully" };
     } catch (err) {
+      console.log(22, err);
+
       await transaction.rollback();
 
       throw err;
     }
   },
   async delete(id) {
+    throw new Error("Method not implemented.");
     const transaction = await sequelize.transaction();
 
     try {
@@ -341,6 +354,7 @@ const productCombinationService = {
   },
 
   async list() {
+    throw new Error("Method not implemented.");
     const products = await Product.findAll({
       include: [
         {
@@ -571,27 +585,48 @@ const productCombinationService = {
       throw error;
     }
   },
+
+  async bulkUpdateSKU() {
+    await productService.flat().then((products) => {
+      products.forEach(async (product) => {
+        const res = await this.updateByProductId(product.id, {
+          combinations: product.combinations,
+        });
+        console.log(res);
+      });
+    });
+  },
 };
 
-export default productCombinationService;
-
-function validateCombinations(payload: {
-  combinations: productCombinations[];
-}) {
+function validateCombinations(
+  payload: {
+    combinations: productCombinations[];
+  },
+  product
+) {
   const seen = new Map();
   const duplicates = [];
   const conflicts = [];
 
   payload.combinations.forEach((combo) => {
-    const key = combo.values
-      .map((val) => `${val.variantTypeId}:${val.value}`)
-      .sort()
-      .join("|");
+    // const key = combo.values
+    //   .map((val) => `${val.variantTypeId}:${val.value}`)
+    //   .sort()
+    //   .join("|");
+    const key = getSKU(
+      product.name,
+      product.categoryId,
+      combo.unit,
+      combo.values
+    );
 
     if (seen.has(key)) {
       const existing = seen.get(key);
       // Check if SKU is different → conflict
-      if (existing.sku !== combo.sku) {
+      if (
+        existing.sku !==
+        getSKU(product.name, product.categoryId, combo.unit, combo.values)
+      ) {
         conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
       } else {
         duplicates.push({ key, sku: combo.sku });

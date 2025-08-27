@@ -6,7 +6,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       productId: { type: DataTypes.INTEGER, allowNull: false },
       name: { type: DataTypes.STRING, allowNull: false },
-      sku: { type: DataTypes.STRING },
+      sku: { type: DataTypes.STRING }, // no unique here anymore
+      unit: { type: DataTypes.STRING, allowNull: false },
+      conversionFactor: DataTypes.INTEGER,
       price: DataTypes.DECIMAL(10, 2),
       reorderLevel: DataTypes.INTEGER,
     },
@@ -17,8 +19,9 @@ module.exports = (sequelize, DataTypes) => {
       paranoid: true,
       indexes: [
         {
+          name: "unique_active_sku",
           unique: true,
-          fields: ["name", "sku"],
+          fields: ["sku"],
           where: {
             deletedAt: null, // enforce uniqueness only for active rows
           },

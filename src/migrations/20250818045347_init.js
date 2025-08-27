@@ -1048,100 +1048,20 @@ const migrationCommands = (transaction) => [
 
 const rollbackCommands = (transaction) => [
   {
-    fn: "removeConstraint",
-    params: ["Products", "products_ibfk_1", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: [
-      "ProductCombinations",
-      "productcombinations_ibfk_1",
-      { transaction },
-    ],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["salesorders", "salesorders_ibfk_1", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["salesorderitems", "salesorderitems_ibfk_3", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["varianttypes", "varianttypes_ibfk_1", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: [
-      "purchaseorderitems",
-      "purchaseorderitems_ibfk_1",
-      { transaction },
-    ],
-  },
-  {
-    fn: "removeConstraint",
-    params: [
-      "purchaseorderitems",
-      "purchaseorderitems_ibfk_2",
-      { transaction },
-    ],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["salesorderitems", "salesorderitems_ibfk_1", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["salesorderitems", "salesorderitems_ibfk_2", { transaction }],
-  },
-  {
-    fn: "removeConstraint",
-    params: ["variantvalues", "variantvalues_ibfk_1", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["BreakPacks", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["Categories", { transaction }],
-  },
-  {
     fn: "dropTable",
     params: ["CombinationValues", { transaction }],
   },
   {
     fn: "dropTable",
-    params: ["Customers", { transaction }],
+    params: ["VariantValues", { transaction }],
   },
   {
     fn: "dropTable",
-    params: ["Inventories", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["InventoryBreakPacks", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["InventoryMovements", { transaction }],
+    params: ["SalesOrderItems", { transaction }],
   },
   {
     fn: "dropTable",
     params: ["OrderStatusHistories", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["Products", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["ProductCombinations", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["PurchaseOrders", { transaction }],
   },
   {
     fn: "dropTable",
@@ -1153,8 +1073,42 @@ const rollbackCommands = (transaction) => [
   },
   {
     fn: "dropTable",
-    params: ["SalesOrderItems", { transaction }],
+    params: ["InventoryMovements", { transaction }],
   },
+  {
+    fn: "dropTable",
+    params: ["Inventories", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["PurchaseOrders", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["BreakPacks", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["VariantTypes", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["ProductCombinations", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["Products", { transaction }],
+  },
+  {
+    fn: "dropTable",
+    params: ["Customers", { transaction }],
+  },
+
+  {
+    fn: "dropTable",
+    params: ["InventoryBreakPacks", { transaction }],
+  },
+
   {
     fn: "dropTable",
     params: ["StockAdjustments", { transaction }],
@@ -1167,13 +1121,10 @@ const rollbackCommands = (transaction) => [
     fn: "dropTable",
     params: ["Users", { transaction }],
   },
+
   {
     fn: "dropTable",
-    params: ["VariantTypes", { transaction }],
-  },
-  {
-    fn: "dropTable",
-    params: ["VariantValues", { transaction }],
+    params: ["Categories", { transaction }],
   },
 ];
 

@@ -27,10 +27,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       name: { type: DataTypes.STRING, allowNull: false },
       description: DataTypes.TEXT,
-      unit: { type: DataTypes.STRING, allowNull: false },
+      baseUnit: { type: DataTypes.STRING, allowNull: false },
       categoryId: { type: DataTypes.INTEGER, allowNull: false },
       sku: DataTypes.STRING,
-      conversionFactor: DataTypes.INTEGER,
     },
     {
       sequelize,
@@ -42,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ["name", "unit"],
+          fields: ["name", "baseUnit"],
           where: {
             deletedAt: null, // enforce uniqueness only for active rows
           },
@@ -57,6 +56,15 @@ module.exports = (sequelize, DataTypes) => {
 
   Product.beforeBulkCreate(async (product, options) => {
     product.sku = getSKU(product.name, product.categoryId, null, null);
+  });
+
+  Product.beforeUpdate(async (product, options) => {
+    product.sku = getSKU(
+      product.name,
+      product.categoryId,
+      product.baseUnit,
+      null
+    );
   });
 
   return Product;

@@ -1,16 +1,16 @@
-export const ORDER_STATUS = {
+const ORDER_STATUS = {
   PENDING: "PENDING",
   RECEIVED: "RECEIVED",
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
 };
 
-export const ORDER_TYPE = {
+const ORDER_TYPE = {
   SALE: "SALE",
   PURCHASE: "PURCHASE",
 };
 
-export const INVENTORY_MOVEMENT_TYPE = {
+const INVENTORY_MOVEMENT_TYPE = {
   IN: "IN",
   OUT: "OUT",
   STOCK_ADJUSTMENT: "STOCK_ADJUSTMENT",
@@ -20,29 +20,36 @@ export const INVENTORY_MOVEMENT_TYPE = {
   RE_PACK: "RE_PACK",
 };
 
-export const PAGINATION = {
+const PAGINATION = {
   LIMIT: 25,
   PAGE: 1,
 };
 
-export const MODE_OF_PAYMENT = {
+const MODE_OF_PAYMENT = {
   CASH: "CASH",
   CHECK: "CHECK",
   EWALLET: "EWALLET",
   BANK: "BANK",
 };
 
-export const UNIT = {
+const BASE_UNIT = {
+  PCS: "PCS",
+  KGS: "KGS",
+  BTL: "BTL",
+  RLS: "RLS",
+  MTS: "MTS",
+  FTS: "FTS",
+  LTS: "LTS",
+};
+const UNIT = {
   BOX: "BOX",
   BAG: "BAG",
   GAL: "GAL",
-  PACK: "PACK",
+  PCK: "PCK",
   SET: "SET",
-  PCS: "PCS",
-  KGS: "KGS",
 };
 
-export const STOCK_ADJUSTMENT_TYPE = {
+const STOCK_ADJUSTMENT_TYPE = {
   DAMAGED: "DAMAGED",
   LOST: "LOST",
   FOUND: "FOUND",
@@ -52,4 +59,15 @@ export const STOCK_ADJUSTMENT_TYPE = {
   SUPPLIER_BONUS: "SUPPLIER_BONUS",
   RETURN_TO_STOCK: "RETURN_TO_STOCK",
   OTHER: "OTHER",
+};
+
+module.exports = {
+  ORDER_STATUS,
+  ORDER_TYPE,
+  INVENTORY_MOVEMENT_TYPE,
+  PAGINATION,
+  MODE_OF_PAYMENT,
+  BASE_UNIT,
+  UNIT,
+  STOCK_ADJUSTMENT_TYPE,
 };

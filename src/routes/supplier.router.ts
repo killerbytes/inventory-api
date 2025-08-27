@@ -1,5 +1,5 @@
 import express from "express";
-import supplierController from "../controllers/supplier.controller";
+const supplierController = require("../controllers/supplier.controller");
 const router = express.Router();
 
 router.get("/list", supplierController.list);
@@ -9,4 +9,4 @@ router.post("/", supplierController.create);
 router.patch("/:id", supplierController.update);
 router.delete("/:id", supplierController.delete);
 
-export default router;
+module.exports = router;

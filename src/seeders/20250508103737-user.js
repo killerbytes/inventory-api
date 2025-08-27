@@ -19,6 +19,15 @@ module.exports = {
       "Users",
       [
         {
+          name: "Admin",
+          username: "admin",
+          email: "admin@email.com",
+          password: User.generateHash("1234"),
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
           name: "Joel Carlos",
           username: "killerbytes",
           email: "joelcarlos02@gmail.com",

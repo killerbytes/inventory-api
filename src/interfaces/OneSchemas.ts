@@ -11,8 +11,9 @@ export interface breakPack {
 }
 
 export interface category {
-  description?: string;
+  description?: string | null | '';
   name: string;
+  parentId?: number;
 }
 
 export interface customer {
@@ -45,20 +46,22 @@ export interface login {
 }
 
 export interface product {
+  baseUnit: string;
   categoryId: number;
   combinations?: productCombinations[];
   description?: string | null;
   name: string;
-  unit: string;
   variants?: variant[];
 }
 
 export interface productCombinations {
+  conversionFactor: number;
   id?: number;
   price: number;
   productId?: number;
   reorderLevel: number;
   sku?: string | null;
+  unit: string;
   values?: variantValue[];
 }
 
@@ -144,7 +147,7 @@ export interface salesOrderStatus {
   status?: 'PENDING' | 'COMPLETED' | 'CANCELLED';
 }
 
-export interface stockAdjustmentSchema {
+export interface stockAdjustment {
   combinationId: number;
   createdAt: Date;
   createdBy: number;

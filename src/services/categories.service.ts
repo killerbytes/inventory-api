@@ -1,15 +1,14 @@
-import { Op } from "sequelize";
-import { PAGINATION } from "../definitions.js";
-import db, { Sequelize } from "../models";
-import ApiError from "./ApiError";
-import { categorySchema } from "../schemas.js";
-
+const db = require("../models");
+const { categorySchema } = require("../schemas");
 const { Category } = db;
 
-const categoryServices = {
+module.exports = {
   get: async (id) => {
     try {
-      const category = await Category.findByPk(id, { raw: true });
+      const category = await Category.findByPk(id, {
+        include: [{ model: Category, as: "subCategories" }],
+        nest: true,
+      });
       if (!category) {
         throw new Error("Category not found");
       }
@@ -26,11 +25,7 @@ const categoryServices = {
       throw error;
     }
     try {
-      const { name, description } = payload;
-      const result = await Category.create({
-        name,
-        description,
-      });
+      const result = await Category.create(payload);
       return result;
     } catch (error) {
       throw error;
@@ -38,9 +33,8 @@ const categoryServices = {
   },
 
   list: async (query) => {
-    const { products = false } = query;
     const result = await Category.findAll({
-      raw: true,
+      // include: [{ model: Category, as: "subCategories" }],
       order: [["order", "ASC"]],
     });
     return result;
@@ -70,65 +64,11 @@ const categoryServices = {
     if (!category) {
       throw new Error("Category not found");
     }
-    return category.destroy();
-  },
-  getPaginated: async (query) => {
-    const { q = null, sort } = query;
-    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
-    const page = parseInt(query.page) || PAGINATION.PAGE;
-
-    try {
-      const where = q
-        ? {
-            [Op.or]: [
-              { name: { [Op.like]: `%${q}%` } },
-              { description: { [Op.like]: `%${q}%` } },
-            ],
-          }
-        : null;
-      const offset = (page - 1) * limit;
-      const order = [[Sequelize.literal('"order" IS NULL'), "ASC"]];
-      if (sort) {
-        switch (sort) {
-          case "category.name":
-            order.push(["category", "name", query.order || "ASC"]);
-            break;
-          default:
-            order.push([sort, query.order || "ASC"]);
-            break;
-        }
-      } else {
-        order.push(["name", "ASC"]); // Default sort
-      }
-
-      const { count, rows } = await Category.findAndCountAll({
-        limit,
-        offset,
-        order,
-        where,
-        raw: true,
-        nest: true,
-      });
-      return {
-        data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-      };
-    } catch (error) {
-      throw error;
-    }
+    const deleted = await Category.destroy({ where: { id } });
+    return deleted > 0;
   },
 
   updateSort: async (payload) => {
-    // const { id: _id, ...params } = payload;
-    // const { error } = categorySchema.validate(params, {
-    //   abortEarly: false,
-    // });
-
-    // if (error) {
-    //   throw error;
-    // }
     try {
       await Promise.all(
         payload.map(async (id, index) => {
@@ -136,16 +76,8 @@ const categoryServices = {
           category.update({ order: index });
         })
       );
-
-      // const category = await Category.findByPk(id);
-      // if (!category) {
-      //   throw new Error("Category not found");
-      // }
-      // return category.update(params);
     } catch (error) {
       throw error;
     }
   },
 };
-
-export default categoryServices;

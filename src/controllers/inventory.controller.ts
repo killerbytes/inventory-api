@@ -1,5 +1,5 @@
 import db from "../models";
-import inventoryService from "../services/inventory.service";
+const inventoryService = require("../services/inventory.service");
 const { Inventory, Product } = db;
 
 const inventoryController = {
@@ -82,4 +82,4 @@ const inventoryController = {
   },
 };
 
-export default inventoryController;
+module.exports = inventoryController;

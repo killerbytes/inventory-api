@@ -1,30 +1,22 @@
-import { Op } from "sequelize";
-import db, { Sequelize, sequelize } from "../models";
-import { productSchema } from "../schemas";
-import ApiError from "./ApiError";
-import { product } from "../interfaces";
-import { getMappedProductComboName, getSKU } from "../utils";
-import { get } from "http";
-import { required } from "joi";
+import { GroupedCategory } from "../schemas/OneSchemas";
+
+const { sequelize } = require("../models");
+const { Op } = require("sequelize");
+const db = require("../models");
+const { productSchema } = require("../schemas");
+const ApiError = require("./ApiError");
+const { getMappedProductComboName, getSKU } = require("../utils");
 const {
   Product,
   VariantType,
   VariantValue,
-  ProductVariantCombination,
   Inventory,
   Category,
   ProductCombination,
   CombinationValue,
 } = db;
 
-interface GroupedCategory {
-  categoryId: number;
-  categoryName: string;
-  categoryOrder: number;
-  products: any[]; // or Product[]
-}
-
-const productService = {
+module.exports = {
   async create(payload) {
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
@@ -94,10 +86,7 @@ const productService = {
       if (!product) throw new Error("Product not found");
 
       // 1. Update base product info
-      await product.update(
-        { name, description, unit, categoryId, conversionFactor },
-        { transaction }
-      );
+      await product.update(payload, { transaction });
 
       await transaction.commit();
       return product; // { message: "Product updated successfully" };
@@ -140,72 +129,115 @@ const productService = {
         include: [{ model: VariantType, where: { productId: id } }],
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
-      await product.destroy({ transaction });
-
+      const deleted = await Product.destroy({ where: { id }, transaction });
       await transaction.commit();
-      return true;
+      return deleted > 0;
     } catch (err) {
       await transaction.rollback();
       throw err;
     }
   },
   async getPaginated(query) {
-    const { q, page = 1, limit = 10, categoryId } = query;
-    const offset = (page - 1) * limit;
+    const { q, categoryId } = query;
 
-    const where = {};
+    const where = q
+      ? {
+          [Op.or]: [
+            { name: { [Op.iLike]: `%${q}%` } }, // case-insensitive on Product
+            { "$combinations.name$": { [Op.iLike]: `%${q}%` } }, // case-insensitive on Combination
+          ],
+        }
+      : {};
 
     if (categoryId) {
       where["$product.categoryId$"] = categoryId;
     }
 
-    if (q) {
-      where[Op.or] = [
-        { name: { [Op.like]: `%${q}%` } }, // Product.name
-        { "$combinations.name$": { [Op.like]: `%${q}%` } }, // Combination.name
-      ];
-    }
-
     try {
-      const { rows: products, count } = await Product.findAndCountAll({
+      const products = await Product.findAll({
         where,
-        subQuery: false, // ✅ important
-
-        include: [...getDefaultIncludes(), { model: Category, as: "category" }],
-        order: [...getDefaultOrder()],
-        distinct: true, // ✅ important: prevents inflated count when many combinations
+        // logging: console.log,
+        // subQuery: false, // ✅ avoid incorrect limits
+        include: [
+          ...getDefaultIncludes(),
+          {
+            model: Category,
+            as: "category",
+            include: [
+              {
+                model: Category,
+                as: "parent", // ✅ bring parent category
+              },
+            ],
+          },
+        ],
+        // order: [...getDefaultOrder()],
       });
 
-      const groupedByCategory: Record<number, GroupedCategory> = {};
-      const categories = await Category.findAll({ order: [["order", "ASC"]] });
+      // Fetch parent + subcategories for grouping
+      const categories = await Category.findAll({
+        where: { parentId: null }, // top-level only
+        include: [
+          {
+            model: Category,
+            as: "subCategories",
+          },
+        ],
+        order: [["order", "ASC"]],
+      });
 
-      categories.forEach((category) => {
-        groupedByCategory[category.id] = {
-          categoryId: category.id,
-          categoryName: category.name,
-          categoryOrder: category.order,
-          products: [],
+      // Build grouping object
+      const groupedByCategory: Record<number, GroupedCategory> = {};
+      categories.forEach((parent) => {
+        groupedByCategory[parent.id] = {
+          categoryId: parent.id,
+          categoryName: parent.name,
+          categoryOrder: parent.order,
+          products: [], // products directly under parent
+          subCategories: (parent.subCategories || []).map((sub) => ({
+            categoryId: sub.id,
+            categoryName: sub.name,
+            products: [],
+          })),
         };
       });
 
+      // Place products into correct group
       products.forEach((product) => {
         const category = product.category;
         if (!category) return;
-        groupedByCategory[category.id].products.push(product);
+
+        if (category.parent) {
+          // Product belongs to a subcategory
+          const parent = groupedByCategory[category.parent.id];
+          if (!parent) return;
+
+          const subGroup = parent.subCategories.find(
+            (s) => s.subCategoryId === category.id
+          );
+          if (subGroup) {
+            subGroup.products.push(product);
+          }
+        } else {
+          // Product belongs directly to a parent category
+          const parent = groupedByCategory[category.id];
+          if (parent) {
+            parent.products.push(product);
+          }
+        }
       });
 
+      // Sort by category order
       const result = Object.values(groupedByCategory).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
 
       return {
         data: result,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
       };
     } catch (error) {
-      console.log(1123, error);
+      console.error("getPaginated error:", error);
+      throw error;
     }
   },
   async list() {
@@ -270,9 +302,17 @@ const productService = {
       console.log(1, error);
     }
   },
+  async flat() {
+    const products = await Product.findAll({
+      include: [...getDefaultIncludes()],
+      order: [...getDefaultOrder()],
+    });
+
+    return products;
+  },
 
   async cloneToUnit(id, payload) {
-    const { unit } = payload;
+    const { baseUnit } = payload;
 
     const transaction = await sequelize.transaction();
     try {
@@ -296,7 +336,7 @@ const productService = {
           name: product.name,
           description: product.description,
           categoryId: product.categoryId,
-          unit,
+          baseUnit,
         },
         { transaction }
       );
@@ -327,7 +367,12 @@ const productService = {
           {
             productId: newProduct.id,
             name: getMappedProductComboName(product, combo.values),
-            sku: getSKU(product.name, product.categoryId, unit, combo.values),
+            sku: getSKU(
+              product.name,
+              product.categoryId,
+              baseUnit,
+              combo.values
+            ),
             price: 0,
           },
           { transaction }
@@ -353,14 +398,19 @@ const productService = {
   },
 };
 
-export default productService;
-
 function getDefaultIncludes() {
   return [
     {
       model: VariantType,
       as: "variants",
-      include: [{ model: VariantValue, as: "values" }],
+      // required: false,
+      include: [
+        {
+          model: VariantValue,
+          as: "values",
+          // required: false,
+        },
+      ],
     },
     {
       model: ProductCombination,
@@ -370,16 +420,22 @@ function getDefaultIncludes() {
         {
           model: Inventory,
           as: "inventory",
+          // required: false,
         },
         {
           model: VariantValue,
           as: "values",
-          through: { attributes: [] },
+          // required: false,
+          through: {
+            attributes: [],
+            // where: {}, // 👈 forces LEFT JOIN
+          },
         },
       ],
     },
   ];
 }
+
 function getDefaultOrder() {
   return [
     ["name", "ASC"],

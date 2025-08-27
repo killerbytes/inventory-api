@@ -7,10 +7,10 @@ import {
   ORDER_TYPE,
   PAGINATION,
 } from "../definitions.js";
-import authService from "./auth.service";
+const authService = require("./auth.service");
 import { processInventoryUpdates } from "./inventory.service";
 import { getMappedVariantValues } from "../utils";
-import ApiError from "./ApiError";
+const ApiError = require("./ApiError");
 const {
   VariantValue,
   PurchaseOrder,
@@ -22,7 +22,7 @@ const {
   Category,
 } = db;
 
-const purchaseOrderService = {
+module.exports = {
   async get(id) {
     try {
       const purchaseOrder = await PurchaseOrder.findByPk(id, {
@@ -585,5 +585,3 @@ const updateOrder = async (
     throw new Error("Error in updateOrderItems");
   }
 };
-
-export default purchaseOrderService;

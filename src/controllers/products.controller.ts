@@ -1,4 +1,4 @@
-import productService from "../services/products.service";
+const productService = require("../services/products.service");
 import { PAGINATION } from "../definitions.js";
 import db from "../models";
 import { Op } from "sequelize";
@@ -79,6 +79,15 @@ const productController = {
       next(error);
     }
   },
+
+  async getAllProducts(req, res, next) {
+    try {
+      const products = await productService.flat();
+      return res.status(200).json(products);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
-export default productController;
+module.exports = productController;

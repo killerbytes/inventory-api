@@ -1,5 +1,5 @@
 import { PAGINATION } from "../definitions.js";
-import customerService from "../services/customer.service";
+const customerService = require("../services/customer.service");
 
 const customerController = {
   async get(req, res, next) {
@@ -64,4 +64,4 @@ const customerController = {
   },
 };
 
-export default customerController;
+module.exports = customerController;

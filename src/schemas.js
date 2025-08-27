@@ -1,7 +1,7 @@
-import Joi from "joi";
-import { INVENTORY_MOVEMENT_TYPE } from "./definitions";
+const Joi = require("joi");
+const { INVENTORY_MOVEMENT_TYPE } = require("./definitions");
 
-export const userBaseSchema = Joi.object({
+const userBaseSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   isActive: Joi.boolean().default(true),
@@ -9,7 +9,7 @@ export const userBaseSchema = Joi.object({
   .required()
   .meta({ className: "userBase" });
 
-export const userSchema = userBaseSchema
+const userSchema = userBaseSchema
   .keys({
     username: Joi.string().required(),
     password: Joi.string().required(),
@@ -22,14 +22,14 @@ export const userSchema = userBaseSchema
   })
   .required();
 
-export const loginSchema = Joi.object({
+const loginSchema = Joi.object({
   password: Joi.string().required(),
   username: Joi.string().required(),
 })
   .required()
   .meta({ className: "login" });
 
-export const supplierSchema = Joi.object({
+const supplierSchema = Joi.object({
   name: Joi.string().required(),
   contact: Joi.string().optional().allow(null),
   email: Joi.string().email().allow(null),
@@ -41,19 +41,19 @@ export const supplierSchema = Joi.object({
   .required()
   .meta({ className: "supplier" });
 
-export const customerSchema = supplierSchema.meta({ className: "customer" });
+const customerSchema = supplierSchema.meta({ className: "customer" });
 
-export const variantValueSchema = Joi.object({
+const variantValueSchema = Joi.object({
   id: Joi.number().optional(),
   value: Joi.string().required(),
   variantTypeId: Joi.number().optional(),
 }).meta({ className: "variantValue" });
 
-export const variantValuePayloadSchema = Joi.string()
+const variantValuePayloadSchema = Joi.string()
   .required()
   .meta({ className: "variantValuePayload" });
 
-export const variantTypesSchema = Joi.object({
+const variantTypesSchema = Joi.object({
   id: Joi.number().optional(),
   name: Joi.string().required(),
   isTemplate: Joi.boolean().optional().allow(null),
@@ -67,7 +67,7 @@ export const variantTypesSchema = Joi.object({
   .required()
   .meta({ className: "variant" });
 
-export const inventorySchema = Joi.object({
+const inventorySchema = Joi.object({
   id: Joi.number().optional(),
   productId: Joi.number().required(),
   quantity: Joi.number().required(),
@@ -75,10 +75,12 @@ export const inventorySchema = Joi.object({
   .required()
   .meta({ className: "inventory" });
 
-export const productCombinationSchema = Joi.object({
+const productCombinationSchema = Joi.object({
   id: Joi.number().optional(),
   productId: Joi.number(),
   sku: Joi.string().allow(null),
+  unit: Joi.string().required(),
+  conversionFactor: Joi.number().required(),
   price: Joi.number().required(),
   reorderLevel: Joi.number().required(),
   values: Joi.alternatives().try(
@@ -91,10 +93,10 @@ export const productCombinationSchema = Joi.object({
   })
   .meta({ className: "productCombinations" });
 
-export const productSchema = Joi.object({
+const productSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().optional().allow(null),
-  unit: Joi.string().required(),
+  baseUnit: Joi.string().required(),
   categoryId: Joi.number().required(),
   variants: Joi.array().items(variantTypesSchema).optional(),
   combinations: Joi.array().items(productCombinationSchema).optional(),
@@ -105,20 +107,21 @@ export const productSchema = Joi.object({
   })
   .meta({ className: "product" });
 
-export const categorySchema = Joi.object({
+const categorySchema = Joi.object({
   name: Joi.string().required(),
-  description: Joi.string().optional(),
+  description: Joi.string().optional().allow(null).allow(""),
+  parentId: Joi.number().optional(),
 })
   .required()
   .meta({ className: "category" });
 
-export const purchaseOrderChangeStatusSchema = Joi.object({
+const purchaseOrderChangeStatusSchema = Joi.object({
   status: Joi.string().valid("VOID"),
 })
   .required()
   .meta({ className: "purchaseOrderChangeStatus" });
 
-export const purchaseOrderStatusSchema = Joi.object({
+const purchaseOrderStatusSchema = Joi.object({
   status: Joi.string()
     .valid("PENDING", "RECEIVED", "COMPLETED", "CANCELLED")
     .default("PENDING"),
@@ -131,7 +134,7 @@ export const purchaseOrderStatusSchema = Joi.object({
   .required()
   .meta({ className: "purchaseOrderStatus" });
 
-export const purchaseOrderItemSchema = purchaseOrderStatusSchema
+const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .keys({
     id: Joi.number().optional(),
     combinationId: Joi.number().required(),
@@ -148,7 +151,7 @@ export const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .required()
   .meta({ className: "purchaseOrderItem" });
 
-export const purchaseOrderSchema = Joi.object({
+const purchaseOrderSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
@@ -176,7 +179,7 @@ export const purchaseOrderSchema = Joi.object({
   .required()
   .meta({ className: "purchaseOrder" });
 
-export const purchaseOrderUpdateSchema = Joi.object({
+const purchaseOrderUpdateSchema = Joi.object({
   purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
@@ -204,7 +207,7 @@ export const purchaseOrderUpdateSchema = Joi.object({
   .required()
   .meta({ className: "purchaseOrderUpdate" });
 
-export const salesOrderStatusSchema = Joi.object({
+const salesOrderStatusSchema = Joi.object({
   status: Joi.string()
     .valid("PENDING", "COMPLETED", "CANCELLED")
     .default("COMPLETED"),
@@ -212,7 +215,7 @@ export const salesOrderStatusSchema = Joi.object({
   .required()
   .meta({ className: "salesOrderStatus" });
 
-export const salesOrderItemSchema = salesOrderStatusSchema
+const salesOrderItemSchema = salesOrderStatusSchema
   .keys({
     id: Joi.number().optional(),
     combinationId: Joi.number().required(),
@@ -229,7 +232,7 @@ export const salesOrderItemSchema = salesOrderStatusSchema
   .required()
   .meta({ className: "salesOrderItem" });
 
-export const salesOrderSchema = Joi.object({
+const salesOrderSchema = Joi.object({
   salesOrderNumber: Joi.string().required(),
   customerId: Joi.number().required(),
   orderDate: Joi.date().required(),
@@ -256,7 +259,7 @@ export const salesOrderSchema = Joi.object({
   .required()
   .meta({ className: "salesOrder" });
 
-export const inventoryMovementSchema = Joi.object({
+const inventoryMovementSchema = Joi.object({
   type: Joi.string()
     .valid(...Object.values(INVENTORY_MOVEMENT_TYPE))
     .required(),
@@ -264,18 +267,18 @@ export const inventoryMovementSchema = Joi.object({
   .required()
   .meta({ className: "inventoryMovement" });
 
-export const inventoryPriceAdjustmentSchema = Joi.object({
+const inventoryPriceAdjustmentSchema = Joi.object({
   price: Joi.number().required(),
 }).meta({ className: "inventoryPriceAdjustment" });
 
-export const breakPackSchema = Joi.object({
+const breakPackSchema = Joi.object({
   fromCombinationId: Joi.number().required(),
   quantity: Joi.number().required(),
   toCombinationId: Joi.number().required(),
   conversionFactor: Joi.number().required(),
 }).meta({ className: "breakPack" });
 
-export const stockAdjustmentSchema = Joi.object({
+const stockAdjustmentSchema = Joi.object({
   referenceNo: Joi.string().required(),
   combinationId: Joi.number().required(),
   systemQuantity: Joi.number().required(),
@@ -285,4 +288,31 @@ export const stockAdjustmentSchema = Joi.object({
   notes: Joi.string().optional().allow(null, ""),
   createdAt: Joi.date().required(),
   createdBy: Joi.number().required(),
-});
+}).meta({ className: "stockAdjustment" });
+
+module.exports = {
+  userBaseSchema,
+  userSchema,
+  loginSchema,
+  supplierSchema,
+  customerSchema,
+  variantValueSchema,
+  variantValuePayloadSchema,
+  variantTypesSchema,
+  inventorySchema,
+  productCombinationSchema,
+  productSchema,
+  categorySchema,
+  purchaseOrderChangeStatusSchema,
+  purchaseOrderStatusSchema,
+  purchaseOrderItemSchema,
+  purchaseOrderSchema,
+  purchaseOrderUpdateSchema,
+  salesOrderStatusSchema,
+  salesOrderItemSchema,
+  salesOrderSchema,
+  inventoryMovementSchema,
+  inventoryPriceAdjustmentSchema,
+  breakPackSchema,
+  stockAdjustmentSchema,
+};

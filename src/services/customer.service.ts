@@ -1,11 +1,10 @@
-import db from "../models";
-import ApiError from "./ApiError";
-import { customerSchema } from "../schemas";
-import { Op } from "sequelize";
-import { PAGINATION } from "../definitions.js";
+const { PAGINATION } = require("../definitions");
+const { Op } = require("sequelize");
+const db = require("../models");
+const { customerSchema } = require("../schemas");
 const { Customer } = db;
 
-const customerService = {
+module.exports = {
   async get(id) {
     try {
       const customer = await Customer.findByPk(id, { raw: true });
@@ -73,7 +72,8 @@ const customerService = {
       if (!customer) {
         throw new Error("Customer not found");
       }
-      return await customer.destroy();
+      const deleted = await Customer.destroy({ where: { id } });
+      return deleted > 0;
     } catch (error) {
       throw error;
     }
@@ -88,7 +88,6 @@ const customerService = {
         ? {
             [Op.or]: [
               { address: { [Op.like]: `%${q}%` } },
-              { contact: { [Op.like]: `%${q}%` } },
               { email: { [Op.like]: `%${q}%` } },
               { name: { [Op.like]: `%${q}%` } },
               { phone: { [Op.like]: `%${q}%` } },
@@ -127,5 +126,3 @@ const customerService = {
     }
   },
 };
-
-export default customerService;
