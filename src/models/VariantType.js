@@ -22,5 +22,30 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
+  // models/varianttype.js (add after associations)
+  VariantType.addHook("beforeDestroy", async (variantType, options) => {
+    const sequelize = variantType.sequelize || require("../models").sequelize;
+    const transactionProvided = Boolean(options && options.transaction);
+    const t = options.transaction || (await sequelize.transaction());
+
+    try {
+      const { VariantValue } = sequelize.models;
+      const values = await VariantValue.findAll({
+        where: { variantTypeId: variantType.id },
+        transaction: t,
+      });
+
+      for (const val of values) {
+        // This will trigger VariantValue.beforeDestroy hook
+        await val.destroy({ transaction: t });
+      }
+
+      if (!transactionProvided) await t.commit();
+    } catch (err) {
+      if (!transactionProvided) await t.rollback();
+      throw err;
+    }
+  });
+
   return VariantType;
 };

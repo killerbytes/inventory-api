@@ -43,7 +43,7 @@ module.exports = {
     try {
       const product = await Product.findByPk(id, {
         include: [...getDefaultIncludes()],
-        // order,
+        order,
       });
       if (!product) throw ApiError.notFound("Product not found");
 
@@ -312,6 +312,7 @@ module.exports = {
   },
 
   async cloneToUnit(id, payload) {
+    throw new Error("Method not implemented.");
     const { baseUnit } = payload;
 
     const transaction = await sequelize.transaction();
@@ -440,6 +441,7 @@ function getDefaultOrder() {
   return [
     ["name", "ASC"],
     [{ model: VariantType, as: "variants" }, "name", "ASC"],
+    [{ model: ProductCombination, as: "combinations" }, "name", "ASC"],
     [
       { model: ProductCombination, as: "combinations" },
       { model: VariantValue, as: "values" },

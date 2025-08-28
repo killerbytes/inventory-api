@@ -9,7 +9,7 @@ const ApiError = require("./ApiError");
 
 import { productCombinations } from "../interfaces";
 import Joi from "joi";
-import { getMappedProductComboName, getSKU } from "../utils";
+const { getMappedProductComboName, getSKU } = require("../utils");
 import { INVENTORY_MOVEMENT_TYPE } from "../definitions";
 const authService = require("./auth.service");
 const productService = require("./products.service");
@@ -80,7 +80,10 @@ module.exports = {
 
     const variants = await VariantType.findAll({
       where: { productId: id },
-      order: [["name", "ASC"]],
+      order: [
+        ["name", "ASC"],
+        [{ model: VariantValue, as: "values" }, "value", "ASC"],
+      ],
       include: [
         {
           model: VariantValue,
@@ -118,7 +121,6 @@ module.exports = {
     if (!product) throw new Error("Product not found");
 
     const issue = validateCombinations(payload, product);
-    console.log(issue);
 
     if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
       throw ApiError.badRequest("Combinations are invalid");
@@ -354,23 +356,19 @@ module.exports = {
   },
 
   async list() {
-    throw new Error("Method not implemented.");
-    const products = await Product.findAll({
+    const products = await ProductCombination.findAll({
       include: [
         {
-          model: VariantType,
-          as: "variants",
-          include: { model: VariantValue },
+          model: VariantValue,
+          as: "values",
+          through: { attributes: [] },
         },
         {
-          model: ProductCombination,
-          as: "combinations",
-          include: {
-            model: Inventory,
-            as: "inventory",
-          },
+          model: Inventory,
+          as: "inventory",
         },
       ],
+      order: [["name", "ASC"]],
     });
 
     return products;
