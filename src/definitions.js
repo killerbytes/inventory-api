@@ -47,6 +47,7 @@ const UNIT = {
   GAL: "GAL",
   PCK: "PCK",
   SET: "SET",
+  DOZ: "DOZ",
 };
 
 const STOCK_ADJUSTMENT_TYPE = {

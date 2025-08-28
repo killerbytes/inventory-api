@@ -38,7 +38,10 @@ module.exports = {
     try {
       const variantTypes = await VariantType.findAll({
         include: [{ model: VariantValue, as: "values" }],
-        order: [["id", "ASC"]],
+        order: [
+          ["id", "ASC"],
+          [{ model: VariantValue, as: "values" }, "value", "ASC"],
+        ],
 
         where: { productId },
         nested: true,
@@ -46,7 +49,7 @@ module.exports = {
       if (!variantTypes) {
         throw new Error("VariantType not found");
       }
-      
+
       return variantTypes;
     } catch (error) {
       throw error;
@@ -128,7 +131,7 @@ module.exports = {
     if (!variantTypes) {
       throw new Error("VariantType not found");
     }
-      const deleted = await VariantType.destroy({ where: { id } });
-      return deleted > 0;
+    const deleted = await VariantType.destroy({ where: { id } });
+    return deleted > 0;
   },
 };

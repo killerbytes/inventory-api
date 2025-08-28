@@ -10,6 +10,14 @@ const productCombinationController = {
       next(error);
     }
   },
+  async list(req, res, next) {
+    try {
+      const user = await productCombinationService.list();
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  },
   async getByProductId(req, res, next) {
     const { id } = req.params;
     try {
