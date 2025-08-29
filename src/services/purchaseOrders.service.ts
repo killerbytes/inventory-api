@@ -1,12 +1,12 @@
-import { Transaction, Op, or, where } from "sequelize";
+import { Transaction, Op } from "sequelize";
 import db, { sequelize } from "../models";
 import { purchaseOrderSchema } from "../schemas";
 import {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
-  ORDER_TYPE,
   PAGINATION,
 } from "../definitions.js";
+import { getAmount, getTotalAmount } from "../utils";
 const authService = require("./auth.service");
 const { processInventoryUpdates } = require("./inventory.service");
 const {
@@ -87,7 +87,7 @@ module.exports = {
         dueDate,
       } = payload;
 
-      const totalAmount = getPurchaseOrderTotalAmount(purchaseOrderItems);
+      const totalAmount = getTotalAmount(purchaseOrderItems);
 
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
@@ -120,8 +120,7 @@ module.exports = {
 
           const props = {
             ...item,
-            totalAmount:
-              item.purchasePrice * item.quantity - Number(item.discount || 0),
+            totalAmount: getAmount(item),
             unit: productCombination.unit,
             nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
@@ -450,7 +449,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = getPurchaseOrderTotalAmount(payload.purchaseOrderItems);
+    const totalAmount = getTotalAmount(payload.purchaseOrderItems);
 
     await updateOrder(
       {
@@ -557,7 +556,7 @@ const updateOrder = async (
           const props = {
             ...item,
             purchaseOrderId: purchaseOrder.id,
-            totalAmount: item.purchasePrice * item.quantity,
+            totalAmount: getAmount(item),
             unit: productCombination.unit,
             nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,

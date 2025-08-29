@@ -1,4 +1,4 @@
-export * from "./services/getPurchaseOrderTotalAmount";
+export * from "./services/getTotalAmount";
 export * from "./services/getNextSequence";
 export * from "./string/getMappedProductComboName";
 export * from "./string/getSKU";
