@@ -361,54 +361,53 @@ module.exports = {
       console.log(1, error);
     }
   },
-};
-
-export const processInventoryUpdates = async (
-  item,
-  reference = null,
-  reason = null,
-  transactionType,
-  transaction,
-  increase = true //Add inventory
-) => {
-  const user = await authService.getCurrent();
-  const { quantity, ...params } = item;
-
-  const [inventory] = await sequelize.models.Inventory.findOrCreate({
-    //Find or create inventory exclude quantity
-    where: { combinationId: item.combinationId },
-    defaults: {
-      ...params,
-      quantity: 0,
-    },
+  async processInventoryUpdates(
+    item,
+    reference = null,
+    reason = null,
+    transactionType,
     transaction,
-  });
+    increase = true //Add inventory
+  ) {
+    const user = await authService.getCurrent();
+    const { quantity, ...params } = item;
 
-  await sequelize.models.InventoryMovement.create(
-    // Create inventory movement
-    {
-      combinationId: item.combinationId,
-      previous: inventory.quantity,
-      new: increase
-        ? parseInt(inventory.quantity) + parseInt(item.quantity)
-        : parseInt(inventory.quantity) - parseInt(item.quantity),
-      quantity: item.quantity,
-      type: transactionType,
-      userId: user.id,
-      reference,
-      reason,
-    },
-    { transaction }
-  );
+    const [inventory] = await sequelize.models.Inventory.findOrCreate({
+      //Find or create inventory exclude quantity
+      where: { combinationId: item.combinationId },
+      defaults: {
+        ...params,
+        quantity: 0,
+      },
+      transaction,
+    });
 
-  await inventory.update(
-    // Update inventory quantity
-    {
-      quantity: increase
-        ? inventory.quantity + item.quantity
-        : inventory.quantity - item.quantity,
-    },
-    { transaction }
-  );
-  return inventory;
+    await sequelize.models.InventoryMovement.create(
+      // Create inventory movement
+      {
+        combinationId: item.combinationId,
+        previous: inventory.quantity,
+        new: increase
+          ? parseInt(inventory.quantity) + parseInt(item.quantity)
+          : parseInt(inventory.quantity) - parseInt(item.quantity),
+        quantity: item.quantity,
+        type: transactionType,
+        userId: user.id,
+        reference,
+        reason,
+      },
+      { transaction }
+    );
+
+    await inventory.update(
+      // Update inventory quantity
+      {
+        quantity: increase
+          ? inventory.quantity + item.quantity
+          : inventory.quantity - item.quantity,
+      },
+      { transaction }
+    );
+    return inventory;
+  },
 };

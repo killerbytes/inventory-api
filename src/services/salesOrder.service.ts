@@ -4,12 +4,11 @@ import { salesOrderSchema } from "../schemas";
 import {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
-  ORDER_TYPE,
   PAGINATION,
 } from "../definitions.js";
 const authService = require("./auth.service");
-import { processInventoryUpdates } from "./inventory.service";
-import { getMappedVariantValues } from "../utils";
+const { processInventoryUpdates } = require("./inventory.service");
+const { getMappedVariantValues } = require("../utils");
 const ApiError = require("./ApiError");
 
 const {
@@ -129,8 +128,8 @@ module.exports = {
             ...item,
             originalPrice: productCombination.price,
             totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
-            nameSnapshot: productCombination.product.name,
+            unit: productCombination.unit,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,
@@ -578,8 +577,8 @@ const updateOrder = async (
             salesOrderId: salesOrder.id,
             originalPrice: productCombination.price,
             totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
-            nameSnapshot: productCombination.product.name,
+            unit: productCombination.unit,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,

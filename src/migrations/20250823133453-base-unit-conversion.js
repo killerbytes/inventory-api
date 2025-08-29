@@ -35,15 +35,19 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.addColumn("Products", "unit", {
-      type: Sequelize.STRING,
-      allowNull: false,
-    });
+    await queryInterface
+      .addColumn("Products", "unit", {
+        type: Sequelize.STRING,
+        // allowNull: false,
+      })
+      .catch(() => {});
 
-    await queryInterface.addColumn("Products", "conversionFactor", {
-      type: Sequelize.STRING, // ⚠️ use original type if not STRING
-      allowNull: false,
-    });
+    await queryInterface
+      .addColumn("Products", "conversionFactor", {
+        type: Sequelize.STRING, // ⚠️ use original type if not STRING
+        // allowNull: false,
+      })
+      .catch(() => {});
 
     await queryInterface.removeColumn("Products", "baseUnit");
     await queryInterface.removeColumn("ProductCombinations", "unit");
