@@ -8,8 +8,11 @@ import {
   PAGINATION,
 } from "../definitions.js";
 const authService = require("./auth.service");
-import { processInventoryUpdates } from "./inventory.service";
-import { getMappedVariantValues } from "../utils";
+const { processInventoryUpdates } = require("./inventory.service");
+const {
+  getPurchaseOrderTotalAmount,
+  getMappedVariantValues,
+} = require("../utils");
 const ApiError = require("./ApiError");
 const {
   VariantValue,
@@ -73,7 +76,6 @@ module.exports = {
     const transaction = await sequelize.transaction();
     try {
       const {
-        purchaseOrderNumber,
         supplierId,
         orderDate,
         deliveryDate,
@@ -85,13 +87,7 @@ module.exports = {
         dueDate,
       } = payload;
 
-      const totalAmount = purchaseOrderItems.reduce(
-        (total: number, item: any) =>
-          total +
-          item.purchasePrice * item.quantity -
-          Number(item.discount || 0),
-        0
-      );
+      const totalAmount = getPurchaseOrderTotalAmount(purchaseOrderItems);
 
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
@@ -126,8 +122,8 @@ module.exports = {
             ...item,
             totalAmount:
               item.purchasePrice * item.quantity - Number(item.discount || 0),
-            unit: productCombination.product.unit,
-            nameSnapshot: productCombination.product.name,
+            unit: productCombination.unit,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,
@@ -142,7 +138,6 @@ module.exports = {
 
       const result = await PurchaseOrder.create(
         {
-          purchaseOrderNumber,
           supplierId,
           orderDate,
           deliveryDate,
@@ -196,7 +191,6 @@ module.exports = {
           ],
         },
       ],
-      raw: true,
       nest: true,
     });
     return result;
@@ -312,6 +306,8 @@ module.exports = {
         order,
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
+        distinct: true,
+
         include: [
           {
             model: db.PurchaseOrderItem,
@@ -454,10 +450,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = payload.purchaseOrderItems.reduce(
-      (total: number, item: any) => total + item.purchasePrice * item.quantity,
-      0
-    );
+    const totalAmount = getPurchaseOrderTotalAmount(payload.purchaseOrderItems);
 
     await updateOrder(
       {
@@ -565,8 +558,8 @@ const updateOrder = async (
             ...item,
             purchaseOrderId: purchaseOrder.id,
             totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
-            nameSnapshot: productCombination.product.name,
+            unit: productCombination.unit,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,

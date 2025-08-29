@@ -26,11 +26,11 @@ module.exports = {
       "unique_active_sku"
     );
 
-    // Restore original unique constraint on sku
-    await queryInterface.addConstraint("ProductCombinations", {
-      fields: ["sku"],
-      type: "unique",
-      name: "ProductCombinations_sku_key",
-    });
+    // // Restore original unique constraint on sku
+    // await queryInterface.addConstraint("ProductCombinations", {
+    //   fields: ["sku"],
+    //   type: "unique",
+    //   name: "ProductCombinations_sku_key",
+    // });
   },
 };

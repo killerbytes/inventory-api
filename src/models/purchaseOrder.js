@@ -1,31 +1,32 @@
 const { Model, DataTypes } = require("sequelize");
 const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
+const { format } = require("date-fns");
 
-class PurchaseOrder extends Model {
-  static associate(models) {
-    PurchaseOrder.belongsTo(models.Supplier, {
-      foreignKey: "supplierId",
-      as: "supplier",
-    });
+module.exports = (sequelize, DataTypes) => {
+  class PurchaseOrder extends Model {
+    static associate(models) {
+      PurchaseOrder.belongsTo(models.Supplier, {
+        foreignKey: "supplierId",
+        as: "supplier",
+      });
 
-    PurchaseOrder.hasMany(models.PurchaseOrderItem, {
-      foreignKey: "purchaseOrderId",
-      as: "purchaseOrderItems",
-    });
+      PurchaseOrder.hasMany(models.PurchaseOrderItem, {
+        foreignKey: "purchaseOrderId",
+        as: "purchaseOrderItems",
+      });
 
-    PurchaseOrder.hasMany(models.OrderStatusHistory, {
-      foreignKey: "purchaseOrderId",
-      as: "purchaseOrderStatusHistory",
-    });
+      PurchaseOrder.hasMany(models.OrderStatusHistory, {
+        foreignKey: "purchaseOrderId",
+        as: "purchaseOrderStatusHistory",
+      });
+    }
   }
-}
 
-module.exports = (sequelize) => {
   PurchaseOrder.init(
     {
       purchaseOrderNumber: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true,
       },
       supplierId: {
@@ -68,6 +69,23 @@ module.exports = (sequelize) => {
       },
     }
   );
+
+  PurchaseOrder.beforeCreate(async (order, options) => {
+    const sequelize = order.sequelize || options.sequelize; // ensure sequelize ref
+
+    const now = new Date();
+    const yearMonth = format(now, "yyyy-MM"); // e.g. 2025-08
+
+    // Use the global sequence
+    const [[{ nextval }]] = await sequelize.query(
+      `SELECT nextval('purchase_order_seq')`
+    );
+
+    order.purchaseOrderNumber = `PO-${yearMonth}-${String(nextval).padStart(
+      4,
+      "0"
+    )}`;
+  });
 
   return PurchaseOrder;
 };
