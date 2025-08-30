@@ -12,7 +12,7 @@ const { getSKU } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
 const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
 const authService = require("./auth.service");
-const productService = require("./products.service");
+const productService = require("./product.service");
 const {
   InventoryMovement,
   Product,

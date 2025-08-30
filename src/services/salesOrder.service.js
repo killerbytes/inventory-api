@@ -128,8 +128,8 @@ module.exports = {
           const props = {
             ...item,
             originalPrice: productCombination.price,
-            totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
+            totalAmount: compute.getAmount(item),
+            unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
@@ -577,8 +577,8 @@ const updateOrder = async (
             ...item,
             salesOrderId: salesOrder.id,
             originalPrice: productCombination.price,
-            totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
+            totalAmount: compute.getAmount(item),
+            unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(

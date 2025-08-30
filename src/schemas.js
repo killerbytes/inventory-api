@@ -152,18 +152,18 @@ const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .meta({ className: "purchaseOrderItem" });
 
 const purchaseOrderSchema = Joi.object({
-  purchaseOrderNumber: Joi.string().required(),
+  purchaseOrderNumber: Joi.string().optional(),
   supplierId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),
-  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
+  checkNumber: Joi.string().allow(null, "").when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-  dueDate: Joi.date().when("modeOfPayment", {
+  dueDate: Joi.date().allow(null).when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),

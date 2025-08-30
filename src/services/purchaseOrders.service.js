@@ -12,6 +12,7 @@ const authService = require("./auth.service.js");
 const { processInventoryUpdates } = require("./inventory.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
 const ApiError = require("./ApiError.js");
+const compute = require("../utils/compute");
 const {
   VariantValue,
   PurchaseOrder,
@@ -74,7 +75,6 @@ module.exports = {
     const transaction = await sequelize.transaction();
     try {
       const {
-        purchaseOrderNumber,
         supplierId,
         orderDate,
         deliveryDate,
@@ -85,15 +85,7 @@ module.exports = {
         checkNumber,
         dueDate,
       } = payload;
-
-      const totalAmount = purchaseOrderItems.reduce(
-        (total, item) =>
-          total +
-          item.purchasePrice * item.quantity -
-          Number(item.discount || 0),
-        0
-      );
-
+      const totalAmount = compute.getTotalAmount(purchaseOrderItems);
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
@@ -122,12 +114,14 @@ module.exports = {
               transaction,
             }
           );
+          if (!productCombination) {
+            throw new Error("Product Combination not found");
+          }
 
           const props = {
             ...item,
-            totalAmount:
-              item.purchasePrice * item.quantity - Number(item.discount || 0),
-            unit: productCombination.product.unit,
+            totalAmount: compute.getAmount(item),
+            unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
@@ -143,7 +137,6 @@ module.exports = {
 
       const result = await PurchaseOrder.create(
         {
-          purchaseOrderNumber,
           supplierId,
           orderDate,
           deliveryDate,
@@ -457,10 +450,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = payload.purchaseOrderItems.reduce(
-      (total, item) => total + item.purchasePrice * item.quantity,
-      0
-    );
+    const totalAmount = compute.getTotalAmount(payload.purchaseOrderItems);
 
     await updateOrder(
       {
@@ -567,8 +557,8 @@ const updateOrder = async (
           const props = {
             ...item,
             purchaseOrderId: purchaseOrder.id,
-            totalAmount: item.purchasePrice * item.quantity,
-            unit: productCombination.product.unit,
+            totalAmount: compute.getAmount(item),
+            unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(

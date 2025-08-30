@@ -1,4 +1,4 @@
-const variantTypesService = require("../services/variantTypes.service");
+const variantTypesService = require("../services/variantType.service");
 
 const variantTypesController = {
   async create(req, res, next) {
