@@ -1,4 +1,4 @@
-const { getSKU, shortenNameTo, shortenTitleTo } = require("../../utils");
+const { shortenTitleTo } = require("../../utils/string");
 
 const userService = require("../../services/users.service");
 const { setupDatabase, resetDatabase } = require("../setup");

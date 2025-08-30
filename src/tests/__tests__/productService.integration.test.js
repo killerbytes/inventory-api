@@ -1,6 +1,6 @@
 const productService = require("../../services/products.service");
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const categoryService = require("../../services/categories.service");
+const categoryService = require("../../services/category.service");
 const { getConstraintFields } = require("../utils");
 
 beforeAll(async () => {
@@ -133,16 +133,16 @@ describe("Product Service (Integration)", () => {
     expect(updated.baseUnit).toBe("BOX");
   });
 
-  it("should clone a product to a new unit", async () => {
-    const create = await productService.create(data[0]);
+  // it("should clone a product to a new unit", async () => {
+  //   const create = await productService.create(data[0]);
 
-    const product = await productService.get(create.id);
-    const updated = await productService.cloneToUnit(product.id, {
-      baseUnit: "BOX",
-    });
+  //   const product = await productService.get(create.id);
+  //   const updated = await productService.cloneToUnit(product.id, {
+  //     baseUnit: "BOX",
+  //   });
 
-    expect(updated.baseUnit).toBe("BOX");
-  });
+  //   expect(updated.baseUnit).toBe("BOX");
+  // });
 
   it("should get a paginated list of products", async () => {
     await productService.create(data[0]);

@@ -1,4 +1,4 @@
-const categoryService = require("../../services/categories.service");
+const categoryService = require("../../services/category.service");
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const { getConstraintFields } = require("../utils");
 

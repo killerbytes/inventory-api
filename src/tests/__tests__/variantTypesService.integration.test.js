@@ -1,6 +1,6 @@
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const variantTypeService = require("../../services/variantTypes.service");
-const categoryService = require("../../services/categories.service");
+const categoryService = require("../../services/category.service");
 const productService = require("../../services/products.service");
 
 beforeAll(async () => {

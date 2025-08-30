@@ -139,6 +139,7 @@ const purchaseOrderItemSchema = purchaseOrderStatusSchema
     id: Joi.number().optional(),
     combinationId: Joi.number().required(),
     quantity: Joi.number().required(),
+    originalPrice: Joi.number().optional().allow(null),
     purchasePrice: Joi.number().required(),
     discount: Joi.number().optional().allow(null),
     discountNote: Joi.string().optional().allow(null, ""),
@@ -151,18 +152,18 @@ const purchaseOrderItemSchema = purchaseOrderStatusSchema
   .meta({ className: "purchaseOrderItem" });
 
 const purchaseOrderSchema = Joi.object({
-  purchaseOrderNumber: Joi.string().optional(),
+  purchaseOrderNumber: Joi.string().required(),
   supplierId: Joi.number().required(),
   deliveryDate: Joi.date().required(),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),
-  checkNumber: Joi.string().allow(null, "").when("modeOfPayment", {
+  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-  dueDate: Joi.date().allow(null).when("modeOfPayment", {
+  dueDate: Joi.date().when("modeOfPayment", {
     is: "CHECK",
     then: Joi.required(),
     otherwise: Joi.optional(),
@@ -178,33 +179,33 @@ const purchaseOrderSchema = Joi.object({
   .required()
   .meta({ className: "purchaseOrder" });
 
-// const purchaseOrderUpdateSchema = Joi.object({
-//   purchaseOrderNumber: Joi.string().required(),
-//   supplierId: Joi.number().required(),
-//   deliveryDate: Joi.date().required(),
-//   internalNotes: Joi.string().optional().allow(null),
-//   notes: Joi.string().optional().allow(null),
-//   modeOfPayment: Joi.string().required(),
-//   checkNumber: Joi.string().allow(null,"").when("modeOfPayment", {
-//     is: "CHECK",
-//     then: Joi.required(),
-//     otherwise: Joi.optional(),
-//   }),
-//   dueDate: Joi.date().when("modeOfPayment", {
-//     is: "CHECK",
-//     then: Joi.required(),
-//     otherwise: Joi.optional(),
-//   }),
-//   purchaseOrderItems: Joi.array()
-//     .items(purchaseOrderItemSchema)
-//     .required()
-//     .messages({
-//       "array.includesRequiredUnknowns":
-//         "Purchase order must include at least one product.",
-//     }),
-// })
-//   .required()
-//   .meta({ className: "purchaseOrderUpdate" });
+const purchaseOrderUpdateSchema = Joi.object({
+  purchaseOrderNumber: Joi.string().required(),
+  supplierId: Joi.number().required(),
+  deliveryDate: Joi.date().required(),
+  internalNotes: Joi.string().optional().allow(null),
+  notes: Joi.string().optional().allow(null),
+  modeOfPayment: Joi.string().required(),
+  checkNumber: Joi.string().allow(null).when("modeOfPayment", {
+    is: "CHECK",
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  dueDate: Joi.date().when("modeOfPayment", {
+    is: "CHECK",
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  purchaseOrderItems: Joi.array()
+    .items(purchaseOrderItemSchema)
+    .required()
+    .messages({
+      "array.includesRequiredUnknowns":
+        "Purchase order must include at least one product.",
+    }),
+})
+  .required()
+  .meta({ className: "purchaseOrderUpdate" });
 
 const salesOrderStatusSchema = Joi.object({
   status: Joi.string()
@@ -306,7 +307,7 @@ module.exports = {
   purchaseOrderStatusSchema,
   purchaseOrderItemSchema,
   purchaseOrderSchema,
-  // purchaseOrderUpdateSchema,
+  purchaseOrderUpdateSchema,
   salesOrderStatusSchema,
   salesOrderItemSchema,
   salesOrderSchema,

@@ -2,7 +2,7 @@ const db = require("../../models");
 const { Product } = db;
 
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const categoryService = require("../../services/categories.service");
+const categoryService = require("../../services/category.service");
 const productService = require("../../services/products.service");
 const productCombinationService = require("../../services/productCombination.service");
 const variantTypeService = require("../../services/variantTypes.service");
