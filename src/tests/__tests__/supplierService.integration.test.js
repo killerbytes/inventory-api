@@ -1,6 +1,6 @@
 const supplierService = require("../../services/supplier.service");
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const { getConstraintFields } = require("../utils");
+const { getConstraintFields, createSupplier, suppliers } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -8,49 +8,39 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await createSupplier(0);
+  await createSupplier(1);
 });
-
-const data = [
-  {
-    name: "Alice",
-    email: "alice@test.com",
-    phone: "1234567890",
-    address: "123 Main St",
-    notes: "This is a note",
-    isActive: true,
-  },
-  {
-    name: "Charlie",
-    email: "charlie@test.com",
-    phone: "546545434",
-    address: "432 Main St",
-    notes: "This is a note",
-    isActive: true,
-  },
-];
 
 describe("Customer Service (Integration)", () => {
   it("should create and fetch a supplier", async () => {
-    const test = data[0];
-    const created = await supplierService.create(test);
+    const created = await supplierService.create({
+      name: "Test Supplier",
+      email: "email@test.com",
+      phone: "1234567890",
+      address: "123 Main St",
+    });
     const supplier = await supplierService.get(created.id);
 
     expect(supplier).not.toBeNull();
-    expect(supplier.name).toBe(test.name);
-    expect(supplier.email).toBe(test.email);
-    expect(supplier.phone).toBe(test.phone);
+    expect(supplier.name).toBe("Test Supplier");
+    expect(supplier.email).toBe("email@test.com");
+    expect(supplier.phone).toBe("1234567890");
+    expect(supplier.address).toBe("123 Main St");
   });
 
   it("should list all suppliers", async () => {
-    await supplierService.create(data[0]);
-    await supplierService.create(data[1]);
-
     const suppliers = await supplierService.list();
     expect(suppliers.length).toBe(2); // ✅ now deterministic
   });
 
   it("should update a supplier email", async () => {
-    const supplier = await supplierService.create(data[0]);
+    const supplier = await supplierService.create({
+      name: "Test Supplier",
+      email: "email@test.com",
+      phone: "1234567890",
+      address: "123 Main St",
+    });
     const updated = await supplierService.update(supplier.id, {
       email: "newalice@test.com",
       name: "Alice Updated",
@@ -65,7 +55,12 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should delete a supplier", async () => {
-    const supplier = await supplierService.create(data[0]);
+    const supplier = await supplierService.create({
+      name: "Test Supplier",
+      email: "email@test.com",
+      phone: "1234567890",
+      address: "123 Main St",
+    });
     const result = await supplierService.delete(supplier.id);
 
     expect(result).toBe(true);
@@ -75,10 +70,11 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should enforce unique email constraint", async () => {
-    await supplierService.create(data[0]);
-
     try {
-      await supplierService.create({ ...data[1], email: data[0].email });
+      await supplierService.create({
+        ...suppliers[1],
+        email: suppliers[0].email,
+      });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -97,9 +93,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should get a paginated list of suppliers", async () => {
-    await supplierService.create(data[0]);
-    await supplierService.create(data[1]);
-
     const suppliers = await supplierService.getPaginated({
       page: 1,
       limit: 1,
@@ -111,9 +104,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should update a supplier's sort order", async () => {
-    await supplierService.create(data[0]);
-    await supplierService.create(data[1]);
-
     const suppliers = await supplierService.getPaginated({
       page: 1,
       limit: 1,
@@ -125,8 +115,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should query suppliers by name", async () => {
-    await supplierService.create(data[0]);
-    await supplierService.create(data[1]);
     const suppliers = await supplierService.getPaginated({
       q: "cha",
       page: 1,

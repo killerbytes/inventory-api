@@ -1,6 +1,6 @@
-const categoryService = require("../../services/categories.service");
+const categoryService = require("../../services/category.service");
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const { getConstraintFields } = require("../utils");
+const { getConstraintFields, createCategory, categories } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -8,44 +8,32 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await createCategory(0);
+  await createCategory(1);
 });
-
-const data = [
-  {
-    name: "Tools",
-  },
-  {
-    name: "Electronics",
-    description: "Electronics",
-  },
-  {
-    name: "Clothing",
-    description: "Clothing",
-  },
-];
 
 describe("Customer Service (Integration)", () => {
   it("should create and fetch a category", async () => {
-    const test = data[0];
-    const created = await categoryService.create(test);
-    const category = await categoryService.get(created.id);
+    const cat = await categoryService.create({
+      name: "Primary",
+    });
+    const category = await categoryService.get(cat.id);
 
     expect(category).not.toBeNull();
-    expect(category.name).toBe(test.name);
+    expect(category.name).toBe("Primary");
     expect(category.description).toBeNull();
     expect(category.order).toBeNull();
   });
 
   it("should list all categories", async () => {
-    await categoryService.create(data[0]);
-    await categoryService.create(data[1]);
-
     const categories = await categoryService.list();
     expect(categories.length).toBe(2); // ✅ now deterministic
   });
 
   it("should update a category", async () => {
-    const category = await categoryService.create(data[0]);
+    const category = await categoryService.create({
+      name: "Primary",
+    });
     const updated = await categoryService.update(category.id, {
       name: "Tools updated",
       description: "updated description",
@@ -56,7 +44,9 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should delete a category", async () => {
-    const category = await categoryService.create(data[0]);
+    const category = await categoryService.create({
+      name: "Primary",
+    });
     const result = await categoryService.delete(category.id);
 
     expect(result).toBe(true);
@@ -66,9 +56,11 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should enforce unique name constraint", async () => {
-    await categoryService.create(data[0]);
     try {
-      await categoryService.create({ ...data[1], name: data[0].name });
+      await categoryService.create({
+        ...categories[1],
+        name: categories[0].name,
+      });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -86,8 +78,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should update a category's sort order", async () => {
-    await categoryService.create(data[0]);
-    await categoryService.create(data[1]);
     const categories = await categoryService.list();
 
     expect(categories.length).toBe(2);
@@ -102,10 +92,8 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should enforce unique name constraint on update", async () => {
-    await categoryService.create(data[0]);
-    await categoryService.create(data[1]);
     try {
-      await categoryService.update(1, { name: data[1].name });
+      await categoryService.update(1, { name: categories[1].name });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -122,9 +110,10 @@ describe("Customer Service (Integration)", () => {
     }
   });
   it("should create and fetch a category with parent", async () => {
-    const test = data[0];
-    const created = await categoryService.create(test);
-    const sub = await categoryService.create({
+    const created = await categoryService.create({
+      name: "Primary",
+    });
+    await categoryService.create({
       name: "Sub",
       description: "Sub",
       parentId: created.id,
@@ -133,7 +122,7 @@ describe("Customer Service (Integration)", () => {
     // const category = await categoryService.list();
 
     expect(category).not.toBeNull();
-    expect(category.name).toBe(test.name);
+    expect(category.name).toBe("Primary");
     expect(category.description).toBeNull();
     expect(category.order).toBeNull();
     expect(category.subCategories.length).toBe(1);

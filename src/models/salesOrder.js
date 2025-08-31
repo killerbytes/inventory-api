@@ -73,5 +73,19 @@ module.exports = (sequelize) => {
     }
   );
 
+  SalesOrder.beforeCreate(async (order, options) => {
+    const sequelize = order.sequelize || options.sequelize; // ensure sequelize ref
+
+    const now = new Date();
+    const yearMonth = format(now, "yyyy-MM"); // e.g. 2025-08
+
+    const nextval = await getNextSequence("sales_order_seq", sequelize);
+
+    order.salesOrderNumber = `SO-${yearMonth}-${String(nextval).padStart(
+      4,
+      "0"
+    )}`;
+  });
+
   return SalesOrder;
 };

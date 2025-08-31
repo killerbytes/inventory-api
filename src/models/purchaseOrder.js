@@ -1,6 +1,7 @@
 const { Model, DataTypes } = require("sequelize");
 const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
 const { format } = require("date-fns");
+const getNextSequence = require("../utils/services/getNextSequence");
 
 module.exports = (sequelize, DataTypes) => {
   class PurchaseOrder extends Model {
@@ -76,10 +77,7 @@ module.exports = (sequelize, DataTypes) => {
     const now = new Date();
     const yearMonth = format(now, "yyyy-MM"); // e.g. 2025-08
 
-    // Use the global sequence
-    const [[{ nextval }]] = await sequelize.query(
-      `SELECT nextval('purchase_order_seq')`
-    );
+    const nextval = await getNextSequence("purchase_order_seq", sequelize);
 
     order.purchaseOrderNumber = `PO-${yearMonth}-${String(nextval).padStart(
       4,

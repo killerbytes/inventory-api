@@ -1,6 +1,6 @@
 "use strict";
 
-const { getSKU } = require("../utils");
+const { getSKU } = require("../utils/string");
 const { UNIT } = require("../definitions");
 const { Model } = require("sequelize");
 

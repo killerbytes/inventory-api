@@ -1,6 +1,6 @@
-const userService = require("../../services/users.service");
-const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const { getConstraintFields } = require("../utils");
+const userService = require("../../services/user.service");
+const { setupDatabase, resetDatabase } = require("../setup");
+const { getConstraintFields, createUser, users } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -8,46 +8,25 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await createUser(0);
+  await createUser(1);
 });
-
-const data = [
-  {
-    name: "Alice",
-    email: "alice@test.com",
-    username: "alice",
-    password: "123456",
-    confirmPassword: "123456",
-  },
-  {
-    name: "Charlie",
-    email: "charlie@test.com",
-    username: "charlie",
-    password: "123456",
-    confirmPassword: "123456",
-  },
-];
 
 describe("User Service (Integration)", () => {
   it("should create and fetch a user", async () => {
-    const test = data[0];
-    await userService.create(test);
     const user = await userService.get(1);
     expect(user).not.toBeNull();
-    expect(user.name).toBe(test.name);
-    expect(user.email).toBe(test.email);
-    expect(user.username).toBe(test.username);
+    expect(user.name).toBe(users[0].name);
+    expect(user.email).toBe(users[0].email);
+    expect(user.username).toBe(users[0].username);
   });
 
   it("should list all users", async () => {
-    await userService.create(data[0]);
-    await userService.create(data[1]);
-
     const users = await userService.list();
     expect(users.length).toBe(2); // ✅ now deterministic
   });
 
   it("should update a user email", async () => {
-    const user = await userService.create(data[0]);
     const updated = await userService.update(1, {
       email: "newalice@test.com",
       name: "Alice Updated",
@@ -60,7 +39,6 @@ describe("User Service (Integration)", () => {
   });
 
   it("should delete a user", async () => {
-    await userService.create(data[0]);
     const user = await userService.get(1);
     const result = await userService.delete(user.id);
 
@@ -70,10 +48,8 @@ describe("User Service (Integration)", () => {
   });
 
   it("should enforce unique username constraint", async () => {
-    await userService.create(data[0]);
-
     try {
-      await userService.create({ ...data[0], email: "test@email.com" });
+      await userService.create({ ...users[0], email: "test@email.com" });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -92,10 +68,8 @@ describe("User Service (Integration)", () => {
   });
 
   it("should enforce unique email constraint", async () => {
-    await userService.create(data[0]);
-
     try {
-      await userService.create({ ...data[1], email: data[0].email });
+      await userService.create({ ...users[1], email: users[0].email });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -114,9 +88,6 @@ describe("User Service (Integration)", () => {
   });
 
   it("should get a paginated list of users", async () => {
-    await userService.create(data[0]);
-    await userService.create(data[1]);
-
     const users = await userService.getPaginated({
       page: 1,
       limit: 1,
@@ -128,9 +99,6 @@ describe("User Service (Integration)", () => {
   });
 
   it("should update a user's sort order", async () => {
-    await userService.create(data[0]);
-    await userService.create(data[1]);
-
     const users = await userService.getPaginated({
       page: 1,
       limit: 1,
@@ -142,8 +110,6 @@ describe("User Service (Integration)", () => {
   });
 
   it("should query users by name", async () => {
-    await userService.create(data[0]);
-    await userService.create(data[1]);
     const users = await userService.getPaginated({
       q: "cha",
       page: 1,
