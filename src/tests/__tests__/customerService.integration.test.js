@@ -1,6 +1,6 @@
 const customerService = require("../../services/customer.service");
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const { getConstraintFields } = require("../utils");
+const { getConstraintFields, createCustomer, customers } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -8,49 +8,37 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await createCustomer(0);
+  await createCustomer(1);
 });
-
-const data = [
-  {
-    name: "Alice",
-    email: "alice@test.com",
-    phone: "1234567890",
-    address: "123 Main St",
-    notes: "This is a note",
-    isActive: true,
-  },
-  {
-    name: "Charlie",
-    email: "charlie@test.com",
-    phone: "546545434",
-    address: "432 Main St",
-    notes: "This is a note",
-    isActive: true,
-  },
-];
 
 describe("Customer Service (Integration)", () => {
   it("should create and fetch a customer", async () => {
-    const test = data[0];
-    const created = await customerService.create(test);
+    const created = await customerService.create({
+      name: "Test Customer",
+      address: "123 Main St",
+      phone: "1234567890",
+      email: "email@test.com",
+    });
     const customer = await customerService.get(created.id);
 
     expect(customer).not.toBeNull();
-    expect(customer.name).toBe(test.name);
-    expect(customer.email).toBe(test.email);
-    expect(customer.phone).toBe(test.phone);
+    expect(customer.name).toBe("Test Customer");
+    expect(customer.email).toBe("email@test.com");
+    expect(customer.phone).toBe("1234567890");
   });
 
   it("should list all customers", async () => {
-    await customerService.create(data[0]);
-    await customerService.create(data[1]);
-
     const customers = await customerService.list();
     expect(customers.length).toBe(2); // ✅ now deterministic
   });
 
   it("should update a customer email", async () => {
-    const customer = await customerService.create(data[0]);
+    const customer = await customerService.create({
+      name: "Test Customer",
+      address: "123 Main St",
+      phone: "1234567890",
+    });
     const updated = await customerService.update(customer.id, {
       email: "newalice@test.com",
       name: "Alice Updated",
@@ -65,7 +53,11 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should delete a customer", async () => {
-    const customer = await customerService.create(data[0]);
+    const customer = await customerService.create({
+      name: "Test Customer",
+      address: "123 Main St",
+      phone: "1234567890",
+    });
     const result = await customerService.delete(customer.id);
 
     expect(result).toBe(true);
@@ -75,10 +67,11 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should enforce unique email constraint", async () => {
-    await customerService.create(data[0]);
-
     try {
-      await customerService.create({ ...data[1], email: data[0].email });
+      await customerService.create({
+        ...customers[1],
+        email: customers[0].email,
+      });
       throw new Error(
         "Expected SequelizeUniqueConstraintError but no error was thrown"
       );
@@ -97,9 +90,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should get a paginated list of customers", async () => {
-    await customerService.create(data[0]);
-    await customerService.create(data[1]);
-
     const customers = await customerService.getPaginated({
       page: 1,
       limit: 1,
@@ -111,9 +101,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should update a customer's sort order", async () => {
-    await customerService.create(data[0]);
-    await customerService.create(data[1]);
-
     const customers = await customerService.getPaginated({
       page: 1,
       limit: 1,
@@ -125,8 +112,6 @@ describe("Customer Service (Integration)", () => {
   });
 
   it("should query customers by name", async () => {
-    await customerService.create(data[0]);
-    await customerService.create(data[1]);
     const customers = await customerService.getPaginated({
       q: "cha",
       page: 1,

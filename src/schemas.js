@@ -232,9 +232,8 @@ const salesOrderItemSchema = salesOrderStatusSchema
   .meta({ className: "salesOrderItem" });
 
 const salesOrderSchema = Joi.object({
-  salesOrderNumber: Joi.string().required(),
+  salesOrderNumber: Joi.string().optional(),
   customerId: Joi.number().required(),
-  orderDate: Joi.date().required(),
   isDelivery: Joi.boolean().optional(),
   isDeliveryCompleted: Joi.boolean().optional(),
   deliveryAddress: Joi.string().when("isDelivery", {
@@ -250,6 +249,7 @@ const salesOrderSchema = Joi.object({
   }),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
+  modeOfPayment: Joi.string().required(),
   salesOrderItems: Joi.array().items(salesOrderItemSchema).required().messages({
     "array.includesRequiredUnknowns":
       "Purchase order must include at least one product.",
@@ -274,7 +274,6 @@ const breakPackSchema = Joi.object({
   fromCombinationId: Joi.number().required(),
   quantity: Joi.number().required(),
   toCombinationId: Joi.number().required(),
-  conversionFactor: Joi.number().required(),
 }).meta({ className: "breakPack" });
 
 const stockAdjustmentSchema = Joi.object({

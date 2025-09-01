@@ -1,7 +1,6 @@
-const { sequelize, setupDatabase, resetDatabase } = require("../setup");
-const variantTypeService = require("../../services/variantTypes.service");
-const categoryService = require("../../services/categories.service");
-const productService = require("../../services/products.service");
+const { setupDatabase, resetDatabase } = require("../setup");
+const variantTypeService = require("../../services/variantType.service");
+const { createCategory, createProduct } = require("../utils");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -9,37 +8,14 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
+  await createCategory(0);
+  await createCategory(1);
+  await createProduct(0);
+  await createProduct(1);
 });
-
-const category = [
-  {
-    name: "Tools",
-    description: "Hardware tools",
-  },
-  {
-    name: "Electronics",
-    description: "Electronics",
-  },
-];
-const data = [
-  {
-    name: "Shovel",
-    description: "Shovel",
-    baseUnit: "PCS",
-    categoryId: 1,
-  },
-  {
-    name: "Wire",
-    description: "Wire",
-    baseUnit: "BOX",
-    categoryId: 2,
-  },
-];
 
 describe("Variant Type Service (Integration)", () => {
   it("should create and fetch a variant type", async () => {
-    await categoryService.create(category[0]);
-    await productService.create(data[0]);
     const create = await variantTypeService.create({
       name: "Test Variant Type",
       productId: 1,
@@ -55,11 +31,6 @@ describe("Variant Type Service (Integration)", () => {
     expect(variantType[0].values.length).toBe(2);
   });
   it("should list all variant types", async () => {
-    await categoryService.create(category[0]);
-    await categoryService.create(category[1]);
-    await productService.create(data[0]);
-    await productService.create(data[1]);
-
     await variantTypeService.create({
       name: "Test Variant Type",
       productId: 1,
@@ -77,9 +48,6 @@ describe("Variant Type Service (Integration)", () => {
     expect(variantTypes.length).toBe(2);
   });
   it("should update a variant type", async () => {
-    await categoryService.create(category[0]);
-    await productService.create(data[0]);
-
     const create = await variantTypeService.create({
       name: "Test Variant Type",
       productId: 1,
@@ -96,8 +64,6 @@ describe("Variant Type Service (Integration)", () => {
   });
 
   it("should delete a variant type", async () => {
-    await categoryService.create(category[0]);
-    await productService.create(data[0]);
     const create = await variantTypeService.create({
       name: "Test Variant Type",
       productId: 1,
