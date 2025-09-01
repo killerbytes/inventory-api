@@ -5,6 +5,7 @@ npx sequelize-cli db:seed:all
 
 npm run backup
 
+cross-env NODE_ENV=production npm run backup
 cross-env NODE_ENV=production npx sequelize db:drop
 cross-env NODE_ENV=production npx sequelize db:create
 cross-env NODE_ENV=production npx sequelize db:migrate
