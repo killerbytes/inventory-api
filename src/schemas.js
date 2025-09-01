@@ -234,7 +234,6 @@ const salesOrderItemSchema = salesOrderStatusSchema
 const salesOrderSchema = Joi.object({
   salesOrderNumber: Joi.string().optional(),
   customerId: Joi.number().required(),
-  orderDate: Joi.date().required(),
   isDelivery: Joi.boolean().optional(),
   isDeliveryCompleted: Joi.boolean().optional(),
   deliveryAddress: Joi.string().when("isDelivery", {

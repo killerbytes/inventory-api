@@ -110,8 +110,9 @@ describe("Product Combination Service (Integration)", () => {
 
     const purchaseOrder2 = await purchaseOrdersService.get(1);
     expect(purchaseOrder2.status).toBe("RECEIVED");
-    expect(purchaseOrder2.purchaseOrderItems.length).toBe(2);
     expect(purchaseOrder2.totalAmount).toBe(3090);
+    expect(purchaseOrder2.purchaseOrderItems.length).toBe(2);
+    expect(purchaseOrder2.purchaseOrderItems[0].quantity).toBe(11);
     expect(purchaseOrder2.purchaseOrderStatusHistory.length).toBe(2);
     expect(purchaseOrder2.purchaseOrderStatusHistory[0].status).toBe(
       "RECEIVED"

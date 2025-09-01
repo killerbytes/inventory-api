@@ -1,5 +1,7 @@
 const { Model, DataTypes } = require("sequelize");
 const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
+const { format } = require("date-fns");
+const getNextSequence = require("../utils/services/getNextSequence");
 
 class SalesOrder extends Model {
   static associate(models) {
@@ -25,7 +27,7 @@ module.exports = (sequelize) => {
     {
       salesOrderNumber: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true,
       },
       customerId: DataTypes.INTEGER,
@@ -37,7 +39,6 @@ module.exports = (sequelize) => {
           isIn: [Object.values(ORDER_STATUS)],
         },
       },
-      orderDate: { type: DataTypes.DATE, allowNull: false },
       isDelivery: { type: DataTypes.BOOLEAN, defaultValue: false },
       isDeliveryCompleted: DataTypes.BOOLEAN,
       deliveryAddress: DataTypes.TEXT,

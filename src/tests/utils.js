@@ -42,6 +42,11 @@ function createCombination(index) {
     combinations,
   });
 }
+function createStockAdjustment(index) {
+  return productCombinationService.stockAdjustment({
+    ...stockAdjustments[index],
+  });
+}
 
 async function loginUser() {
   const res = await request(app)
@@ -62,6 +67,20 @@ async function getUser(token) {
   return me;
 }
 
+const stockAdjustments = [
+  {
+    combinationId: 1,
+    newQuantity: 11,
+    reason: "SUPPLIER_BONUS",
+    notes: "test",
+  },
+  {
+    combinationId: 2,
+    newQuantity: 20,
+    reason: "SAMPLE",
+    notes: "test",
+  },
+];
 const customers = [
   {
     name: "Alice",
@@ -191,6 +210,7 @@ module.exports = {
   createVariantType,
   createCombination,
   createCustomer,
+  createStockAdjustment,
   loginUser,
   getUser,
   combinations,
@@ -199,4 +219,5 @@ module.exports = {
   categories,
   products,
   customers,
+  stockAdjustments,
 };

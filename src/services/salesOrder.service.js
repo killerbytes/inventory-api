@@ -1,11 +1,10 @@
-const { Transaction, Op, or } = require("sequelize");
+const { Op } = require("sequelize");
 const { sequelize } = require("../models");
 const db = require("../models");
 const { salesOrderSchema } = require("../schemas");
 const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
-  ORDER_TYPE,
   PAGINATION,
 } = require("../definitions.js");
 const authService = require("./auth.service");
@@ -13,6 +12,7 @@ const { processInventoryUpdates } = require("./inventory.service");
 const { getMappedVariantValues } = require("../utils/mapped");
 const ApiError = require("./ApiError");
 const { getAmount, getTotalAmount } = require("../utils/compute.js");
+const productCombinationService = require("./productCombination.service.js");
 
 const {
   VariantValue,
@@ -56,6 +56,13 @@ module.exports = {
         ],
         // raw: true,
         nest: true,
+        order: [
+          [
+            { model: OrderStatusHistory, as: "salesOrderStatusHistory" },
+            "id",
+            "DESC",
+          ],
+        ],
       });
       if (!salesOrder) {
         throw ApiError.notFound("SalesOrder not found");
@@ -76,7 +83,6 @@ module.exports = {
     const transaction = await sequelize.transaction();
     try {
       const {
-        salesOrderNumber,
         customerId,
         orderDate,
         deliveryDate,
@@ -93,6 +99,23 @@ module.exports = {
       } = payload;
 
       const totalAmount = getTotalAmount(salesOrderItems);
+      for (const [index, item] of salesOrderItems.entries()) {
+        const combo = await productCombinationService.get(item.combinationId, {
+          transaction,
+        });
+        if (item.quantity > combo.inventory.quantity) {
+          throw ApiError.validation(
+            [
+              {
+                field: "salesOrderItems[" + index + "].quantity",
+                message: "Quantity is greater than inventory",
+              },
+            ],
+            400,
+            "Quantity is greater than inventory"
+          );
+        }
+      }
 
       const processedItems = await Promise.all(
         salesOrderItems.map(async (item) => {
@@ -128,7 +151,7 @@ module.exports = {
             originalPrice: productCombination.price,
             totalAmount: getAmount(item),
             unit: productCombination.unit,
-            nameSnapshot: productCombination.product.name,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,
@@ -143,7 +166,6 @@ module.exports = {
 
       const result = await SalesOrder.create(
         {
-          salesOrderNumber,
           customerId,
           orderDate,
           deliveryDate,
@@ -182,6 +204,7 @@ module.exports = {
       transaction.commit();
       return result;
     } catch (error) {
+      console.log(1, error);
       transaction.rollback();
 
       throw error;
@@ -242,18 +265,47 @@ module.exports = {
   },
 
   async delete(id) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const salesOrder = await SalesOrder.findByPk(id);
+      const salesOrder = await SalesOrder.findByPk(id, {
+        transaction,
+      });
       if (!salesOrder) {
         throw new Error("SalesOrder not found");
       }
 
-      if (salesOrder.status !== ORDER_STATUS.PENDING) {
-        await salesOrder.destroy();
+      if (salesOrder.status === ORDER_STATUS.PENDING) {
+        await updateOrder(
+          {
+            status: ORDER_STATUS.VOID,
+          },
+          salesOrder,
+          transaction,
+          false
+        );
       } else {
         throw new Error("SalesOrder is not in a valid state");
       }
+      const user = await authService.getCurrent();
+      await OrderStatusHistory.create(
+        {
+          salesOrderId: salesOrder.id,
+          status: ORDER_STATUS.VOID,
+          changedBy: user.id,
+          changedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          transaction,
+        }
+      );
+
+      await transaction.commit();
+      return salesOrder;
     } catch (error) {
+      console.log(error);
+      await transaction.rollback();
       throw error;
     }
   },
@@ -318,6 +370,7 @@ module.exports = {
         order,
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
+        distinct: true,
         include: [
           {
             model: db.SalesOrderItem,
@@ -379,7 +432,7 @@ const processCompletedOrder = async (payload, salesOrder) => {
       },
       salesOrder,
       transaction,
-      true
+      false
     );
 
     await OrderStatusHistory.create(
@@ -461,11 +514,10 @@ const processCancelledOrder = async (salesOrder, payload) => {
 const processReceivedOrder = async (payload, salesOrder) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
+  const { salesOrderItems, id } = salesOrder;
+
   try {
-    const totalAmount = payload.salesOrderItems.reduce(
-      (total, item) => total + item.purchasePrice * item.quantity,
-      0
-    );
+    const totalAmount = getTotalAmount(payload.salesOrderItems);
 
     await updateOrder(
       {
@@ -478,7 +530,30 @@ const processReceivedOrder = async (payload, salesOrder) => {
       true
     );
 
-    const { salesOrderItems, id } = salesOrder;
+    const errors = [];
+    for (const [index, item] of payload.salesOrderItems.entries()) {
+      const combo = await productCombinationService.get(item.combinationId, {
+        transaction,
+      });
+
+      if (item.quantity > combo.inventory.quantity) {
+        errors[index] = {
+          field: `salesOrderItems[${index}].quantity`,
+          message: "Quantity is greater than inventory",
+        };
+      } else {
+        errors[index] = {};
+      }
+    }
+
+    if (errors.filter((e) => e.field).length > 0) {
+      throw ApiError.validation(
+        errors,
+        400,
+        "Quantity is greater than inventory"
+      );
+    }
+
     await Promise.all(
       salesOrderItems.map(async (item) => {
         await processInventoryUpdates(
@@ -513,10 +588,10 @@ const processReceivedOrder = async (payload, salesOrder) => {
     transaction.commit();
     return;
   } catch (error) {
-    console.log(error);
+    console.log(1, error);
 
     transaction.rollback();
-    throw new Error("Error in processInventoryUpdates");
+    throw error;
   }
 };
 const processUpdateOrder = async (payload, salesOrder) => {
@@ -568,6 +643,7 @@ const updateOrder = async (
                   order: [["variantTypeId", "ASC"]],
                 },
               ],
+              transaction,
             }
           );
 
@@ -575,9 +651,9 @@ const updateOrder = async (
             ...item,
             salesOrderId: salesOrder.id,
             originalPrice: productCombination.price,
-            totalAmount: compute.getAmount(item),
+            totalAmount: getAmount(item),
             unit: productCombination.unit,
-            nameSnapshot: productCombination.product.name,
+            nameSnapshot: productCombination.name,
             categorySnapshot: productCombination.product.category,
             variantSnapshot: getMappedVariantValues(
               productCombination.product.variants,

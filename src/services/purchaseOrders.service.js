@@ -5,14 +5,13 @@ const { purchaseOrderSchema } = require("../schemas.js");
 const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
-  ORDER_TYPE,
   PAGINATION,
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
 const ApiError = require("./ApiError.js");
-const compute = require("../utils/compute");
 const { processInventoryUpdates } = require("./inventory.service.js");
+const { getTotalAmount, getAmount } = require("../utils/compute.js");
 const {
   VariantValue,
   PurchaseOrder,
@@ -92,7 +91,7 @@ module.exports = {
         checkNumber,
         dueDate,
       } = payload;
-      const totalAmount = compute.getTotalAmount(purchaseOrderItems);
+      const totalAmount = getTotalAmount(purchaseOrderItems);
 
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
@@ -128,7 +127,7 @@ module.exports = {
 
           const props = {
             ...item,
-            totalAmount: compute.getAmount(item),
+            totalAmount: getAmount(item),
             unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,
@@ -244,7 +243,7 @@ module.exports = {
   async delete(id) {
     const transaction = await db.sequelize.transaction();
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id);
+      const purchaseOrder = await PurchaseOrder.findByPk(id, { transaction });
       if (!purchaseOrder) {
         throw new Error("PurchaseOrder not found");
       }
@@ -488,8 +487,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = compute.getTotalAmount(payload.purchaseOrderItems);
-
+    const totalAmount = getTotalAmount(payload.purchaseOrderItems);
     await updateOrder(
       {
         ...payload,
@@ -502,6 +500,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
     );
 
     const { purchaseOrderItems, id } = purchaseOrder;
+
     await Promise.all(
       purchaseOrderItems.map(async (item) => {
         await processInventoryUpdates(
@@ -595,7 +594,7 @@ const updateOrder = async (
           const props = {
             ...item,
             purchaseOrderId: purchaseOrder.id,
-            totalAmount: compute.getAmount(item),
+            totalAmount: getAmount(item),
             unit: productCombination.unit,
             nameSnapshot: productCombination.product.name,
             categorySnapshot: productCombination.product.category,

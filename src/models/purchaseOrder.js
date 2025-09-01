@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require("sequelize");
+const { Model } = require("sequelize");
 const { ORDER_STATUS, MODE_OF_PAYMENT } = require("../definitions");
 const { format } = require("date-fns");
 const getNextSequence = require("../utils/services/getNextSequence");
