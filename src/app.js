@@ -42,7 +42,8 @@ app.use("/api/variantTypes", verifyToken, variantTypesRouter);
 app.use("/api/productCombinations", verifyToken, productCombinationRouter);
 
 app.get("/", (req, res) => {
-  res.send("Hello World!");
+  const { BUILD_TIME } = require("../dist/build-info");
+  res.send(BUILD_TIME);
 });
 
 app.use(errorHandler);

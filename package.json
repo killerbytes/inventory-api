@@ -6,7 +6,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "cross-env NODE_ENV=test jest",
-    "build": "tsc && cpx \"config/**/*.js\" dist/config && cpx \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
+    "preinstall": "node scripts/build.js",
+    "build": "copyfiles -u 1 config/**/*.js dist/config && copyfiles -u 1 \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
     "backup": "node backup.js backup-data",
     "restore": "node backup.js restore"
@@ -30,6 +31,7 @@
     "sequelize": "^6.37.7"
   },
   "devDependencies": {
+    "copyfiles": "^2.4.1",
     "cross-env": "^10.0.0",
     "jest": "^30.1.1",
     "nodemon": "^3.1.10",
