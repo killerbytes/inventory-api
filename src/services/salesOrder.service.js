@@ -204,7 +204,6 @@ module.exports = {
       transaction.commit();
       return result;
     } catch (error) {
-      console.log(1, error);
       transaction.rollback();
 
       throw error;

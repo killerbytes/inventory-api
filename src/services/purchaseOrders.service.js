@@ -71,15 +71,12 @@ module.exports = {
     }
   },
   async create(payload) {
-    console.log(1);
-
     const { error } = purchaseOrderSchema.validate(payload, {
       abortEarly: false,
     });
     if (error) {
       throw error;
     }
-    console.log(2);
     const transaction = await sequelize.transaction();
     try {
       const {
@@ -94,7 +91,6 @@ module.exports = {
         dueDate,
       } = payload;
       const totalAmount = getTotalAmount(purchaseOrderItems);
-      console.log(3);
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(

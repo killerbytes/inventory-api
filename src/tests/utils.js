@@ -200,7 +200,7 @@ const variantTypes = [
     values: [{ value: "Small" }, { value: "Medium" }],
   },
   {
-    name: "Watts",
+    name: "AMP",
     productId: 1,
     values: [{ value: "10A" }, { value: "20A" }],
   },

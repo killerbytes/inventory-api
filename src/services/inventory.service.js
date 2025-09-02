@@ -241,7 +241,6 @@ module.exports = {
       const offset = (page - 1) * limit;
       const order = [];
       order.push([sort, query.order || "DESC"]);
-      console.log(order);
 
       const { count, rows } = await InventoryMovement.findAndCountAll({
         limit,
