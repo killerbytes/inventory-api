@@ -117,7 +117,9 @@ module.exports = {
           include: [{ model: VariantValue, as: "values" }],
         },
       ],
+      order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
     });
+
     if (!product) throw new Error("Product not found");
 
     const issue = validateCombinations(payload, product);

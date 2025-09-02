@@ -167,13 +167,11 @@ const purchaseOrderSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-  purchaseOrderItems: Joi.array()
-    .items(purchaseOrderItemSchema)
-    .required()
-    .messages({
-      "array.includesRequiredUnknowns":
-        "Purchase order must include at least one product.",
-    }),
+  purchaseOrderItems: Joi.array().items(purchaseOrderItemSchema).required(),
+  // .messages({
+  //   "array.includesRequiredUnknowns":
+  //     "Purchase order must include at least one product.",
+  // }),
 })
   .required()
   .meta({ className: "purchaseOrder" });

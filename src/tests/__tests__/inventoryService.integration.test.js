@@ -47,7 +47,9 @@ describe("Inventory Service (Integration)", () => {
       toCombinationId: 2,
     });
 
-    const inventoryMovements = await inventoryService.getMovements({});
+    const inventoryMovements = await inventoryService.getMovements({
+      order: "ASC",
+    });
 
     expect(inventoryMovements.data.length).toBe(3);
     expect(inventoryMovements.data[0].combinationId).toBe(1);

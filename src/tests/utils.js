@@ -199,6 +199,11 @@ const variantTypes = [
     productId: 1,
     values: [{ value: "Small" }, { value: "Medium" }],
   },
+  {
+    name: "Watts",
+    productId: 1,
+    values: [{ value: "10A" }, { value: "20A" }],
+  },
 ];
 
 module.exports = {

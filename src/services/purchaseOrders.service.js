@@ -71,13 +71,15 @@ module.exports = {
     }
   },
   async create(payload) {
+    console.log(1);
+
     const { error } = purchaseOrderSchema.validate(payload, {
       abortEarly: false,
     });
     if (error) {
       throw error;
     }
-
+    console.log(2);
     const transaction = await sequelize.transaction();
     try {
       const {
@@ -92,7 +94,7 @@ module.exports = {
         dueDate,
       } = payload;
       const totalAmount = getTotalAmount(purchaseOrderItems);
-
+      console.log(3);
       const processedItems = await Promise.all(
         purchaseOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
@@ -292,6 +294,7 @@ module.exports = {
       endDate,
       status,
       sort,
+      orderBy,
     } = params;
     const where = {};
 
@@ -322,22 +325,22 @@ module.exports = {
     }
 
     const offset = (page - 1) * limit;
+    const order = [];
 
     try {
-      const order = [
-        [
-          {
-            model: OrderStatusHistory,
-            as: "purchaseOrderStatusHistory",
-          },
-          "id",
-          "ASC",
-        ],
-      ];
+      if (sort) {
+        order.push(["notes", orderBy || "ASC"]);
+      }
 
-      // if (sort) {
-      //   order.push([sort , order || "ASC"]);
-      // }
+      order.push([
+        {
+          model: OrderStatusHistory,
+          as: "purchaseOrderStatusHistory",
+        },
+        "id",
+        "ASC",
+      ]);
+
       const { count, rows } = await PurchaseOrder.findAndCountAll({
         limit,
         offset,
