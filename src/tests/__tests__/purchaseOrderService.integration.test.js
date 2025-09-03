@@ -113,6 +113,21 @@ describe("Product Combination Service (Integration)", () => {
     expect(purchaseOrder2.totalAmount).toBe(3090);
     expect(purchaseOrder2.purchaseOrderItems.length).toBe(2);
     expect(purchaseOrder2.purchaseOrderItems[0].quantity).toBe(11);
+    expect(purchaseOrder2.purchaseOrderItems[0].nameSnapshot).toBe(
+      "Shovel - Red"
+    );
+
+    expect(purchaseOrder2.purchaseOrderItems[0].categorySnapshot.name).toBe(
+      "Tools"
+    );
+    expect(purchaseOrder2.purchaseOrderItems[0].categorySnapshot.id).toBe(1);
+    expect(purchaseOrder2.purchaseOrderItems[0].variantSnapshot).toMatchObject({
+      Colors: "Red",
+    });
+    expect(purchaseOrder2.purchaseOrderItems[0].skuSnapshot).toBe(
+      "01|SHO|BOX|RED"
+    );
+
     expect(purchaseOrder2.purchaseOrderStatusHistory.length).toBe(2);
     expect(purchaseOrder2.purchaseOrderStatusHistory[0].status).toBe(
       "RECEIVED"

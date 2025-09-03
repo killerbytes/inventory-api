@@ -123,20 +123,11 @@ module.exports = {
             throw new Error("Product Combination not found");
           }
 
-          const props = {
+          return {
             ...item,
             totalAmount: getAmount(item),
-            unit: productCombination.unit,
-            nameSnapshot: productCombination.product.name,
-            categorySnapshot: productCombination.product.category,
-            variantSnapshot: getMappedVariantValues(
-              productCombination.product.variants,
-              productCombination.values
-            ),
-            skuSnapshot: productCombination.sku,
+            ...mappedProductCombinationProps(productCombination),
           };
-
-          return props;
         })
       );
 
@@ -325,7 +316,9 @@ module.exports = {
 
     try {
       if (sort) {
-        order.push(["notes", orderBy || "ASC"]);
+        order.push([sort, params.order || "ASC"]);
+      } else {
+        order.push(["id", "ASC"]); // Default sort
       }
 
       order.push([
@@ -532,7 +525,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
     transaction.commit();
     return;
   } catch (error) {
-    console.log(error);
+    console.log(123, error);
 
     transaction.rollback();
     throw new Error("Error in processInventoryUpdates");
@@ -590,27 +583,33 @@ const updateOrder = async (
             }
           );
 
-          const props = {
+          return {
             ...item,
-            purchaseOrderId: purchaseOrder.id,
+            ...mappedProductCombinationProps(productCombination),
             totalAmount: getAmount(item),
-            unit: productCombination.unit,
-            nameSnapshot: productCombination.product.name,
-            categorySnapshot: productCombination.product.category,
-            variantSnapshot: getMappedVariantValues(
-              productCombination.product.variants,
-              productCombination.values
-            ),
-            skuSnapshot: productCombination.sku,
+            purchaseOrderId: purchaseOrder.id,
           };
-          return props;
         })
       );
 
       await PurchaseOrderItem.bulkCreate(items, { transaction });
     }
   } catch (error) {
-    console.log(error);
+    console.log(321, error);
     throw new Error("Error in updateOrderItems");
   }
+};
+
+const mappedProductCombinationProps = (productCombination) => {
+  const props = {
+    unit: productCombination.unit,
+    nameSnapshot: productCombination.name,
+    categorySnapshot: productCombination.product.category,
+    variantSnapshot: getMappedVariantValues(
+      productCombination.product.variants,
+      productCombination.values
+    ),
+    skuSnapshot: productCombination.sku,
+  };
+  return props;
 };

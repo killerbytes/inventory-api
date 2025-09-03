@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
     {
       sequelize,
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
       indexes: [
         {
