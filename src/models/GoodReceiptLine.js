@@ -1,13 +1,13 @@
 const { Model, DataTypes } = require("sequelize");
 
-class PurchaseOrderItem extends Model {
+class GoodReceiptLine extends Model {
   static associate(models) {
-    PurchaseOrderItem.belongsTo(models.PurchaseOrder, {
-      foreignKey: "purchaseOrderId",
-      as: "purchaseOrder",
+    GoodReceiptLine.belongsTo(models.GoodReceipt, {
+      foreignKey: "goodReceiptId",
+      as: "goodReceipt",
     });
 
-    PurchaseOrderItem.belongsTo(models.ProductCombination, {
+    GoodReceiptLine.belongsTo(models.ProductCombination, {
       foreignKey: "combinationId",
       as: "combinations",
     });
@@ -15,9 +15,8 @@ class PurchaseOrderItem extends Model {
 }
 
 module.exports = (sequelize) => {
-  PurchaseOrderItem.init(
+  GoodReceiptLine.init(
     {
-      purchaseOrderId: { type: DataTypes.INTEGER, allowNull: false },
       combinationId: { type: DataTypes.INTEGER, allowNull: false },
       quantity: { type: DataTypes.INTEGER, defaultValue: 0, allowNull: false },
       purchasePrice: {
@@ -40,12 +39,12 @@ module.exports = (sequelize) => {
     },
     {
       sequelize,
-      modelName: "PurchaseOrderItem",
+      modelName: "GoodReceiptLine",
       defaultScope: {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
     }
   );
 
-  return PurchaseOrderItem;
+  return GoodReceiptLine;
 };

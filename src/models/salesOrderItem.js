@@ -2,7 +2,7 @@ const { Model, DataTypes } = require("sequelize");
 
 class SalesOrderItem extends Model {
   static associate(models) {
-    SalesOrderItem.belongsTo(models.PurchaseOrder, {
+    SalesOrderItem.belongsTo(models.SalesOrder, {
       foreignKey: "salesOrderId",
       as: "salesOrder",
     });

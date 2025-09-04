@@ -66,9 +66,9 @@ describe("Sales Order Service (Integration)", () => {
     expect(salesOrder.internalNotes).toBe("Test Internal Notes");
     expect(salesOrder.salesOrderItems.length).toBe(2);
     expect(salesOrder.totalAmount).toBe(3000);
-    expect(salesOrder.status).toBe("PENDING");
+    expect(salesOrder.status).toBe("DRAFT");
     expect(salesOrder.salesOrderStatusHistory.length).toBe(1);
-    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("PENDING");
+    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("DRAFT");
     expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
   });
   it("should update a sales order", async () => {

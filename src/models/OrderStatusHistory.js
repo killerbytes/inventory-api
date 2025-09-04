@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
   const OrderStatusHistory = sequelize.define(
     "OrderStatusHistory",
     {
-      purchaseOrderId: DataTypes.INTEGER,
+      goodReceiptId: DataTypes.INTEGER,
       salesOrderId: DataTypes.INTEGER,
       status: {
         type: DataTypes.STRING,
@@ -24,9 +24,9 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   OrderStatusHistory.associate = (models) => {
-    OrderStatusHistory.belongsTo(models.PurchaseOrder, {
-      foreignKey: "purchaseOrderId",
-      as: "purchaseOrderStatusHistory",
+    OrderStatusHistory.belongsTo(models.GoodReceipt, {
+      foreignKey: "goodReceiptId",
+      as: "goodReceiptStatusHistory",
     });
     OrderStatusHistory.belongsTo(models.SalesOrder, {
       foreignKey: "salesOrderId",

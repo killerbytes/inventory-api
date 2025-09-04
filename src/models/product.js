@@ -51,20 +51,15 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   Product.beforeCreate(async (product, options) => {
-    product.sku = getSKU(product.name, product.categoryId, null, null);
+    product.sku = getSKU(product.name, product.categoryId);
   });
 
   Product.beforeBulkCreate(async (product, options) => {
-    product.sku = getSKU(product.name, product.categoryId, null, null);
+    product.sku = getSKU(product.name, product.categoryId);
   });
 
   Product.beforeUpdate(async (product, options) => {
-    product.sku = getSKU(
-      product.name,
-      product.categoryId,
-      product.baseUnit,
-      null
-    );
+    product.sku = getSKU(product.name, product.categoryId);
   });
 
   return Product;

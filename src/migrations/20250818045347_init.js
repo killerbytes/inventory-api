@@ -477,7 +477,7 @@ const migrationCommands = (transaction) => [
         status: {
           type: Sequelize.STRING,
           field: "status",
-          defaultValue: "PENDING",
+          defaultValue: "DRAFT",
         },
         deliveryDate: { type: Sequelize.DATE, field: "deliveryDate" },
         cancellationReason: {
@@ -655,7 +655,7 @@ const migrationCommands = (transaction) => [
           type: Sequelize.STRING,
           field: "status",
           allowNull: false,
-          defaultValue: "PENDING",
+          defaultValue: "DRAFT",
         },
         orderDate: {
           type: Sequelize.DATE,

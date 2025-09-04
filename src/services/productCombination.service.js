@@ -584,14 +584,23 @@ module.exports = {
   },
 
   async bulkUpdateSKU() {
-    await productService.flat().then((products) => {
-      products.forEach(async (product) => {
-        const res = await this.updateByProductId(product.id, {
-          combinations: product.combinations,
-        });
-        console.log(res);
+    const transaction = await sequelize.transaction();
+    try {
+      await productService.flat().then(async (products) => {
+        for (const product of products) {
+          console.log(product.sku);
+          const res = await this.updateByProductId(product.id, {
+            combinations: product.combinations,
+          });
+          console.log(res.message);
+        }
       });
-    });
+      transaction.commit();
+    } catch (error) {
+      console.log(error);
+
+      transaction.rollback();
+    }
   },
 };
 
