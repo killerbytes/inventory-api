@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
-const { sequelize } = require("../models");
-const db = require("../models");
-const { purchaseOrderSchema } = require("../schemas.js");
+const { sequelize } = require("../models/index.js");
+const db = require("../models/index.js");
+const { goodReceiptSchema } = require("../schemas.js");
 const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
@@ -14,8 +14,8 @@ const { processInventoryUpdates } = require("./inventory.service.js");
 const { getTotalAmount, getAmount } = require("../utils/compute.js");
 const {
   VariantValue,
-  PurchaseOrder,
-  PurchaseOrderItem,
+  GoodReceipt,
+  GoodReceiptLine,
   ProductCombination,
   Product,
   OrderStatusHistory,
@@ -26,15 +26,11 @@ const {
 module.exports = {
   async get(id) {
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, {
-        // attributes: {
-        //   exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
-        // },
+      const goodReceipt = await GoodReceipt.findByPk(id, {
         include: [
           {
-            model: PurchaseOrderItem,
-            as: "purchaseOrderItems",
-            // where: { orderId: id },
+            model: GoodReceiptLine,
+            as: "goodReceiptLines",
             attributes: { exclude: ["createdAt", "updatedAt"] },
           },
           {
@@ -43,7 +39,7 @@ module.exports = {
           },
           {
             model: db.OrderStatusHistory,
-            as: "purchaseOrderStatusHistory",
+            as: "goodReceiptStatusHistory",
             include: [
               {
                 model: db.User,
@@ -52,26 +48,26 @@ module.exports = {
             ],
           },
         ],
-        // raw: true,
         nest: true,
         order: [
           [
-            { model: OrderStatusHistory, as: "purchaseOrderStatusHistory" },
+            { model: OrderStatusHistory, as: "goodReceiptStatusHistory" },
             "id",
             "DESC",
           ],
         ],
       });
-      if (!purchaseOrder) {
-        throw ApiError.notFound("PurchaseOrder not found");
+      if (!goodReceipt) {
+        throw ApiError.notFound("Good Receipt not found");
       }
-      return purchaseOrder;
+
+      return goodReceipt;
     } catch (error) {
       throw error;
     }
   },
   async create(payload) {
-    const { error } = purchaseOrderSchema.validate(payload, {
+    const { error } = goodReceiptSchema.validate(payload, {
       abortEarly: false,
     });
     if (error) {
@@ -79,20 +75,9 @@ module.exports = {
     }
     const transaction = await sequelize.transaction();
     try {
-      const {
-        supplierId,
-        orderDate,
-        deliveryDate,
-        notes,
-        internalNotes,
-        purchaseOrderItems,
-        modeOfPayment,
-        checkNumber,
-        dueDate,
-      } = payload;
-      const totalAmount = getTotalAmount(purchaseOrderItems);
+      const totalAmount = getTotalAmount(payload.goodReceiptLines);
       const processedItems = await Promise.all(
-        purchaseOrderItems.map(async (item) => {
+        payload.goodReceiptLines.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
             item.combinationId,
             {
@@ -131,24 +116,17 @@ module.exports = {
         })
       );
 
-      const result = await PurchaseOrder.create(
+      const result = await GoodReceipt.create(
         {
-          supplierId,
-          orderDate,
-          deliveryDate,
+          ...payload,
+          goodReceiptLines: processedItems,
           totalAmount,
-          notes,
-          internalNotes,
-          purchaseOrderItems: processedItems,
-          modeOfPayment,
-          checkNumber,
-          dueDate,
         },
         {
           include: [
             {
-              model: PurchaseOrderItem,
-              as: "purchaseOrderItems",
+              model: GoodReceiptLine,
+              as: "goodReceiptLines",
             },
           ],
           transaction,
@@ -158,8 +136,8 @@ module.exports = {
       const user = await authService.getCurrent();
       await OrderStatusHistory.create(
         {
-          purchaseOrderId: result.id,
-          status: ORDER_STATUS.PENDING,
+          goodReceiptId: result.id,
+          status: ORDER_STATUS.DRAFT,
           changedBy: user.id,
           changedAt: new Date(),
         },
@@ -177,11 +155,11 @@ module.exports = {
   },
 
   async list() {
-    const result = await PurchaseOrder.findAll({
+    const result = await GoodReceipt.findAll({
       include: [
         {
-          model: PurchaseOrderItem,
-          as: "purchaseOrderItems",
+          model: GoodReceiptLine,
+          as: "goodReceiptLines",
           include: [
             {
               model: Product,
@@ -197,34 +175,34 @@ module.exports = {
   },
 
   async update(id, payload) {
-    const purchaseOrder = await PurchaseOrder.findByPk(id, {
+    const goodReceipt = await GoodReceipt.findByPk(id, {
       include: [
         {
-          model: PurchaseOrderItem,
-          as: "purchaseOrderItems",
+          model: GoodReceiptLine,
+          as: "goodReceiptLines",
         },
       ],
     });
-    if (!purchaseOrder) {
-      throw new Error("PurchaseOrder not found");
+    if (!goodReceipt) {
+      throw new Error("Good Receipt not found");
     }
 
     switch (true) {
-      case purchaseOrder.status === ORDER_STATUS.PENDING &&
+      case goodReceipt.status === ORDER_STATUS.DRAFT &&
         payload.status === ORDER_STATUS.RECEIVED:
-        await processReceivedOrder(payload, purchaseOrder);
+        await processReceivedOrder(payload, goodReceipt);
         break;
-      case purchaseOrder.status === ORDER_STATUS.RECEIVED &&
+      case goodReceipt.status === ORDER_STATUS.RECEIVED &&
         payload.status === ORDER_STATUS.COMPLETED:
-        await processCompletedOrder(payload, purchaseOrder);
+        await processCompletedOrder(payload, goodReceipt);
         break;
-      case purchaseOrder.status === ORDER_STATUS.PENDING &&
-        payload.status === ORDER_STATUS.PENDING:
-        await processUpdateOrder(payload, purchaseOrder);
+      case goodReceipt.status === ORDER_STATUS.DRAFT &&
+        payload.status === ORDER_STATUS.DRAFT:
+        await processUpdateOrder(payload, goodReceipt);
         break;
       default:
         throw new Error(
-          `Invalid status change from ${purchaseOrder.status} to ${payload.status}`
+          `Invalid status change from ${goodReceipt.status} to ${payload.status}`
         );
     }
   },
@@ -232,27 +210,27 @@ module.exports = {
   async delete(id) {
     const transaction = await db.sequelize.transaction();
     try {
-      const purchaseOrder = await PurchaseOrder.findByPk(id, { transaction });
-      if (!purchaseOrder) {
-        throw new Error("PurchaseOrder not found");
+      const goodReceipt = await GoodReceipt.findByPk(id, { transaction });
+      if (!goodReceipt) {
+        throw new Error("Good Receipt not found");
       }
 
-      if (purchaseOrder.status === ORDER_STATUS.PENDING) {
+      if (goodReceipt.status === ORDER_STATUS.DRAFT) {
         await updateOrder(
           {
             status: ORDER_STATUS.VOID,
           },
-          purchaseOrder,
+          goodReceipt,
           transaction,
           false
         );
       } else {
-        throw new Error("PurchaseOrder is not in a valid state");
+        throw new Error("Good Receipt is not in a valid state");
       }
       const user = await authService.getCurrent();
       await OrderStatusHistory.create(
         {
-          purchaseOrderId: purchaseOrder.id,
+          goodReceiptId: goodReceipt.id,
           status: ORDER_STATUS.VOID,
           changedBy: user.id,
           changedAt: new Date(),
@@ -265,7 +243,7 @@ module.exports = {
       );
 
       transaction.commit();
-      return purchaseOrder;
+      return goodReceipt;
     } catch (error) {
       console.log(error);
       transaction.rollback();
@@ -281,7 +259,6 @@ module.exports = {
       endDate,
       status,
       sort,
-      orderBy,
     } = params;
     const where = {};
 
@@ -297,17 +274,17 @@ module.exports = {
 
     // Add date filtering if dates are provided
     if (startDate || endDate) {
-      where.updatedAt = {};
+      where.createdAt = {};
 
       if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where.updatedAt[Op.gte] = start;
+        where.createdAt[Op.gte] = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.updatedAt[Op.lte] = end;
+        where.createdAt[Op.lte] = end;
       }
     }
 
@@ -324,13 +301,13 @@ module.exports = {
       order.push([
         {
           model: OrderStatusHistory,
-          as: "purchaseOrderStatusHistory",
+          as: "goodReceiptStatusHistory",
         },
         "id",
         "ASC",
       ]);
 
-      const { count, rows } = await PurchaseOrder.findAndCountAll({
+      const { count, rows } = await GoodReceipt.findAndCountAll({
         limit,
         offset,
         order,
@@ -339,12 +316,12 @@ module.exports = {
         distinct: true,
         include: [
           {
-            model: db.PurchaseOrderItem,
-            as: "purchaseOrderItems",
+            model: db.GoodReceiptLine,
+            as: "goodReceiptLines",
           },
           {
             model: db.OrderStatusHistory,
-            as: "purchaseOrderStatusHistory",
+            as: "goodReceiptStatusHistory",
             include: [
               {
                 model: db.User,
@@ -372,22 +349,22 @@ module.exports = {
   },
 
   async cancelOrder(id, payload) {
-    const purchaseOrder = await PurchaseOrder.findByPk(id, {
+    const goodReceipt = await GoodReceipt.findByPk(id, {
       include: [
         {
-          model: PurchaseOrderItem,
-          as: "purchaseOrderItems",
+          model: GoodReceiptLine,
+          as: "goodReceiptLines",
         },
       ],
     });
-    if (!purchaseOrder) {
-      throw new Error("PurchaseOrder not found");
+    if (!goodReceipt) {
+      throw new Error("Good Receipt not found");
     }
-    await processCancelledOrder(purchaseOrder, payload);
+    await processCancelledOrder(goodReceipt, payload);
   },
 };
 
-const processCompletedOrder = async (payload, purchaseOrder) => {
+const processCompletedOrder = async (payload, goodReceipt) => {
   const user = await authService.getCurrent();
   const transaction = await db.sequelize.transaction();
   try {
@@ -396,14 +373,14 @@ const processCompletedOrder = async (payload, purchaseOrder) => {
         ...payload,
         status: ORDER_STATUS.COMPLETED,
       },
-      purchaseOrder,
+      goodReceipt,
       transaction,
       false
     );
 
     await OrderStatusHistory.create(
       {
-        purchaseOrderId: purchaseOrder.id,
+        goodReceiptId: goodReceipt.id,
         status: ORDER_STATUS.COMPLETED,
         changedBy: user.id,
         changedAt: new Date(),
@@ -424,7 +401,7 @@ const processCompletedOrder = async (payload, purchaseOrder) => {
   }
 };
 
-const processCancelledOrder = async (purchaseOrder, payload) => {
+const processCancelledOrder = async (goodReceipt, payload) => {
   const user = await authService.getCurrent();
   const transaction = await db.sequelize.transaction();
   try {
@@ -433,13 +410,13 @@ const processCancelledOrder = async (purchaseOrder, payload) => {
         status: ORDER_STATUS.CANCELLED,
         cancellationReason: payload.reason,
       },
-      purchaseOrder,
+      goodReceipt,
       transaction
     );
 
-    const { purchaseOrderItems, id } = purchaseOrder;
+    const { goodReceiptLines, id } = goodReceipt;
     await Promise.all(
-      purchaseOrderItems.map(async (item) => {
+      goodReceiptLines.map(async (item) => {
         await processInventoryUpdates(
           item,
           id,
@@ -453,7 +430,7 @@ const processCancelledOrder = async (purchaseOrder, payload) => {
 
     await OrderStatusHistory.create(
       {
-        purchaseOrderId: purchaseOrder.id,
+        goodReceiptId: goodReceipt.id,
         status: ORDER_STATUS.CANCELLED,
         changedBy: user.id,
         changedAt: new Date(),
@@ -475,26 +452,26 @@ const processCancelledOrder = async (purchaseOrder, payload) => {
   }
 };
 
-const processReceivedOrder = async (payload, purchaseOrder) => {
+const processReceivedOrder = async (payload, goodReceipt) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = getTotalAmount(payload.purchaseOrderItems);
+    const totalAmount = getTotalAmount(payload.goodReceiptLines);
     await updateOrder(
       {
         ...payload,
         status: ORDER_STATUS.RECEIVED,
         totalAmount,
       },
-      purchaseOrder,
+      goodReceipt,
       transaction,
       true
     );
 
-    const { purchaseOrderItems, id } = purchaseOrder;
+    const { goodReceiptLines, id } = goodReceipt;
 
     await Promise.all(
-      purchaseOrderItems.map(async (item) => {
+      goodReceiptLines.map(async (item) => {
         await processInventoryUpdates(
           {
             combinationId: item.combinationId,
@@ -510,7 +487,7 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
 
     await OrderStatusHistory.create(
       {
-        purchaseOrderId: purchaseOrder.id,
+        goodReceiptId: goodReceipt.id,
         status: ORDER_STATUS.RECEIVED,
         changedBy: user.id,
         changedAt: new Date(),
@@ -531,10 +508,10 @@ const processReceivedOrder = async (payload, purchaseOrder) => {
     throw new Error("Error in processInventoryUpdates");
   }
 };
-const processUpdateOrder = async (payload, purchaseOrder) => {
+const processUpdateOrder = async (payload, goodReceipt) => {
   await db.sequelize.transaction(async (transaction) => {
     try {
-      await updateOrder(payload, purchaseOrder, transaction, true);
+      await updateOrder(payload, goodReceipt, transaction, true);
     } catch (error) {
       throw new Error("Error in processUpdateOrder");
     }
@@ -543,20 +520,20 @@ const processUpdateOrder = async (payload, purchaseOrder) => {
 
 const updateOrder = async (
   payload,
-  purchaseOrder,
+  goodReceipt,
   transaction,
   updateOrderItems = false
 ) => {
   try {
-    await purchaseOrder.update(payload, { transaction });
+    await goodReceipt.update(payload, { transaction });
     if (updateOrderItems) {
-      await PurchaseOrderItem.destroy({
-        where: { purchaseOrderId: purchaseOrder.id },
+      await GoodReceiptLine.destroy({
+        where: { goodReceiptId: goodReceipt.id },
         transaction,
       });
 
       const items = await Promise.all(
-        payload.purchaseOrderItems.map(async (item) => {
+        payload.goodReceiptLines.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
             item.combinationId,
             {
@@ -587,12 +564,12 @@ const updateOrder = async (
             ...item,
             ...mappedProductCombinationProps(productCombination),
             totalAmount: getAmount(item),
-            purchaseOrderId: purchaseOrder.id,
+            goodReceiptId: goodReceipt.id,
           };
         })
       );
 
-      await PurchaseOrderItem.bulkCreate(items, { transaction });
+      await GoodReceiptLine.bulkCreate(items, { transaction });
     }
   } catch (error) {
     console.log(321, error);

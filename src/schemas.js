@@ -115,16 +115,16 @@ const categorySchema = Joi.object({
   .required()
   .meta({ className: "category" });
 
-const purchaseOrderChangeStatusSchema = Joi.object({
+const goodReceiptChangeStatusSchema = Joi.object({
   status: Joi.string().valid("VOID"),
 })
   .required()
-  .meta({ className: "purchaseOrderChangeStatus" });
+  .meta({ className: "goodReceiptChangeStatus" });
 
-const purchaseOrderStatusSchema = Joi.object({
+const goodReceiptStatusSchema = Joi.object({
   status: Joi.string()
-    .valid("PENDING", "RECEIVED", "COMPLETED", "CANCELLED")
-    .default("PENDING"),
+    .valid("DRAFT", "RECEIVED", "COMPLETED", "CANCELLED")
+    .default("DRAFT"),
   cancellationReason: Joi.string().optional().allow(null).when("status", {
     is: "CANCELLED",
     then: Joi.required(),
@@ -132,9 +132,9 @@ const purchaseOrderStatusSchema = Joi.object({
   }),
 })
   .required()
-  .meta({ className: "purchaseOrderStatus" });
+  .meta({ className: "goodReceiptStatus" });
 
-const purchaseOrderItemSchema = purchaseOrderStatusSchema
+const goodReceiptLineSchema = goodReceiptStatusSchema
   .keys({
     id: Joi.number().optional(),
     combinationId: Joi.number().required(),
@@ -148,66 +148,26 @@ const purchaseOrderItemSchema = purchaseOrderStatusSchema
     variantSnapshot: Joi.object(),
   })
   .required()
-  .meta({ className: "purchaseOrderItem" });
+  .meta({ className: "goodReceiptLine" });
 
-const purchaseOrderSchema = Joi.object({
-  purchaseOrderNumber: Joi.string().optional(),
+const goodReceiptSchema = Joi.object({
   supplierId: Joi.number().required(),
-  deliveryDate: Joi.date().required(),
-  notes: Joi.string().optional().allow(null, ""),
+  receiptDate: Joi.date().required(),
+  referenceNo: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
-  modeOfPayment: Joi.string().required(),
-  checkNumber: Joi.string().allow(null, "").when("modeOfPayment", {
-    is: "CHECK",
-    then: Joi.required(),
-    otherwise: Joi.optional(),
-  }),
-  dueDate: Joi.date().allow(null).when("modeOfPayment", {
-    is: "CHECK",
-    then: Joi.required(),
-    otherwise: Joi.optional(),
-  }),
-  purchaseOrderItems: Joi.array().items(purchaseOrderItemSchema).required(),
+  goodReceiptLines: Joi.array().items(goodReceiptLineSchema).required(),
   // .messages({
   //   "array.includesRequiredUnknowns":
   //     "Purchase order must include at least one product.",
   // }),
 })
   .required()
-  .meta({ className: "purchaseOrder" });
-
-// const purchaseOrderUpdateSchema = Joi.object({
-//   purchaseOrderNumber: Joi.string().required(),
-//   supplierId: Joi.number().required(),
-//   deliveryDate: Joi.date().required(),
-//   internalNotes: Joi.string().optional().allow(null),
-//   notes: Joi.string().optional().allow(null),
-//   modeOfPayment: Joi.string().required(),
-//   checkNumber: Joi.string().allow(null,"").when("modeOfPayment", {
-//     is: "CHECK",
-//     then: Joi.required(),
-//     otherwise: Joi.optional(),
-//   }),
-//   dueDate: Joi.date().when("modeOfPayment", {
-//     is: "CHECK",
-//     then: Joi.required(),
-//     otherwise: Joi.optional(),
-//   }),
-//   purchaseOrderItems: Joi.array()
-//     .items(purchaseOrderItemSchema)
-//     .required()
-//     .messages({
-//       "array.includesRequiredUnknowns":
-//         "Purchase order must include at least one product.",
-//     }),
-// })
-//   .required()
-//   .meta({ className: "purchaseOrderUpdate" });
+  .meta({ className: "goodReceipt" });
 
 const salesOrderStatusSchema = Joi.object({
   status: Joi.string()
-    .valid("PENDING", "COMPLETED", "CANCELLED")
-    .default("COMPLETED"),
+    .valid("DRAFT", "COMPLETED", "CANCELLED")
+    .default("DRAFT"),
 })
   .required()
   .meta({ className: "salesOrderStatus" });
@@ -299,11 +259,10 @@ module.exports = {
   productCombinationSchema,
   productSchema,
   categorySchema,
-  purchaseOrderChangeStatusSchema,
-  purchaseOrderStatusSchema,
-  purchaseOrderItemSchema,
-  purchaseOrderSchema,
-  // purchaseOrderUpdateSchema,
+  goodReceiptChangeStatusSchema,
+  goodReceiptStatusSchema,
+  goodReceiptLineSchema,
+  goodReceiptSchema,
   salesOrderStatusSchema,
   salesOrderItemSchema,
   salesOrderSchema,

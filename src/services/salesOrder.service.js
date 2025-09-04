@@ -82,24 +82,24 @@ module.exports = {
     const user = await authService.getCurrent();
     const transaction = await sequelize.transaction();
     try {
-      const {
-        customerId,
-        orderDate,
-        deliveryDate,
-        isDelivery,
-        isDeliveryCompleted,
-        deliveryAddress,
-        deliveryInstructions,
-        notes,
-        internalNotes,
-        salesOrderItems,
-        modeOfPayment,
-        checkNumber,
-        dueDate,
-      } = payload;
+      // const {
+      //   customerId,
+      //   orderDate,
+      //   deliveryDate,
+      //   isDelivery,
+      //   isDeliveryCompleted,
+      //   deliveryAddress,
+      //   deliveryInstructions,
+      //   notes,
+      //   internalNotes,
+      //   salesOrderItems,
+      //   modeOfPayment,
+      //   checkNumber,
+      //   dueDate,
+      // } = payload;
 
-      const totalAmount = getTotalAmount(salesOrderItems);
-      for (const [index, item] of salesOrderItems.entries()) {
+      const totalAmount = getTotalAmount(payload.salesOrderItems);
+      for (const [index, item] of payload.salesOrderItems.entries()) {
         const combo = await productCombinationService.get(item.combinationId, {
           transaction,
         });
@@ -118,7 +118,7 @@ module.exports = {
       }
 
       const processedItems = await Promise.all(
-        salesOrderItems.map(async (item) => {
+        payload.salesOrderItems.map(async (item) => {
           const productCombination = await ProductCombination.findByPk(
             item.combinationId,
             {
@@ -166,20 +166,10 @@ module.exports = {
 
       const result = await SalesOrder.create(
         {
-          customerId,
-          orderDate,
-          deliveryDate,
-          isDelivery,
-          isDeliveryCompleted,
-          deliveryAddress,
-          deliveryInstructions,
+          ...payload,
+          status: ORDER_STATUS.DRAFT,
           totalAmount,
-          notes,
-          internalNotes,
           salesOrderItems: processedItems,
-          modeOfPayment,
-          checkNumber,
-          dueDate,
         },
         {
           include: [
@@ -194,7 +184,7 @@ module.exports = {
       await OrderStatusHistory.create(
         {
           salesOrderId: result.id,
-          status: ORDER_STATUS.PENDING,
+          status: ORDER_STATUS.DRAFT,
 
           changedBy: user.id,
           changedAt: new Date(),
@@ -244,7 +234,7 @@ module.exports = {
     }
 
     switch (true) {
-      case salesOrder.status === ORDER_STATUS.PENDING &&
+      case salesOrder.status === ORDER_STATUS.DRAFT &&
         payload.status === ORDER_STATUS.RECEIVED:
         await processReceivedOrder(payload, salesOrder);
         break;
@@ -252,8 +242,8 @@ module.exports = {
         payload.status === ORDER_STATUS.COMPLETED:
         await processCompletedOrder(payload, salesOrder);
         break;
-      case salesOrder.status === ORDER_STATUS.PENDING &&
-        payload.status === ORDER_STATUS.PENDING:
+      case salesOrder.status === ORDER_STATUS.DRAFT &&
+        payload.status === ORDER_STATUS.DRAFT:
         await processUpdateOrder(payload, salesOrder);
         break;
       default:
@@ -273,7 +263,7 @@ module.exports = {
         throw new Error("SalesOrder not found");
       }
 
-      if (salesOrder.status === ORDER_STATUS.PENDING) {
+      if (salesOrder.status === ORDER_STATUS.DRAFT) {
         await updateOrder(
           {
             status: ORDER_STATUS.VOID,

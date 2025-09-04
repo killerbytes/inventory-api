@@ -1,11 +1,11 @@
 const salesOrderService = require("../services/salesOrder.service");
 
-const purchaseOrderController = {
+const salesOrderController = {
   async get(req, res, next) {
     const { id } = req.params;
     try {
-      const purchaseOrder = await salesOrderService.get(id);
-      res.status(200).json(purchaseOrder);
+      const salesOrder = await salesOrderService.get(id);
+      res.status(200).json(salesOrder);
     } catch (error) {
       next(error);
     }
@@ -32,8 +32,8 @@ const purchaseOrderController = {
     const { id } = req.params;
 
     try {
-      const purchaseOrder = await salesOrderService.update(id, req.body);
-      res.status(200).json(purchaseOrder);
+      const salesOrder = await salesOrderService.update(id, req.body);
+      res.status(200).json(salesOrder);
     } catch (error) {
       next(error);
     }
@@ -79,13 +79,13 @@ const purchaseOrderController = {
     const { id } = req.params;
 
     try {
-      const purchaseOrder = await salesOrderService.cancelOrder(id, req.body);
+      const salesOrder = await salesOrderService.cancelOrder(id, req.body);
 
-      res.status(200).json(purchaseOrder);
+      res.status(200).json(salesOrder);
     } catch (error) {
       next(error);
     }
   },
 };
 
-module.exports = purchaseOrderController;
+module.exports = salesOrderController;

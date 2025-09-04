@@ -1,12 +1,12 @@
-const purchaseOrderService = require("../services/purchaseOrders.service");
+const goodReceiptService = require("../services/goodReceipt.service");
 const authService = require("../services/auth.service");
 
-const purchaseOrderController = {
+const goodReceiptController = {
   async get(req, res, next) {
     const { id } = req.params;
     try {
-      const purchaseOrder = await purchaseOrderService.get(id);
-      res.status(200).json(purchaseOrder);
+      const goodReceipt = await goodReceiptService.get(id);
+      res.status(200).json(goodReceipt);
     } catch (error) {
       next(error);
     }
@@ -14,7 +14,7 @@ const purchaseOrderController = {
   async create(req, res, next) {
     const user = await authService.getCurrent();
     try {
-      const result = await purchaseOrderService.create(req.body, user);
+      const result = await goodReceiptService.create(req.body, user);
       res.status(201).json(result);
     } catch (error) {
       next(error);
@@ -23,7 +23,7 @@ const purchaseOrderController = {
 
   async list(req, res, next) {
     try {
-      const result = await purchaseOrderService.list();
+      const result = await goodReceiptService.list();
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -34,8 +34,8 @@ const purchaseOrderController = {
     const { id } = req.params;
 
     try {
-      const purchaseOrder = await purchaseOrderService.update(id, req.body);
-      res.status(200).json(purchaseOrder);
+      const goodReceipt = await goodReceiptService.update(id, req.body);
+      res.status(200).json(goodReceipt);
     } catch (error) {
       next(error);
     }
@@ -44,7 +44,7 @@ const purchaseOrderController = {
   async delete(req, res, next) {
     const { id } = req.params;
     try {
-      await purchaseOrderService.delete(id);
+      await goodReceiptService.delete(id);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -53,7 +53,7 @@ const purchaseOrderController = {
 
   async getPaginated(req, res, next) {
     try {
-      const result = await purchaseOrderService.getPaginated(req.query);
+      const result = await goodReceiptService.getPaginated(req.query);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -64,16 +64,13 @@ const purchaseOrderController = {
     const { id } = req.params;
 
     try {
-      const purchaseOrder = await purchaseOrderService.cancelOrder(
-        id,
-        req.body
-      );
+      const goodReceipt = await goodReceiptService.cancelOrder(id, req.body);
 
-      res.status(200).json(purchaseOrder);
+      res.status(200).json(goodReceipt);
     } catch (error) {
       next(error);
     }
   },
 };
 
-module.exports = purchaseOrderController;
+module.exports = goodReceiptController;

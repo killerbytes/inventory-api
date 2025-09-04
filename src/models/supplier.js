@@ -2,9 +2,9 @@ const { Model, DataTypes } = require("sequelize");
 
 class Supplier extends Model {
   static associate(models) {
-    Supplier.hasMany(models.PurchaseOrder, {
+    Supplier.hasMany(models.GoodReceipt, {
       foreignKey: "supplierId",
-      as: "purchaseOrders",
+      as: "goodReceipts",
     });
   }
 }

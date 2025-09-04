@@ -33,7 +33,7 @@ module.exports = (sequelize) => {
       customerId: DataTypes.INTEGER,
       status: {
         type: DataTypes.STRING,
-        defaultValue: ORDER_STATUS.PENDING,
+        defaultValue: ORDER_STATUS.DRAFT,
         allowNull: false,
         validate: {
           isIn: [Object.values(ORDER_STATUS)],
