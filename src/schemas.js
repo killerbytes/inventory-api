@@ -246,6 +246,21 @@ const stockAdjustmentSchema = Joi.object({
   createdBy: Joi.number().required(),
 }).meta({ className: "stockAdjustment" });
 
+const invoiceLineSchema = Joi.object({
+  amount: Joi.number().required(),
+  goodReceiptId: Joi.number().required(),
+}).meta({ className: "invoiceLine" });
+
+const invoiceSchema = Joi.object({
+  invoiceNumber: Joi.string().optional(),
+  invoiceDate: Joi.date().required(),
+  dueDate: Joi.date().required(),
+  status: Joi.string().valid("DRAFT", "PAID", "PARTIAL", "VOID"),
+  totalAmount: Joi.number().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  lines: Joi.array().items(invoiceLineSchema).required(),
+}).meta({ className: "invoice" });
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -270,4 +285,6 @@ module.exports = {
   inventoryPriceAdjustmentSchema,
   breakPackSchema,
   stockAdjustmentSchema,
+  invoiceLineSchema,
+  invoiceSchema,
 };

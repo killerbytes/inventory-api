@@ -253,7 +253,7 @@ module.exports = {
   async getPaginated(params) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q,
       startDate,
       endDate,

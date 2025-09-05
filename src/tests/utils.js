@@ -7,6 +7,7 @@ const userService = require("../services/user.service");
 const variantTypeService = require("../services/variantType.service");
 const app = require("../app");
 const customerService = require("../services/customer.service");
+const goodReceiptService = require("../services/goodReceipt.service");
 
 function getConstraintFields(err) {
   if (!err || !err.fields) return [];
@@ -45,6 +46,11 @@ function createCombination(index) {
 function createStockAdjustment(index) {
   return productCombinationService.stockAdjustment({
     ...stockAdjustments[index],
+  });
+}
+function createGoodReceipt(index) {
+  return goodReceiptService.create({
+    ...goodReceipts[index],
   });
 }
 
@@ -206,6 +212,66 @@ const variantTypes = [
   },
 ];
 
+const goodReceipts = [
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF1",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF2",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF3",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+];
+
 module.exports = {
   getConstraintFields,
   createUser,
@@ -225,4 +291,6 @@ module.exports = {
   products,
   customers,
   stockAdjustments,
+  goodReceipts,
+  createGoodReceipt,
 };
