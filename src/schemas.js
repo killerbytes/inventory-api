@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const { INVENTORY_MOVEMENT_TYPE, INVOICE_STATUS } = require("./definitions");
+const { application } = require("express");
 
 const userBaseSchema = Joi.object({
   name: Joi.string().required(),
@@ -273,6 +274,17 @@ const invoiceSchema = Joi.object({
   })
   .meta({ className: "invoice" });
 
+const paymentSchema = Joi.object({
+  supplierId: Joi.number().required(),
+  paymentDate: Joi.date().required(),
+  referenceNo: Joi.string().optional().allow(null, ""),
+  amount: Joi.number().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  changedBy: Joi.number().required(),
+  amountApplied: Joi.number().required(),
+  invoiceId: Joi.number().required(),
+});
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -300,4 +312,5 @@ module.exports = {
   invoiceLineSchema,
   invoiceSchema,
   invoiceSchemaCreate,
+  paymentSchema,
 };

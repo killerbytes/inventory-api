@@ -1,5 +1,6 @@
 const request = require("supertest");
 const categoryService = require("../services/category.service");
+const invoiceService = require("../services/invoice.service");
 const productService = require("../services/product.service");
 const productCombinationService = require("../services/productCombination.service");
 const supplierService = require("../services/supplier.service");
@@ -51,6 +52,27 @@ function createStockAdjustment(index) {
 function createGoodReceipt(index) {
   return goodReceiptService.create({
     ...goodReceipts[index],
+  });
+}
+async function createInvoice() {
+  const lines = [
+    {
+      amount: 100,
+      goodReceiptId: 1,
+    },
+    {
+      amount: 200,
+      goodReceiptId: 2,
+    },
+  ];
+
+  await invoiceService.create({
+    invoiceNumber: "TEST",
+    invoiceDate: new Date(),
+    dueDate: new Date(),
+    supplierId: 1,
+    totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
+    lines,
   });
 }
 
@@ -301,6 +323,8 @@ module.exports = {
   createCombination,
   createCustomer,
   createStockAdjustment,
+  createGoodReceipt,
+  createInvoice,
   loginUser,
   getUser,
   combinations,
@@ -311,5 +335,4 @@ module.exports = {
   customers,
   stockAdjustments,
   goodReceipts,
-  createGoodReceipt,
 };

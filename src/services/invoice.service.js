@@ -90,9 +90,9 @@ module.exports = {
           await updateInvoice(invoice, payload, true, transaction);
           break;
         case invoice.status === INVOICE_STATUS.POSTED &&
-          payload.status === INVOICE_STATUS.PARTIAL:
+          payload.status === INVOICE_STATUS.PARTIALLY_PAID:
           break;
-        case invoice.status === INVOICE_STATUS.PARTIAL &&
+        case invoice.status === INVOICE_STATUS.PARTIALLY_PAID &&
           payload.status === INVOICE_STATUS.PAID:
           break;
         default:

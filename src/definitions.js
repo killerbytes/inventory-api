@@ -66,7 +66,7 @@ const STOCK_ADJUSTMENT_TYPE = {
 const INVOICE_STATUS = {
   DRAFT: "DRAFT",
   POSTED: "POSTED",
-  PARTIAL: "PARTIAL",
+  PARTIALLY_PAID: "PARTIALLY_PAID",
   PAID: "PAID",
 };
 module.exports = {
