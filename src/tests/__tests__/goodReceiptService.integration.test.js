@@ -9,6 +9,7 @@ const {
   createSupplier,
   createCombination,
   loginUser,
+  createGoodReceipt,
 } = require("../utils");
 const { getTotalAmount } = require("../../utils/compute");
 
@@ -29,8 +30,8 @@ beforeEach(async () => {
   await loginUser();
 });
 
-describe("Product Combination Service (Integration)", () => {
-  it("should create a purchase order", async () => {
+describe("Good Receipt Service (Integration)", () => {
+  it("should create a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -51,7 +52,6 @@ describe("Product Combination Service (Integration)", () => {
       ],
     });
     const goodReceipt = await goodReceiptService.get(1);
-    console.log(55, goodReceipt);
 
     expect(goodReceipt.supplierId).toBe(1);
     expect(goodReceipt.receiptDate).toBeInstanceOf(Date);
@@ -64,7 +64,7 @@ describe("Product Combination Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("DRAFT");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
-  it("should update a purchase order", async () => {
+  it("should update a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -125,7 +125,7 @@ describe("Product Combination Service (Integration)", () => {
     );
   });
 
-  it("should complete a purchase order", async () => {
+  it("should complete a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -175,7 +175,7 @@ describe("Product Combination Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
 
-  it("should cancel a purchase order", async () => {
+  it("should cancel a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -225,7 +225,7 @@ describe("Product Combination Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("CANCELLED");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
-  it("should void a purchase order", async () => {
+  it("should void a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -254,7 +254,7 @@ describe("Product Combination Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("VOID");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
-  it("should get a paginated list of purchase orders", async () => {
+  it("should get a paginated list of good receipts", async () => {
     await goodReceiptService.create({
       supplierId: 1,
       receiptDate: new Date(),
@@ -303,5 +303,26 @@ describe("Product Combination Service (Integration)", () => {
     expect(goodReceipts.total).toBe(2);
     expect(goodReceipts.totalPages).toBe(1);
     expect(goodReceipts.currentPage).toBe(1);
+  });
+  it("should get a list of good receipts by supplier", async () => {
+    await createSupplier(1);
+    await createGoodReceipt(0);
+    await createGoodReceipt(1);
+    await createGoodReceipt(2);
+    await createGoodReceipt(3);
+
+    const goodReceipts = await goodReceiptService.getBySupplierId(1, {
+      status: "DRAFT",
+    });
+
+    expect(goodReceipts.length).toBe(3);
+    const goodReceipts2 = await goodReceiptService.getBySupplierId(2, {
+      status: "DRAFT",
+    });
+    expect(goodReceipts2.length).toBe(1);
+    const goodReceipts3 = await goodReceiptService.getBySupplierId(2, {
+      status: "POSTED",
+    });
+    expect(goodReceipts3.length).toBe(0);
   });
 });

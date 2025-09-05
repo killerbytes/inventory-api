@@ -270,6 +270,25 @@ const goodReceipts = [
       },
     ],
   },
+  {
+    supplierId: 2,
+    receiptDate: new Date(),
+    referenceNo: "REF2222",
+    internalNotes: "Supplier #2",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
 ];
 
 module.exports = {

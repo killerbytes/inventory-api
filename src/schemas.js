@@ -1,5 +1,5 @@
 const Joi = require("joi");
-const { INVENTORY_MOVEMENT_TYPE } = require("./definitions");
+const { INVENTORY_MOVEMENT_TYPE, INVOICE_STATUS } = require("./definitions");
 
 const userBaseSchema = Joi.object({
   name: Joi.string().required(),
@@ -251,15 +251,27 @@ const invoiceLineSchema = Joi.object({
   goodReceiptId: Joi.number().required(),
 }).meta({ className: "invoiceLine" });
 
+const invoiceSchemaCreate = Joi.object({
+  lines: Joi.array().items(invoiceLineSchema).allow(null, ""),
+  invoiceDate: Joi.date().required(),
+}).options({
+  stripUnknown: true,
+});
 const invoiceSchema = Joi.object({
   invoiceNumber: Joi.string().optional(),
   invoiceDate: Joi.date().required(),
   dueDate: Joi.date().required(),
-  status: Joi.string().valid("DRAFT", "PAID", "PARTIAL", "VOID"),
+  status: Joi.string()
+    .valid(...Object.values(INVOICE_STATUS))
+    .required(),
   totalAmount: Joi.number().required(),
   notes: Joi.string().optional().allow(null, ""),
   lines: Joi.array().items(invoiceLineSchema).required(),
-}).meta({ className: "invoice" });
+})
+  .options({
+    stripUnknown: true,
+  })
+  .meta({ className: "invoice" });
 
 module.exports = {
   userBaseSchema,
@@ -287,4 +299,5 @@ module.exports = {
   stockAdjustmentSchema,
   invoiceLineSchema,
   invoiceSchema,
+  invoiceSchemaCreate,
 };

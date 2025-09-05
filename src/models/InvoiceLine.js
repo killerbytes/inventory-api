@@ -23,10 +23,6 @@ module.exports = (sequelize, DataTypes) => {
       },
     }
   );
-  InvoiceLine.beforeBulkCreate(async (invoiceLines, options) => {});
-  InvoiceLine.afterBulkCreate(async (invoiceLines, options) => {
-    console.log(33, invoiceLines);
-  });
 
   return InvoiceLine;
 };

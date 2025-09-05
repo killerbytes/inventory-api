@@ -376,13 +376,13 @@ module.exports = {
     increase = true //Add inventory
   ) {
     const user = await authService.getCurrent();
-    const { quantity, ...params } = item;
+    const { combinationId } = item;
 
     const [inventory] = await sequelize.models.Inventory.findOrCreate({
       //Find or create inventory exclude quantity
       where: { combinationId: item.combinationId },
       defaults: {
-        ...params,
+        combinationId,
         quantity: 0,
       },
       transaction,

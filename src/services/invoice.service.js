@@ -1,26 +1,13 @@
 const db = require("../models");
-const { invoiceSchema } = require("../schemas");
+const { invoiceSchema, invoiceSchemaCreate } = require("../schemas");
 const {
   INVOICE_STATUS,
   ORDER_STATUS,
   PAGINATION,
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
-const { getMappedVariantValues } = require("../utils/mapped.js");
 const ApiError = require("./ApiError.js");
-const { getTotalAmount, getAmount } = require("../utils/compute.js");
-const {
-  sequelize,
-  VariantValue,
-  Invoice,
-  InvoiceLine,
-  ProductCombination,
-  Product,
-  OrderStatusHistory,
-  GoodReceipt,
-  VariantType,
-  Category,
-} = db;
+const { sequelize, Invoice, InvoiceLine } = db;
 
 module.exports = {
   async get(id) {
@@ -48,7 +35,7 @@ module.exports = {
     }
   },
   async create(payload) {
-    const { error } = invoiceSchema.validate(payload, {
+    const { error } = invoiceSchemaCreate.validate(payload, {
       abortEarly: false,
     });
     if (error) {
@@ -69,15 +56,6 @@ module.exports = {
           transaction,
         }
       );
-      const lines = payload.lines.map((line) => ({
-        ...line,
-        invoiceId: result.id,
-      }));
-      console.log(33, lines);
-
-      await InvoiceLine.bulkCreate(lines, { transaction });
-      // const l = await InvoiceLine.findAll();
-      // console.log(l);
 
       transaction.commit();
       return result;
@@ -98,26 +76,39 @@ module.exports = {
     }
 
     const transaction = await sequelize.transaction();
-    // try {
-    //   const invoice = await Invoice.findByPk(id, { transaction });
-    //   if (!invoice) {
-    //     throw new Error("Invoice not found");
-    //   }
-    //   await Invoice.update(payload, { where: { id }, transaction });
-    //   await InvoiceLine.destroy({ where: { invoiceId: id }, transaction });
-    //   const lines = payload.invoiceLines.map((line) => ({
-    //     ...line,
-    //     invoiceId: id,
-    //   }));
+    try {
+      const invoice = await Invoice.findByPk(id, { transaction });
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
 
-    //   await InvoiceLine.bulkCreate(lines, { transaction });
-    //   transaction.commit();
-    //   return invoice;
-    // } catch (error) {
-    //   console.log(error);
-    //   transaction.rollback();
-    //   throw error;
-    // }
+      switch (true) {
+        case invoice.status === INVOICE_STATUS.DRAFT &&
+          payload.status === INVOICE_STATUS.DRAFT:
+        case invoice.status === INVOICE_STATUS.DRAFT &&
+          payload.status === INVOICE_STATUS.POSTED:
+          await updateInvoice(invoice, payload, true, transaction);
+          break;
+        case invoice.status === INVOICE_STATUS.POSTED &&
+          payload.status === INVOICE_STATUS.PARTIAL:
+          break;
+        case invoice.status === INVOICE_STATUS.PARTIAL &&
+          payload.status === INVOICE_STATUS.PAID:
+          break;
+        default:
+          throw new Error(
+            `Invalid status change from ${invoice.status} to ${payload.status}`
+          );
+      }
+
+      transaction.commit();
+
+      return;
+    } catch (error) {
+      console.log(error);
+      transaction.rollback();
+      throw error;
+    }
   },
 
   async delete(id) {
@@ -128,35 +119,13 @@ module.exports = {
         throw new Error("Invoice not found");
       }
 
-      if (invoice.status === ORDER_STATUS.PENDING) {
-        await updateOrder(
-          {
-            status: ORDER_STATUS.VOID,
-          },
-          invoice,
-          transaction,
-          false
-        );
-      } else {
+      if (invoice.status !== ORDER_STATUS.DRAFT) {
         throw new Error("Invoice is not in a valid state");
       }
-      const user = await authService.getCurrent();
-      await OrderStatusHistory.create(
-        {
-          invoiceId: invoice.id,
-          status: ORDER_STATUS.VOID,
-          changedBy: user.id,
-          changedAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          transaction,
-        }
-      );
 
       transaction.commit();
-      return invoice;
+      const deleted = await Invoice.destroy({ where: { id } });
+      return deleted > 0;
     } catch (error) {
       console.log(error);
       transaction.rollback();
@@ -175,9 +144,6 @@ module.exports = {
     } = params;
     const where = {};
 
-    // Build the where clause
-
-    // Search by name if query exists
     if (q) {
       where.name = { [Op.like]: `%${q}%` };
     }
@@ -185,7 +151,6 @@ module.exports = {
       where.status = status;
     }
 
-    // Add date filtering if dates are provided
     if (startDate || endDate) {
       where.updatedAt = {};
 
@@ -239,4 +204,31 @@ module.exports = {
       throw error;
     }
   },
+};
+
+const updateInvoice = async (
+  invoice,
+  payload,
+  updateLines = false,
+  transaction
+) => {
+  await invoice.update(
+    {
+      ...payload,
+      totalAmount: payload.lines.reduce((acc, item) => acc + item.amount, 0),
+    },
+    { transaction }
+  );
+  if (updateLines) {
+    const lines = payload.lines.map((line) => ({
+      ...line,
+      invoiceId: invoice.id,
+    }));
+
+    await InvoiceLine.destroy({
+      where: { invoiceId: invoice.id },
+      transaction,
+    });
+    await InvoiceLine.bulkCreate(lines, { transaction });
+  }
 };

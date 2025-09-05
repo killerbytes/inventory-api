@@ -10,9 +10,6 @@ const {
   createGoodReceipt,
 } = require("../utils");
 const invoiceService = require("../../services/invoice.service");
-const goodReceiptService = require("../../services/goodReceipt.service");
-const e = require("express");
-const { create } = require("../../services/product.service");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -30,23 +27,28 @@ beforeEach(async () => {
   await createCombination(0);
   await loginUser();
   await createGoodReceipt(0);
-  // await createGoodReceipt(1);
-  const res = await goodReceiptService.getPaginated({});
+  await createGoodReceipt(1);
+  await createGoodReceipt(2);
 
-  const lines = res.data.map((item) => {
-    return {
-      amount: item.totalAmount,
-      goodReceiptId: item.id,
-    };
-  });
+  const lines = [
+    {
+      amount: 100,
+      goodReceiptId: 1,
+    },
+    {
+      amount: 200,
+      goodReceiptId: 2,
+    },
+  ];
 
   await invoiceService.create({
     invoiceNumber: "TEST",
     invoiceDate: new Date(),
     dueDate: new Date(),
-    status: "DRAFT",
+    supplierId: 1,
     totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
-    notes: "Test Notes",
+    // status: "DRAFT",
+    // notes: "Test Notes",
     lines,
   });
 });
@@ -54,32 +56,90 @@ beforeEach(async () => {
 describe("Invoice Service (Integration)", () => {
   it("should create and fetch an invoice", async () => {
     const invoice = await invoiceService.get(1);
-    // console.log(invoice.lines);
-    // expect(invoice.invoiceNumber).toBe("TEST");
-    // expect(invoice.totalAmount).toBe(5980);
-    // expect(invoice.notes).toBe("Test Notes");
-    // expect(invoice.status).toBe("DRAFT");
-    // expect(invoice.lines.length).toBe(2);
-    // expect(invoice.lines[0].amount).toBe(2990);
+
+    expect(invoice.invoiceNumber).toBe("TEST");
+    expect(invoice.totalAmount).toBe(300);
+    expect(invoice.status).toBe("DRAFT");
+    expect(invoice.supplierId).toBe(1);
+    expect(invoice.dueDate).toBeInstanceOf(Date);
+    expect(invoice.lines.length).toBe(2);
+    expect(invoice.lines[0].amount).toBe(100);
+    expect(invoice.lines[0].goodReceiptId).toBe(1);
   });
-  // it("should update an invoice", async () => {
-  //   const gr3 = await createGoodReceipt(2);
+  it("should update an invoice", async () => {
+    const gr3 = { totalAmount: 123, id: 3 };
 
-  //   const res = await invoiceService.get(1);
-  //   invoice = res.dataValues;
+    const invoice = await invoiceService.get(1);
 
-  //   const updated = await invoiceService.update(1, {
-  //     ...invoice,
-  //     // lines: [...invoice.lines, gr3],
-  //   });
+    await invoiceService.update(1, {
+      ...invoice.dataValues,
+      notes: "Test Updated",
+      lines: [
+        ...invoice.lines.map((item) => ({
+          amount: item.amount,
+          goodReceiptId: item.goodReceiptId,
+        })),
+        { amount: gr3.totalAmount, goodReceiptId: gr3.id },
+      ],
+    });
 
-  //   //   // const invoice2 = await invoiceService.get(1);
+    const invoice2 = await invoiceService.get(1);
 
-  //   //   // expect(invoice2.lines.length).toBe(3);
-  // });
+    expect(invoice2.invoiceNumber).toBe("TEST");
+    expect(invoice2.totalAmount).toBe(423);
+    expect(invoice2.notes).toBe("Test Updated");
+    expect(invoice2.status).toBe("DRAFT");
+    expect(invoice2.lines.length).toBe(3);
+    expect(invoice2.lines[2].amount).toBe(gr3.totalAmount);
+    expect(invoice2.lines[2].goodReceiptId).toBe(gr3.id);
+  });
+  it("should update an invoice to POSTED", async () => {
+    const invoice = await invoiceService.get(1);
 
-  // it("should fetch all invoices", async () => {
-  //   const paginated = await invoiceService.getPaginated({});
-  //   console.log(paginated);
-  // });
+    await invoiceService.update(1, {
+      ...invoice.dataValues,
+      status: "POSTED",
+    });
+
+    const invoice2 = await invoiceService.get(1);
+
+    expect(invoice2.invoiceNumber).toBe("TEST");
+    expect(invoice2.totalAmount).toBe(300);
+    expect(invoice2.status).toBe("POSTED");
+    expect(invoice2.lines.length).toBe(2);
+  });
+
+  it("should not allow deletion of invoice after it has been posted", async () => {
+    const invoice = await invoiceService.get(1);
+    await invoiceService.update(1, {
+      ...invoice.dataValues,
+      status: "POSTED",
+    });
+
+    try {
+      await invoiceService.delete(1);
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
+    } catch (err) {
+      console.log("Prevent delete error:", {
+        name: err.name,
+        message: err.message,
+        fields: err.fields,
+        errors: err.errors?.map((e) => e.message),
+      });
+      expect(err.name).toBe("Error");
+      expect(err.message).toBe("Invoice is not in a valid state");
+    }
+  });
+
+  it("should delete an invoice", async () => {
+    const deleted = await invoiceService.delete(1);
+    expect(deleted).toBe(true);
+  });
+
+  it("should fetch all invoices", async () => {
+    const paginated = await invoiceService.getPaginated({});
+    expect(paginated.data.length).toBe(1);
+  });
 });
