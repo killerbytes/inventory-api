@@ -56,10 +56,8 @@ function getLatestBackup() {
 async function backup({ dataOnly = false } = {}) {
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const suffix = dataOnly ? "data-only" : "full";
-  const outFile = path.join(
-    BACKUP_DIR,
-    `${DB_NAME}-${suffix}-${ts}.${dataOnly ? "sql" : "dump"}.gz`
-  );
+  const ext = dataOnly ? "sql.gz" : "dump"; // 👈 don't gzip custom dumps
+  const outFile = path.join(BACKUP_DIR, `${DB_NAME}-${suffix}-${ts}.${ext}`);
 
   const dumpCmd = dataOnly
     ? `pg_dump -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME} \
@@ -68,15 +66,21 @@ async function backup({ dataOnly = false } = {}) {
        --no-owner --no-acl --clean --if-exists -Fc ${DB_NAME}`;
 
   console.log(`Creating ${suffix} backup...`);
-  const dumpProcess = exec(dumpCmd, {
-    env: { ...process.env, PGPASSWORD: DB_PASSWORD },
-  });
 
-  const gzip = zlib.createGzip();
-  const outStream = fs.createWriteStream(outFile);
-  dumpProcess.stdout.pipe(gzip).pipe(outStream);
-
-  outStream.on("finish", () => console.log(`Backup saved: ${outFile}`));
+  if (dataOnly) {
+    // plain SQL → gzip it
+    const dumpProcess = exec(dumpCmd, {
+      env: { ...process.env, PGPASSWORD: DB_PASSWORD },
+    });
+    const gzip = zlib.createGzip();
+    const outStream = fs.createWriteStream(outFile);
+    dumpProcess.stdout.pipe(gzip).pipe(outStream);
+    outStream.on("finish", () => console.log(`Backup saved: ${outFile}`));
+  } else {
+    // custom dump → write directly
+    await runCommand(`${dumpCmd} -f "${outFile}"`);
+    console.log(`Backup saved: ${outFile}`);
+  }
 }
 
 // 2️⃣ Restore
