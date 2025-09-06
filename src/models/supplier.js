@@ -6,6 +6,8 @@ class Supplier extends Model {
       foreignKey: "supplierId",
       as: "goodReceipts",
     });
+    Supplier.hasMany(models.Invoice, { foreignKey: "supplierId" });
+    Supplier.hasMany(models.Payment, { foreignKey: "supplierId" });
   }
 }
 

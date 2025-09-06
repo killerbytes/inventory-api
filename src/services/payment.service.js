@@ -47,46 +47,49 @@ module.exports = {
       );
 
       let totalApplied = 0;
+      for (const app of payload.applications) {
+        const invoice = await Invoice.findByPk(app.invoiceId, {
+          transaction,
+        });
+        if (!invoice) {
+          throw new Error("Invoice not found");
+        }
 
-      const invoice = await Invoice.findByPk(payload.invoiceId, {
-        transaction,
-      });
-      if (!invoice) {
-        throw new Error("Invoice not found");
-      }
+        const invoicePaid = await PaymentApplication.sum("amountApplied", {
+          where: { invoiceId: invoice.id },
+          transaction,
+        });
+        const alreadyPaid = invoicePaid || 0;
+        const remaining = Number(invoice.totalAmount) - alreadyPaid;
 
-      const invoicePaid = await PaymentApplication.sum("amountApplied", {
-        where: { invoiceId: invoice.id },
-        transaction,
-      });
-      const alreadyPaid = invoicePaid || 0;
-      const remaining = Number(invoice.totalAmount) - alreadyPaid;
-      console.log(payload.amountApplied, remaining);
+        if (app.amountApplied > remaining) {
+          throw new Error(
+            `Cannot apply ₱${app.amountApplied} — only ₱${remaining} remaining on invoice ${invoice.id}`
+          );
+        }
 
-      if (payload.amountApplied > remaining) {
-        throw new Error(
-          `Cannot apply ₱${payload.amountApplied} — only ₱${remaining} remaining on invoice ${invoice.id}`
-        );
-      }
-
-      await PaymentApplication.create(
-        {
-          paymentId: payment.id,
-          invoiceId: invoice.id,
-          amountApplied: payload.amountApplied,
-          amountRemaining: payload.amount,
-        },
-        { transaction }
-      );
-      totalApplied += payload.amountApplied;
-
-      if (payload.amountApplied === remaining) {
-        await invoice.update({ status: INVOICE_STATUS.PAID }, { transaction });
-      } else {
-        await invoice.update(
-          { status: INVOICE_STATUS.PARTIALLY_PAID },
+        await PaymentApplication.create(
+          {
+            paymentId: payment.id,
+            invoiceId: invoice.id,
+            amountApplied: app.amountApplied,
+            amountRemaining: remaining - app.amountApplied,
+          },
           { transaction }
         );
+        totalApplied += app.amountApplied;
+
+        if (app.amountApplied === remaining) {
+          await invoice.update(
+            { status: INVOICE_STATUS.PAID },
+            { transaction }
+          );
+        } else {
+          await invoice.update(
+            { status: INVOICE_STATUS.PARTIALLY_PAID },
+            { transaction }
+          );
+        }
       }
 
       if (totalApplied > payload.amount) {

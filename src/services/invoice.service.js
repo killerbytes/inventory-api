@@ -16,8 +16,14 @@ module.exports = {
         include: [
           {
             model: InvoiceLine,
-            as: "lines",
+            as: "invoiceLines",
             attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+              {
+                model: db.GoodReceipt,
+                as: "goodReceipt",
+              },
+            ],
           },
           {
             model: db.PaymentApplication,
@@ -44,13 +50,17 @@ module.exports = {
     const user = await authService.getCurrent();
     const transaction = await sequelize.transaction();
     try {
+      const totalAmount = payload.invoiceLines.reduce(
+        (acc, item) => acc + item.amount,
+        0
+      );
       const result = await Invoice.create(
-        { ...payload, changedBy: user.id },
+        { ...payload, totalAmount, changedBy: user.id },
         {
           include: [
             {
               model: InvoiceLine,
-              as: "lines",
+              as: "invoiceLines",
             },
           ],
           transaction,
@@ -180,24 +190,24 @@ module.exports = {
         // order,
         // where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
-        distinct: true,
-        include: [
-          {
-            model: db.InvoiceLine,
-            as: "lines",
-          },
-          {
-            model: db.Supplier,
-            as: "supplier",
-          },
+        // distinct: true,
+        xinclude: [
+          // {
+          //   model: db.InvoiceLine,
+          //   as: "invoiceLines",
+          // },
+          // {
+          //   model: db.Supplier,
+          //   as: "supplier",
+          // },
         ],
       });
 
       return {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
+        // total: count,
+        // totalPages: Math.ceil(count / limit),
+        // currentPage: page,np
       };
     } catch (error) {
       console.log(error);
@@ -215,12 +225,15 @@ const updateInvoice = async (
   await invoice.update(
     {
       ...payload,
-      totalAmount: payload.lines.reduce((acc, item) => acc + item.amount, 0),
+      totalAmount: payload.invoiceLines.reduce(
+        (acc, item) => acc + item.amount,
+        0
+      ),
     },
     { transaction }
   );
   if (updateLines) {
-    const lines = payload.lines.map((line) => ({
+    const lines = payload.invoiceLines.map((line) => ({
       ...line,
       invoiceId: invoice.id,
     }));

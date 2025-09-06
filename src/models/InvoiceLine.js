@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
       InvoiceLine.belongsTo(models.Invoice, { foreignKey: "invoiceId" });
       InvoiceLine.belongsTo(models.GoodReceipt, {
         foreignKey: "goodReceiptId",
+        as: "goodReceipt",
       });
     }
   }

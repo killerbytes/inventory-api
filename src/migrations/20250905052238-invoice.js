@@ -10,6 +10,16 @@ module.exports = {
         autoIncrement: true,
         primaryKey: true,
       },
+      supplierId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Suppliers", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT", // or SET NULL if you allow supplier deletion
+      },
       invoiceNumber: {
         type: Sequelize.STRING,
         allowNull: false,
@@ -56,6 +66,26 @@ module.exports = {
         autoIncrement: true,
         primaryKey: true,
       },
+      invoiceId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Invoices", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      },
+      goodReceiptId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "GoodReceipts", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT", // or SET NULL if you allow supplier deletion
+      },
       amount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
@@ -75,6 +105,16 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
+      },
+      supplierId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Suppliers", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT", // or SET NULL if you allow supplier deletion
       },
       paymentDate: {
         type: Sequelize.DATE,
@@ -114,7 +154,26 @@ module.exports = {
         autoIncrement: true,
         primaryKey: true,
       },
-
+      paymentId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Payments", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT", // or SET NULL if you allow supplier deletion
+      },
+      invoiceId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Invoices", // must exist
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT", // or SET NULL if you allow supplier deletion
+      },
       amountApplied: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
@@ -135,9 +194,9 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Invoices");
-    await queryInterface.dropTable("InvoiceLines");
-    await queryInterface.dropTable("Payments");
     await queryInterface.dropTable("PaymentApplications");
+    await queryInterface.dropTable("Payments");
+    await queryInterface.dropTable("InvoiceLines");
+    await queryInterface.dropTable("Invoices");
   },
 };

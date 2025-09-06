@@ -49,7 +49,7 @@ beforeEach(async () => {
     totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
     // status: "DRAFT",
     // notes: "Test Notes",
-    lines,
+    invoiceLines: lines,
   });
 });
 
@@ -62,9 +62,9 @@ describe("Invoice Service (Integration)", () => {
     expect(invoice.status).toBe("DRAFT");
     expect(invoice.supplierId).toBe(1);
     expect(invoice.dueDate).toBeInstanceOf(Date);
-    expect(invoice.lines.length).toBe(2);
-    expect(invoice.lines[0].amount).toBe(100);
-    expect(invoice.lines[0].goodReceiptId).toBe(1);
+    expect(invoice.invoiceLines.length).toBe(2);
+    expect(invoice.invoiceLines[0].amount).toBe(100);
+    expect(invoice.invoiceLines[0].goodReceiptId).toBe(1);
   });
   it("should update an invoice", async () => {
     const gr3 = { totalAmount: 123, id: 3 };
@@ -74,8 +74,8 @@ describe("Invoice Service (Integration)", () => {
     await invoiceService.update(1, {
       ...invoice.dataValues,
       notes: "Test Updated",
-      lines: [
-        ...invoice.lines.map((item) => ({
+      invoiceLines: [
+        ...invoice.invoiceLines.map((item) => ({
           amount: item.amount,
           goodReceiptId: item.goodReceiptId,
         })),
@@ -89,9 +89,9 @@ describe("Invoice Service (Integration)", () => {
     expect(invoice2.totalAmount).toBe(423);
     expect(invoice2.notes).toBe("Test Updated");
     expect(invoice2.status).toBe("DRAFT");
-    expect(invoice2.lines.length).toBe(3);
-    expect(invoice2.lines[2].amount).toBe(gr3.totalAmount);
-    expect(invoice2.lines[2].goodReceiptId).toBe(gr3.id);
+    expect(invoice2.invoiceLines.length).toBe(3);
+    expect(invoice2.invoiceLines[2].amount).toBe(gr3.totalAmount);
+    expect(invoice2.invoiceLines[2].goodReceiptId).toBe(gr3.id);
   });
   it("should update an invoice to POSTED", async () => {
     const invoice = await invoiceService.get(1);
@@ -106,7 +106,7 @@ describe("Invoice Service (Integration)", () => {
     expect(invoice2.invoiceNumber).toBe("TEST");
     expect(invoice2.totalAmount).toBe(300);
     expect(invoice2.status).toBe("POSTED");
-    expect(invoice2.lines.length).toBe(2);
+    expect(invoice2.invoiceLines.length).toBe(2);
   });
 
   it("should not allow deletion of invoice after it has been posted", async () => {

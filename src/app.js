@@ -6,6 +6,8 @@ const productsRouter = require("./routes/products.router");
 const suppliersRouter = require("./routes/supplier.router");
 const customersRouter = require("./routes/customer.router");
 const inventoryRouter = require("./routes/inventory.router");
+const invoiceRouter = require("./routes/invoice.router");
+const paymentRouter = require("./routes/payment.router");
 const goodReceiptRouter = require("./routes/goodReceipt.router");
 const salesRouter = require("./routes/salesOrder.router");
 const variantTypesRouter = require("./routes/variantTypes.router");
@@ -40,6 +42,8 @@ app.use("/api/goodReceipt", verifyToken, goodReceiptRouter);
 app.use("/api/sales", verifyToken, salesRouter);
 app.use("/api/variantTypes", verifyToken, variantTypesRouter);
 app.use("/api/productCombinations", verifyToken, productCombinationRouter);
+app.use("/api/invoices", verifyToken, invoiceRouter);
+app.use("/api/payments", verifyToken, paymentRouter);
 
 app.get("/", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");

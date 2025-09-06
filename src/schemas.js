@@ -253,7 +253,7 @@ const invoiceLineSchema = Joi.object({
 }).meta({ className: "invoiceLine" });
 
 const invoiceSchemaCreate = Joi.object({
-  lines: Joi.array().items(invoiceLineSchema).allow(null, ""),
+  invoiceLines: Joi.array().items(invoiceLineSchema).allow(null, ""),
   invoiceDate: Joi.date().required(),
 }).options({
   stripUnknown: true,
@@ -267,22 +267,26 @@ const invoiceSchema = Joi.object({
     .required(),
   totalAmount: Joi.number().required(),
   notes: Joi.string().optional().allow(null, ""),
-  lines: Joi.array().items(invoiceLineSchema).required(),
+  invoiceLines: Joi.array().items(invoiceLineSchema).required(),
 })
   .options({
     stripUnknown: true,
   })
   .meta({ className: "invoice" });
 
+const paymentApplicationSchema = Joi.object({
+  id: Joi.number().optional(),
+  amountApplied: Joi.number().required(),
+  invoiceId: Joi.number().required(),
+});
 const paymentSchema = Joi.object({
   supplierId: Joi.number().required(),
   paymentDate: Joi.date().required(),
   referenceNo: Joi.string().optional().allow(null, ""),
   amount: Joi.number().required(),
   notes: Joi.string().optional().allow(null, ""),
-  changedBy: Joi.number().required(),
-  amountApplied: Joi.number().required(),
-  invoiceId: Joi.number().required(),
+  changedBy: Joi.number().optional().allow(null, ""),
+  applications: Joi.array().items(paymentApplicationSchema).required(),
 });
 
 module.exports = {
