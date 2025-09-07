@@ -4,6 +4,7 @@ class ApiError extends Error {
   errors;
   details;
   stack;
+  reqId;
 
   /**
    * Creates a new API error
@@ -14,7 +15,7 @@ class ApiError extends Error {
    * @param {any} details - Additional error details
    * @param {string} stack - Error stack trace
    */
-  constructor(code, statusCode, message, errors, details, stack) {
+  constructor(code, statusCode, message, errors, details, stack, reqId) {
     super();
     this.code = code;
     this.statusCode = statusCode;
@@ -22,6 +23,7 @@ class ApiError extends Error {
     this.errors = errors;
     this.details = details;
     this.stack = stack;
+    this.reqId = reqId;
 
     if (stack) {
       this.stack = stack;
@@ -40,6 +42,7 @@ class ApiError extends Error {
       details: this.details,
       // ...(process.env.NODE_ENV === "development" && { stack: this.stack }),
       stack: this.stack,
+      reqId: this.reqId,
     };
   }
 
@@ -49,7 +52,8 @@ class ApiError extends Error {
     statusCode = 500,
     errors = [],
     details = null,
-    stack
+    stack,
+    reqId
   ) {
     return new ApiError(
       "INTERNAL_ERROR",
@@ -57,7 +61,8 @@ class ApiError extends Error {
       message,
       errors,
       details,
-      stack
+      stack,
+      reqId
     );
   }
 
