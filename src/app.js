@@ -1,4 +1,10 @@
 const express = require("express");
+const bodyParser = require("body-parser");
+const pinoHttp = require("pino-http");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const { randomUUID } = require("crypto");
+
 const usersRouter = require("./routes/users.router");
 const authRouter = require("./routes/auth.router");
 const categoriesRouter = require("./routes/categories.router");
@@ -10,14 +16,13 @@ const goodReceiptRouter = require("./routes/goodReceipt.router");
 const salesRouter = require("./routes/salesOrder.router");
 const variantTypesRouter = require("./routes/variantTypes.router");
 const productCombinationRouter = require("./routes/productCombination.router");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const verifyToken = require("./middlewares/verifyToken");
-const dotenv = require("dotenv");
-const errorHandler = require("./middlewares/errorHandler");
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
+
+const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
+const logger = require("./middlewares/logger");
+
 dotenv.config({ path: envPath });
 
 const app = express();
@@ -28,6 +33,14 @@ app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Middleware to parse JSON bodies
 
 app.use(passport.initialize());
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: (req, res) => {
+      return req.headers["x-request-id"] || randomUUID();
+    },
+  })
+);
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", verifyToken, usersRouter);
@@ -45,7 +58,5 @@ app.get("/", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
   res.send(BUILD_TIME);
 });
-
-app.use(errorHandler);
 
 module.exports = app;
