@@ -14,6 +14,7 @@ const paymentService = require("../../services/payment.service");
 const invoiceService = require("../../services/invoice.service");
 const { application } = require("express");
 const app = require("../../app");
+const goodReceiptService = require("../../services/goodReceipt.service");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -33,6 +34,24 @@ beforeEach(async () => {
   await createGoodReceipt(0);
   await createGoodReceipt(1);
   await createGoodReceipt(2);
+  const gr = await goodReceiptService.get(1);
+  await goodReceiptService.update(1, {
+    status: "RECEIVED",
+    goodReceiptLines: gr.goodReceiptLines.map((line) => ({
+      combinationId: line.combinationId,
+      quantity: line.quantity,
+      purchasePrice: line.purchasePrice,
+    })),
+  });
+  const gr2 = await goodReceiptService.get(1);
+  await goodReceiptService.update(2, {
+    status: "RECEIVED",
+    goodReceiptLines: gr2.goodReceiptLines.map((line) => ({
+      combinationId: line.combinationId,
+      quantity: line.quantity,
+      purchasePrice: line.purchasePrice,
+    })),
+  });
   await createInvoice();
 });
 
@@ -63,7 +82,6 @@ describe("Payment Service (Integration)", () => {
     expect(payment.changedBy).toBe(1);
     const invoice = await invoiceService.get(1);
     expect(invoice.status).toBe("PARTIALLY_PAID");
-    console.log(invoice.applications);
   });
   it("should create and fully paid a payment", async () => {
     await paymentService.create({

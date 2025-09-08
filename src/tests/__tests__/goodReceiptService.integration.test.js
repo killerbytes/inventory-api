@@ -125,55 +125,55 @@ describe("Good Receipt Service (Integration)", () => {
     );
   });
 
-  it("should complete a good receipt", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+  // it("should complete a good receipt", async () => {
+  //   await goodReceiptService.create({
+  //     supplierId: 1,
+  //     receiptDate: new Date(),
+  //     referenceNo: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     goodReceiptLines: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         discount: 10,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //   });
 
-    await goodReceiptService.update(1, {
-      status: "RECEIVED",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+  //   await goodReceiptService.update(1, {
+  //     status: "RECEIVED",
+  //     goodReceiptLines: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 11,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         discount: 10,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //   });
 
-    await goodReceiptService.update(1, {
-      status: "COMPLETED",
-    });
-    const goodReceipt = await goodReceiptService.get(1);
+  //   await goodReceiptService.update(1, {
+  //     status: "COMPLETED",
+  //   });
+  //   const goodReceipt = await goodReceiptService.get(1);
 
-    expect(goodReceipt.status).toBe("COMPLETED");
-    expect(goodReceipt.goodReceiptStatusHistory.length).toBe(3);
+  //   expect(goodReceipt.status).toBe("COMPLETED");
+  //   expect(goodReceipt.goodReceiptStatusHistory.length).toBe(3);
 
-    expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("COMPLETED");
-    expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
-  });
+  //   expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("COMPLETED");
+  //   expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
+  // });
 
   it("should cancel a good receipt", async () => {
     await goodReceiptService.create({

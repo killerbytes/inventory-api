@@ -176,4 +176,87 @@ module.exports = {
       throw error;
     }
   },
+  async getPaginated(params) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION,
+      q,
+      startDate,
+      endDate,
+      status,
+      sort = "id",
+    } = params;
+    const where = {};
+
+    if (q) {
+      where.name = { [Op.like]: `%${q}%` };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    if (startDate || endDate) {
+      where.updatedAt = {};
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.updatedAt[Op.gte] = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt[Op.lte] = end;
+      }
+    }
+
+    const offset = (page - 1) * limit;
+
+    try {
+      const order = [];
+
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      }
+      const { count, rows } = await PaymentApplication.findAndCountAll({
+        // limit,
+        // offset,
+        order,
+        // where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
+        // nest: true,
+        distinct: true,
+        include: [
+          {
+            model: db.Payment,
+            as: "payment",
+            include: [
+              {
+                model: db.Supplier,
+                as: "supplier",
+              },
+              {
+                model: db.User,
+                as: "user",
+              },
+            ],
+          },
+          {
+            model: db.Invoice,
+            as: "invoice",
+            include: [],
+          },
+        ],
+      });
+
+      return {
+        data: rows,
+        // total: count,
+        // totalPages: Math.ceil(count / limit),
+        // currentPage: page,np
+      };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
 };

@@ -166,15 +166,11 @@ module.exports = {
 
       const groupedByCategory = {};
       inventories.forEach((inventory) => {
-        console.log(inventory.ProductCombination);
-
         // inventory.ProductCombination.forEach((combination) => {
         //   console.log(combination.product);
         // });
-
         //   const category = inventory.product?.category;
         //   if (!category) return;
-
         //   const categoryId = category.id;
         //   if (!groupedByCategory[categoryId]) {
         //     groupedByCategory[categoryId] = {
@@ -183,7 +179,6 @@ module.exports = {
         //       inventories: [],
         //     };
         //   }
-
         //   groupedByCategory[categoryId].inventories.push(inventory);
       });
 

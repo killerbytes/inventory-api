@@ -7,7 +7,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "paymentId",
         as: "payment",
       });
-      PaymentApplication.belongsTo(models.Invoice, { foreignKey: "invoiceId" });
+      PaymentApplication.belongsTo(models.Invoice, {
+        foreignKey: "invoiceId",
+        as: "invoice",
+      });
     }
   }
 

@@ -54,6 +54,12 @@ function createGoodReceipt(index) {
     ...goodReceipts[index],
   });
 }
+function updateGoodReceiptStatus(id) {
+  return goodReceiptService.update(id, {
+    status: "RECEIVED",
+  });
+}
+
 async function createInvoice() {
   const lines = [
     {
@@ -72,7 +78,7 @@ async function createInvoice() {
     dueDate: new Date(),
     supplierId: 1,
     totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
-    lines,
+    invoiceLines: lines,
   });
 }
 
@@ -327,6 +333,7 @@ module.exports = {
   createInvoice,
   loginUser,
   getUser,
+  updateGoodReceiptStatus,
   combinations,
   suppliers,
   users,

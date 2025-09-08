@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const db = require("../models");
 const { invoiceSchema, invoiceSchemaCreate } = require("../schemas");
 const {
@@ -66,7 +67,27 @@ module.exports = {
         (acc, item) => acc + item.amount,
         0
       );
-      const result = await Invoice.create(
+
+      for (const line of payload.invoiceLines) {
+        const gr = await db.GoodReceipt.findByPk(line.goodReceiptId);
+        if (!gr) {
+          throw new Error(
+            `Good Receipt with ID ${line.goodReceiptId} not found`
+          );
+        }
+        if (gr.status !== ORDER_STATUS.RECEIVED) {
+          throw new Error(
+            `Good Receipt with ID ${line.goodReceiptId} is not in RECEIVED status`
+          );
+        }
+        if (line.amount > gr.totalAmount) {
+          throw new Error(
+            `Invoice line amount for Good Receipt ID ${line.goodReceiptId} exceeds the Good Receipt total amount`
+          );
+        }
+      }
+
+      const invoice = await Invoice.create(
         { ...payload, totalAmount, changedBy: user.id },
         {
           include: [
@@ -78,9 +99,20 @@ module.exports = {
           transaction,
         }
       );
+      if (payload.status === INVOICE_STATUS.POSTED) {
+        const lines = await InvoiceLine.findAll({
+          where: { invoiceId: invoice.id },
+          transaction,
+        });
+        await updateGoodReceiptStatus(
+          lines,
+          ORDER_STATUS.COMPLETED,
+          transaction
+        );
+      }
 
       transaction.commit();
-      return result;
+      return invoice;
     } catch (error) {
       console.log(1, error);
       transaction.rollback();
@@ -110,6 +142,17 @@ module.exports = {
         case invoice.status === INVOICE_STATUS.DRAFT &&
           payload.status === INVOICE_STATUS.POSTED:
           await updateInvoice(invoice, payload, true, transaction);
+          const lines = await InvoiceLine.findAll({
+            where: { invoiceId: invoice.id },
+            transaction,
+          });
+
+          await updateGoodReceiptStatus(
+            lines,
+            ORDER_STATUS.COMPLETED,
+            transaction
+          );
+
           break;
         case invoice.status === INVOICE_STATUS.POSTED &&
           payload.status === INVOICE_STATUS.PARTIALLY_PAID:
@@ -158,17 +201,32 @@ module.exports = {
     const {
       limit = PAGINATION.LIMIT,
       page = PAGINATION,
-      q,
+      q = null,
       startDate,
       endDate,
       status,
       sort = "id",
     } = params;
-    const where = {};
+    // const where = {};
 
-    if (q) {
-      where.name = { [Op.like]: `%${q}%` };
-    }
+    // if (q) {
+    //   where.invoiceNumber = { [Op.like]: `%${q}%` };
+    // }
+
+    const where = q
+      ? {
+          [Op.or]: [
+            { invoiceNumber: { [Op.like]: `%${q}%` } },
+            { "$supplier.name$": { [Op.iLike]: `%${q}%` } }, // case-insensitive on Combination
+
+            // { email: { [Op.like]: `%${q}%` } },
+            // { name: { [Op.like]: `%${q}%` } },
+            // { phone: { [Op.like]: `%${q}%` } },
+            // { notes: { [Op.like]: `%${q}%` } },
+          ],
+        }
+      : null;
+
     if (status) {
       where.status = status;
     }
@@ -200,6 +258,7 @@ module.exports = {
         // limit,
         // offset,
         order,
+        where,
         // where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         // nest: true,
         distinct: true,
@@ -234,7 +293,7 @@ const updateInvoice = async (
   updateLines = false,
   transaction
 ) => {
-  const res = await invoice.update(
+  await invoice.update(
     {
       ...payload,
       totalAmount: payload.invoiceLines.reduce(
@@ -244,18 +303,7 @@ const updateInvoice = async (
     },
     { transaction }
   );
-  if (payload.status === INVOICE_STATUS.POSTED) {
-    const lines = await InvoiceLine.findAll({
-      where: { invoiceId: invoice.id },
-      transaction,
-    });
-    for (const line of lines) {
-      await GoodReceipt.update(
-        { status: ORDER_STATUS.COMPLETED },
-        { where: { id: line.goodReceiptId }, transaction }
-      );
-    }
-  }
+
   if (updateLines) {
     const lines = payload.invoiceLines.map((line) => ({
       ...line,
@@ -267,5 +315,14 @@ const updateInvoice = async (
       transaction,
     });
     await InvoiceLine.bulkCreate(lines, { transaction });
+  }
+};
+
+const updateGoodReceiptStatus = async (lines, status, transaction) => {
+  for (const line of lines) {
+    await GoodReceipt.update(
+      { status },
+      { where: { id: line.goodReceiptId }, transaction }
+    );
   }
 };

@@ -8,8 +8,12 @@ const {
   createCombination,
   loginUser,
   createGoodReceipt,
+  createInvoice,
+  updateGoodReceiptStatus,
 } = require("../utils");
 const invoiceService = require("../../services/invoice.service");
+const goodReceiptService = require("../../services/goodReceipt.service");
+const e = require("express");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -30,31 +34,51 @@ beforeEach(async () => {
   await createGoodReceipt(1);
   await createGoodReceipt(2);
 
-  const lines = [
-    {
-      amount: 100,
-      goodReceiptId: 1,
-    },
-    {
-      amount: 200,
-      goodReceiptId: 2,
-    },
-  ];
-
-  await invoiceService.create({
-    invoiceNumber: "TEST",
-    invoiceDate: new Date(),
-    dueDate: new Date(),
-    supplierId: 1,
-    totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
-    // status: "DRAFT",
-    // notes: "Test Notes",
-    invoiceLines: lines,
+  const gr = await goodReceiptService.get(1);
+  await goodReceiptService.update(1, {
+    status: "RECEIVED",
+    goodReceiptLines: gr.goodReceiptLines.map((line) => ({
+      combinationId: line.combinationId,
+      quantity: line.quantity,
+      purchasePrice: line.purchasePrice,
+    })),
   });
+
+  const gr2 = await goodReceiptService.get(1);
+  await goodReceiptService.update(2, {
+    status: "RECEIVED",
+    goodReceiptLines: gr2.goodReceiptLines.map((line) => ({
+      combinationId: line.combinationId,
+      quantity: line.quantity,
+      purchasePrice: line.purchasePrice,
+    })),
+  });
+  // const lines = [
+  //   {
+  //     amount: 100,
+  //     goodReceiptId: 1,
+  //   },
+  //   {
+  //     amount: 200,
+  //     goodReceiptId: 2,
+  //   },
+  // ];
+
+  // await invoiceService.create({
+  //   invoiceNumber: "TEST",
+  //   invoiceDate: new Date(),
+  //   dueDate: new Date(),
+  //   supplierId: 1,
+  //   totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
+  //   // status: "DRAFT",
+  //   // notes: "Test Notes",
+  //   invoiceLines: lines,
+  // });
 });
 
 describe("Invoice Service (Integration)", () => {
   it("should create and fetch an invoice", async () => {
+    await createInvoice(0);
     const invoice = await invoiceService.get(1);
 
     expect(invoice.invoiceNumber).toBe("TEST");
@@ -67,6 +91,7 @@ describe("Invoice Service (Integration)", () => {
     expect(invoice.invoiceLines[0].goodReceiptId).toBe(1);
   });
   it("should update an invoice", async () => {
+    await createInvoice(0);
     const gr3 = { totalAmount: 123, id: 3 };
 
     const invoice = await invoiceService.get(1);
@@ -93,16 +118,48 @@ describe("Invoice Service (Integration)", () => {
     expect(invoice2.invoiceLines[2].amount).toBe(gr3.totalAmount);
     expect(invoice2.invoiceLines[2].goodReceiptId).toBe(gr3.id);
   });
+
+  it("should create an invoices as POSTED", async () => {
+    const lines = [
+      {
+        amount: 100,
+        goodReceiptId: 1,
+      },
+      {
+        amount: 200,
+        goodReceiptId: 2,
+      },
+    ];
+
+    await invoiceService.create({
+      invoiceNumber: "TEST",
+      invoiceDate: new Date(),
+      dueDate: new Date(),
+      status: "POSTED",
+      supplierId: 1,
+      totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
+      invoiceLines: lines,
+    });
+    const invoice = await invoiceService.get(1);
+    expect(invoice.status).toBe("POSTED");
+  });
   it("should update an invoice to POSTED", async () => {
+    await createInvoice(0);
     const invoice = await invoiceService.get(1);
 
     await invoiceService.update(1, {
       ...invoice.dataValues,
+      invoiceLines: invoice.invoiceLines.map((item) => ({
+        amount: item.amount,
+        goodReceiptId: item.goodReceiptId,
+      })),
       status: "POSTED",
     });
 
     const invoice2 = await invoiceService.get(1);
 
+    const gr = await goodReceiptService.get(1);
+    expect(gr.status).toBe("COMPLETED");
     expect(invoice2.invoiceNumber).toBe("TEST");
     expect(invoice2.totalAmount).toBe(300);
     expect(invoice2.status).toBe("POSTED");
@@ -110,6 +167,7 @@ describe("Invoice Service (Integration)", () => {
   });
 
   it("should not allow deletion of invoice after it has been posted", async () => {
+    await createInvoice(0);
     const invoice = await invoiceService.get(1);
     await invoiceService.update(1, {
       ...invoice.dataValues,
@@ -134,11 +192,13 @@ describe("Invoice Service (Integration)", () => {
   });
 
   it("should delete an invoice", async () => {
+    await createInvoice(0);
     const deleted = await invoiceService.delete(1);
     expect(deleted).toBe(true);
   });
 
   it("should fetch all invoices", async () => {
+    await createInvoice(0);
     const paginated = await invoiceService.getPaginated({});
     expect(paginated.data.length).toBe(1);
   });

@@ -192,10 +192,10 @@ module.exports = {
         payload.status === ORDER_STATUS.RECEIVED:
         await processReceivedOrder(payload, goodReceipt);
         break;
-      case goodReceipt.status === ORDER_STATUS.RECEIVED &&
-        payload.status === ORDER_STATUS.COMPLETED:
-        await processCompletedOrder(payload, goodReceipt);
-        break;
+      // case goodReceipt.status === ORDER_STATUS.RECEIVED &&
+      //   payload.status === ORDER_STATUS.COMPLETED:
+      //   await processCompletedOrder(payload, goodReceipt);
+      //   break;
       case goodReceipt.status === ORDER_STATUS.DRAFT &&
         payload.status === ORDER_STATUS.DRAFT:
         await processUpdateOrder(payload, goodReceipt);
@@ -380,7 +380,6 @@ module.exports = {
       } else {
         order.push(["id", "ASC"]); // Default sort
       }
-      console.log(where);
 
       const result = await GoodReceipt.findAll({
         order,
