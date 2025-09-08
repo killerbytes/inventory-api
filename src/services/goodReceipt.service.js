@@ -192,10 +192,10 @@ module.exports = {
         payload.status === ORDER_STATUS.RECEIVED:
         await processReceivedOrder(payload, goodReceipt);
         break;
-      case goodReceipt.status === ORDER_STATUS.RECEIVED &&
-        payload.status === ORDER_STATUS.COMPLETED:
-        await processCompletedOrder(payload, goodReceipt);
-        break;
+      // case goodReceipt.status === ORDER_STATUS.RECEIVED &&
+      //   payload.status === ORDER_STATUS.COMPLETED:
+      //   await processCompletedOrder(payload, goodReceipt);
+      //   break;
       case goodReceipt.status === ORDER_STATUS.DRAFT &&
         payload.status === ORDER_STATUS.DRAFT:
         await processUpdateOrder(payload, goodReceipt);
@@ -253,7 +253,7 @@ module.exports = {
   async getPaginated(params) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q,
       startDate,
       endDate,
@@ -342,6 +342,62 @@ module.exports = {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
+  async getBySupplierId(id, params) {
+    const { startDate, endDate, status, sort } = params;
+    const where = {
+      supplierId: id,
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.createdAt[Op.gte] = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt[Op.lte] = end;
+      }
+    }
+
+    const order = [];
+
+    try {
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      } else {
+        order.push(["id", "ASC"]); // Default sort
+      }
+
+      const result = await GoodReceipt.findAll({
+        order,
+        where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
+        nest: true,
+        include: [
+          {
+            model: db.GoodReceiptLine,
+            as: "goodReceiptLines",
+          },
+          {
+            model: db.Supplier,
+            as: "supplier",
+          },
+        ],
+      });
+
+      return result;
     } catch (error) {
       console.log(error);
       throw error;

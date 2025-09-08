@@ -1,5 +1,6 @@
 const Joi = require("joi");
-const { INVENTORY_MOVEMENT_TYPE } = require("./definitions");
+const { INVENTORY_MOVEMENT_TYPE, INVOICE_STATUS } = require("./definitions");
+const { application } = require("express");
 
 const userBaseSchema = Joi.object({
   name: Joi.string().required(),
@@ -246,6 +247,48 @@ const stockAdjustmentSchema = Joi.object({
   createdBy: Joi.number().required(),
 }).meta({ className: "stockAdjustment" });
 
+const invoiceLineSchema = Joi.object({
+  amount: Joi.number().required(),
+  goodReceiptId: Joi.number().required(),
+}).meta({ className: "invoiceLine" });
+
+const invoiceSchemaCreate = Joi.object({
+  invoiceLines: Joi.array().items(invoiceLineSchema).allow(null, ""),
+  invoiceDate: Joi.date().required(),
+}).options({
+  stripUnknown: true,
+});
+const invoiceSchema = Joi.object({
+  invoiceNumber: Joi.string().optional(),
+  invoiceDate: Joi.date().required(),
+  dueDate: Joi.date().required(),
+  status: Joi.string()
+    .valid(...Object.values(INVOICE_STATUS))
+    .required(),
+  totalAmount: Joi.number().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  invoiceLines: Joi.array().items(invoiceLineSchema).required(),
+})
+  .options({
+    stripUnknown: true,
+  })
+  .meta({ className: "invoice" });
+
+const paymentApplicationSchema = Joi.object({
+  id: Joi.number().optional(),
+  amountApplied: Joi.number().required(),
+  invoiceId: Joi.number().required(),
+});
+const paymentSchema = Joi.object({
+  supplierId: Joi.number().required(),
+  paymentDate: Joi.date().required(),
+  referenceNo: Joi.string().optional().allow(null, ""),
+  amount: Joi.number().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  changedBy: Joi.number().optional().allow(null, ""),
+  applications: Joi.array().items(paymentApplicationSchema).required(),
+});
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -270,4 +313,8 @@ module.exports = {
   inventoryPriceAdjustmentSchema,
   breakPackSchema,
   stockAdjustmentSchema,
+  invoiceLineSchema,
+  invoiceSchema,
+  invoiceSchemaCreate,
+  paymentSchema,
 };

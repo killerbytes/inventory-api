@@ -60,6 +60,16 @@ const goodReceiptController = {
     }
   },
 
+  async getBySupplierId(req, res, next) {
+    const { id } = req.params;
+    try {
+      const result = await goodReceiptService.getBySupplierId(id, req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async cancelOrder(req, res, next) {
     const { id } = req.params;
 

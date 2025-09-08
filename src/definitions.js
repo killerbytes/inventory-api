@@ -63,6 +63,12 @@ const STOCK_ADJUSTMENT_TYPE = {
   OTHER: "OTHER",
 };
 
+const INVOICE_STATUS = {
+  DRAFT: "DRAFT",
+  POSTED: "POSTED",
+  PARTIALLY_PAID: "PARTIALLY_PAID",
+  PAID: "PAID",
+};
 module.exports = {
   ORDER_STATUS,
   ORDER_TYPE,
@@ -72,4 +78,5 @@ module.exports = {
   BASE_UNIT,
   UNIT,
   STOCK_ADJUSTMENT_TYPE,
+  INVOICE_STATUS,
 };

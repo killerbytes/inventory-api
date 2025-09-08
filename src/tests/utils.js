@@ -1,5 +1,6 @@
 const request = require("supertest");
 const categoryService = require("../services/category.service");
+const invoiceService = require("../services/invoice.service");
 const productService = require("../services/product.service");
 const productCombinationService = require("../services/productCombination.service");
 const supplierService = require("../services/supplier.service");
@@ -7,6 +8,7 @@ const userService = require("../services/user.service");
 const variantTypeService = require("../services/variantType.service");
 const app = require("../app");
 const customerService = require("../services/customer.service");
+const goodReceiptService = require("../services/goodReceipt.service");
 
 function getConstraintFields(err) {
   if (!err || !err.fields) return [];
@@ -45,6 +47,38 @@ function createCombination(index) {
 function createStockAdjustment(index) {
   return productCombinationService.stockAdjustment({
     ...stockAdjustments[index],
+  });
+}
+function createGoodReceipt(index) {
+  return goodReceiptService.create({
+    ...goodReceipts[index],
+  });
+}
+function updateGoodReceiptStatus(id) {
+  return goodReceiptService.update(id, {
+    status: "RECEIVED",
+  });
+}
+
+async function createInvoice() {
+  const lines = [
+    {
+      amount: 100,
+      goodReceiptId: 1,
+    },
+    {
+      amount: 200,
+      goodReceiptId: 2,
+    },
+  ];
+
+  await invoiceService.create({
+    invoiceNumber: "TEST",
+    invoiceDate: new Date(),
+    dueDate: new Date(),
+    supplierId: 1,
+    totalAmount: lines.reduce((acc, item) => acc + item.amount, 0),
+    invoiceLines: lines,
   });
 }
 
@@ -206,6 +240,85 @@ const variantTypes = [
   },
 ];
 
+const goodReceipts = [
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF1",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF2",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+  {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "REF3",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+  {
+    supplierId: 2,
+    receiptDate: new Date(),
+    referenceNo: "REF2222",
+    internalNotes: "Supplier #2",
+    goodReceiptLines: [
+      {
+        combinationId: 1,
+        quantity: 10,
+        purchasePrice: 100,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+        discount: 10,
+        purchasePrice: 100,
+      },
+    ],
+  },
+];
+
 module.exports = {
   getConstraintFields,
   createUser,
@@ -216,8 +329,11 @@ module.exports = {
   createCombination,
   createCustomer,
   createStockAdjustment,
+  createGoodReceipt,
+  createInvoice,
   loginUser,
   getUser,
+  updateGoodReceiptStatus,
   combinations,
   suppliers,
   users,
@@ -225,4 +341,5 @@ module.exports = {
   products,
   customers,
   stockAdjustments,
+  goodReceipts,
 };
