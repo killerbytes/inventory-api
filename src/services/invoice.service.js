@@ -7,7 +7,7 @@ const {
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const ApiError = require("./ApiError.js");
-const { sequelize, Invoice, InvoiceLine } = db;
+const { sequelize, Invoice, InvoiceLine, GoodReceipt } = db;
 
 module.exports = {
   async get(id) {
@@ -28,6 +28,18 @@ module.exports = {
           {
             model: db.PaymentApplication,
             as: "applications",
+            include: [
+              {
+                model: db.Payment,
+                as: "payment",
+                include: [
+                  {
+                    model: db.User,
+                    as: "user",
+                  },
+                ],
+              },
+            ],
           },
         ],
         nest: true,
@@ -150,7 +162,7 @@ module.exports = {
       startDate,
       endDate,
       status,
-      sort,
+      sort = "id",
     } = params;
     const where = {};
 
@@ -181,25 +193,25 @@ module.exports = {
     try {
       const order = [];
 
-      // if (sort) {
-      //   order.push([sort , order || "ASC"]);
-      // }
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      }
       const { count, rows } = await Invoice.findAndCountAll({
         // limit,
         // offset,
-        // order,
+        order,
         // where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
-        nest: true,
-        // distinct: true,
-        xinclude: [
-          // {
-          //   model: db.InvoiceLine,
-          //   as: "invoiceLines",
-          // },
-          // {
-          //   model: db.Supplier,
-          //   as: "supplier",
-          // },
+        // nest: true,
+        distinct: true,
+        include: [
+          {
+            model: db.InvoiceLine,
+            as: "invoiceLines",
+          },
+          {
+            model: db.Supplier,
+            as: "supplier",
+          },
         ],
       });
 
@@ -222,7 +234,7 @@ const updateInvoice = async (
   updateLines = false,
   transaction
 ) => {
-  await invoice.update(
+  const res = await invoice.update(
     {
       ...payload,
       totalAmount: payload.invoiceLines.reduce(
@@ -232,6 +244,18 @@ const updateInvoice = async (
     },
     { transaction }
   );
+  if (payload.status === INVOICE_STATUS.POSTED) {
+    const lines = await InvoiceLine.findAll({
+      where: { invoiceId: invoice.id },
+      transaction,
+    });
+    for (const line of lines) {
+      await GoodReceipt.update(
+        { status: ORDER_STATUS.COMPLETED },
+        { where: { id: line.goodReceiptId }, transaction }
+      );
+    }
+  }
   if (updateLines) {
     const lines = payload.invoiceLines.map((line) => ({
       ...line,

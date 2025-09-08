@@ -2,7 +2,7 @@ const express = require("express");
 const goodReceiptController = require("../controllers/goodReceipt.controller");
 const router = express.Router();
 
-router.get("/supplier/:id", goodReceiptController.getBySupplierId);
+router.post("/supplier/:id", goodReceiptController.getBySupplierId);
 router.get("/list", goodReceiptController.list);
 router.get("/:id", goodReceiptController.get);
 router.get("/", goodReceiptController.getPaginated);

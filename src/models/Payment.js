@@ -12,6 +12,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "paymentId",
         as: "applications",
       });
+      Payment.belongsTo(models.User, {
+        foreignKey: "changedBy",
+        as: "user",
+      });
     }
   }
 

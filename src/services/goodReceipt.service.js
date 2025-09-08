@@ -380,6 +380,7 @@ module.exports = {
       } else {
         order.push(["id", "ASC"]); // Default sort
       }
+      console.log(where);
 
       const result = await GoodReceipt.findAll({
         order,

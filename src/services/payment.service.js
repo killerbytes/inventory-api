@@ -4,6 +4,7 @@ const { paymentSchema } = require("../schemas.js");
 const ApiError = require("./ApiError.js");
 const authService = require("./auth.service.js");
 const { sequelize, Payment, PaymentApplication, Invoice } = db;
+const { toMoney } = require("../utils/string");
 
 module.exports = {
   async get(id) {
@@ -60,11 +61,13 @@ module.exports = {
           transaction,
         });
         const alreadyPaid = invoicePaid || 0;
-        const remaining = Number(invoice.totalAmount) - alreadyPaid;
+        const remaining = toMoney(invoice.totalAmount - alreadyPaid);
 
         if (app.amountApplied > remaining) {
           throw new Error(
-            `Cannot apply ₱${app.amountApplied} — only ₱${remaining} remaining on invoice ${invoice.id}`
+            `Cannot apply ₱${app.amountApplied} — only ₱${toMoney(
+              remaining
+            )} remaining on invoice ${invoice.id}`
           );
         }
 
