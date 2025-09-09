@@ -59,9 +59,12 @@ app.use("/api/productCombinations", verifyToken, productCombinationRouter);
 app.use("/api/invoices", verifyToken, invoiceRouter);
 app.use("/api/payments", verifyToken, paymentRouter);
 
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
-  res.send(`${env}: ${formatDate(BUILD_TIME, "yyyy-MMM-dd HH:mm:ss")}`);
+  res.json({
+    env: env,
+    buildTime: BUILD_TIME,
+  });
 });
 
 module.exports = app;

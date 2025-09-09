@@ -11,6 +11,11 @@ cross-env NODE_ENV=production npx sequelize db:create
 cross-env NODE_ENV=production npx sequelize db:migrate
 cross-env NODE_ENV=production npm run restore
 
+cross-env NODE_ENV=staging npx sequelize db:drop
+cross-env NODE_ENV=staging npx sequelize db:create
+cross-env NODE_ENV=staging npx sequelize db:migrate
+cross-env NODE_ENV=staging npm run restore
+
 npx sequelize migration:generate --name fix-product-name-unique-index
 
 psql -U postgres -h localhost -d inventory_db
