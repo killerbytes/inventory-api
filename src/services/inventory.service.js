@@ -277,31 +277,40 @@ module.exports = {
     }
   },
 
-  async getBreakPacks(payload) {
+  async getBreakPacks(params) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION,
+      q = null,
+      startDate,
+      endDate,
+      status,
+      sort = "id",
+    } = params;
     try {
-      function getCombinationInclude() {
-        return [
-          {
-            model: Product,
-            as: "product",
-            include: [
-              {
-                model: VariantType,
-                as: "variants",
-                include: [{ model: VariantValue, as: "values" }],
-              },
-            ],
-            order: [
-              ["name", "ASC"],
-              [{ model: VariantType, as: "variants" }, "name", "ASC"],
-            ],
-          },
-          { model: VariantValue, as: "values" },
-        ];
+      const order = [];
+
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      } else {
+        order.push(["id", "ASC"]); // Default sort
       }
+      const where = q
+        ? {
+            [Op.or]: [
+              { "$fromCombination.name$": { [Op.iLike]: `%${q}%` } },
+              // { email: { [Op.like]: `%${q}%` } },
+              // { name: { [Op.like]: `%${q}%` } },
+              // { phone: { [Op.like]: `%${q}%` } },
+              // { notes: { [Op.like]: `%${q}%` } },
+            ],
+          }
+        : null;
 
       const breakPacks = await BreakPack.findAll({
         nest: true,
+        where,
+        order,
         include: [
           {
             model: ProductCombination,
@@ -412,3 +421,24 @@ module.exports = {
     return inventory;
   },
 };
+
+function getCombinationInclude() {
+  return [
+    {
+      model: Product,
+      as: "product",
+      include: [
+        {
+          model: VariantType,
+          as: "variants",
+          include: [{ model: VariantValue, as: "values" }],
+        },
+      ],
+      order: [
+        ["name", "ASC"],
+        [{ model: VariantType, as: "variants" }, "name", "ASC"],
+      ],
+    },
+    { model: VariantValue, as: "values" },
+  ];
+}
