@@ -7,7 +7,7 @@
     "dev": "nodemon src/index.js",
     "test": "cross-env NODE_ENV=test jest",
     "preinstall": "node scripts/build.js",
-    "build": "copyfiles -u 1 config/**/*.js dist/config && copyfiles -u 1 \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
+    "build": "npx copyfiles -u 1 config/**/*.js dist/config && npx copyfiles -u 1 \"!(node_modules)/**/*.{html,css,json,png,jpg}\" dist",
     "prod": "cross-env NODE_ENV=production ts-node-dev src/index.ts",
     "backup": "node backup.js backup",
     "restore": "node backup.js restore"
