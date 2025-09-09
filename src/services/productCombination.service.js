@@ -8,7 +8,7 @@ const {
 const ApiError = require("./ApiError");
 
 const Joi = require("joi");
-const { getSKU } = require("../utils/string");
+const { getSKU, toMoney } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
 const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
 const authService = require("./auth.service");
@@ -238,6 +238,21 @@ module.exports = {
 
           if (!combination) {
             throw new Error(`Combination with ID ${combo.id} not found`);
+          }
+
+          if (toMoney(combo.price) !== toMoney(combination.price)) {
+            // Price changed, log price history
+            await db.PriceHistory.create(
+              {
+                productId,
+                combinationId: combination.id,
+                fromPrice: combination.price,
+                toPrice: toMoney(combo.price),
+                changedBy: (await authService.getCurrent()).id,
+                changedAt: new Date(),
+              },
+              { transaction }
+            );
           }
 
           await combination.update(

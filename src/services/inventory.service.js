@@ -14,6 +14,7 @@ const {
   VariantType,
   InventoryMovement,
   StockAdjustment,
+  PriceHistory,
   User,
 } = db;
 
@@ -105,7 +106,7 @@ module.exports = {
       throw error;
     }
   },
-  async getPaginated(query) {
+  async getPaginated(query = {}) {
     throw new Error("Not implemented");
     const { q = null, sort, categoryId = null } = query;
     // const limit = parseInt(query.limit) || PAGINATION.LIMIT;
@@ -196,7 +197,7 @@ module.exports = {
       throw error;
     }
   },
-  async getMovements(query) {
+  async getMovements(query = {}) {
     const {
       q = null,
       transactionType = null,
@@ -277,10 +278,10 @@ module.exports = {
     }
   },
 
-  async getBreakPacks(params) {
+  async getBreakPacks(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q = null,
       startDate,
       endDate,
@@ -367,6 +368,48 @@ module.exports = {
       return {
         data: stockAdjustments,
       };
+    } catch (error) {
+      console.log(1, error);
+    }
+  },
+  async getPriceHistory(params) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION,
+      q = null,
+      startDate,
+      endDate,
+      status,
+      productId,
+      sort = "id",
+    } = params;
+    try {
+      const order = [];
+      const where = productId
+        ? {
+            [Op.or]: [{ productId }],
+          }
+        : null;
+
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      }
+      const priceHistories = await PriceHistory.findAll({
+        nest: true,
+        order,
+        where,
+        include: [
+          {
+            model: User,
+            as: "user",
+          },
+          {
+            model: ProductCombination,
+            as: "combinations",
+          },
+        ],
+      });
+      return { data: priceHistories };
     } catch (error) {
       console.log(1, error);
     }

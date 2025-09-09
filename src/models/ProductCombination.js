@@ -44,6 +44,10 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "combinationId",
       as: "inventory",
     });
+    ProductCombination.hasMany(models.PriceHistory, {
+      foreignKey: "combinationId",
+      as: "combinations",
+    });
   };
 
   // models/productcombination.js (add after associate)

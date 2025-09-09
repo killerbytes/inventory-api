@@ -78,6 +78,23 @@ describe("Product Combination Service (Integration)", () => {
     });
   });
 
+  it("should update price and create price history", async () => {
+    const { combinations } = await productCombinationService.getByProductId(1);
+
+    await productCombinationService.updateByProductId(1, {
+      combinations: combinations.map((c) => ({ ...c.dataValues, price: 123 })),
+    });
+    const combo = await productCombinationService.getByProductId(1);
+    expect(combo.combinations[0].price).toBe(123);
+    expect(combo.combinations[1].price).toBe(123);
+    const priceHistories = await sequelize.models.PriceHistory.findAll();
+    expect(priceHistories.length).toBe(2);
+    expect(priceHistories[0].fromPrice).toBe(100);
+    expect(priceHistories[0].toPrice).toBe(123);
+    expect(priceHistories[1].fromPrice).toBe(100);
+    expect(priceHistories[1].toPrice).toBe(123);
+  });
+
   it("should make a stock adjustment", async () => {
     await productCombinationService.updateByProductId(1, {
       combinations,

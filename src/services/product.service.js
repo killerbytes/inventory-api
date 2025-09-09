@@ -136,7 +136,7 @@ module.exports = {
       throw err;
     }
   },
-  async getPaginated(query) {
+  async getPaginated(query = {}) {
     const { q, categoryId } = query;
 
     const where = q
