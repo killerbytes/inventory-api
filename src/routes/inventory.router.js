@@ -5,6 +5,7 @@ const router = express.Router();
 router.post("/movements", inventoryController.getMovements);
 router.post("/breakPacks", inventoryController.getBreakPacks);
 router.post("/stockAdjustments", inventoryController.getStockAdjustments);
+router.post("/priceHistory", inventoryController.getPriceHistory);
 // router.get("/", inventoryController.getPaginated);
 // router.post("/", inventoryController.create);
 // router.get("/list", inventoryController.list);

@@ -256,7 +256,7 @@ module.exports = {
       throw error;
     }
   },
-  async getPaginated(params) {
+  async getPaginated(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
       page = PAGINATION.PAGE,

@@ -78,6 +78,14 @@ const inventoryController = {
       next(error);
     }
   },
+  async getPriceHistory(req, res, next) {
+    try {
+      const priceHistory = await inventoryService.getPriceHistory(req.body);
+      return res.status(200).json(priceHistory);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = inventoryController;

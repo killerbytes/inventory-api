@@ -76,7 +76,7 @@ module.exports = {
       throw error;
     }
   },
-  async getPaginated(query) {
+  async getPaginated(query = {}) {
     const { q = null, sort } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
