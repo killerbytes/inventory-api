@@ -209,10 +209,6 @@ module.exports = {
     } = params;
     // const where = {};
 
-    // if (q) {
-    //   where.invoiceNumber = { [Op.like]: `%${q}%` };
-    // }
-
     const where = q
       ? {
           [Op.or]: [

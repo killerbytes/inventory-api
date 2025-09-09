@@ -12,7 +12,10 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json(ApiError.validation(errors, 400));
   }
 
-  if (err instanceof Sequelize.ValidationError) {
+  if (
+    err instanceof Sequelize.ValidationError ||
+    err.code === "VALIDATION_ERROR"
+  ) {
     const errors = err.errors.map((error) => {
       return {
         field: error.path,

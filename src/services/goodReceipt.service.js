@@ -32,6 +32,12 @@ module.exports = {
             model: GoodReceiptLine,
             as: "goodReceiptLines",
             attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+              {
+                model: ProductCombination,
+                as: "combinations",
+              },
+            ],
           },
           {
             model: db.Supplier,

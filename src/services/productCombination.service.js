@@ -408,7 +408,21 @@ module.exports = {
         transaction,
       });
 
-      if (toInventory && !toInventory.inventory?.quantity) {
+      if (fromInventory.productId !== toInventory.productId) {
+        throw ApiError.validation(
+          [
+            {
+              path: ["toCombinationId"],
+              message: "Cannot break pack to different product",
+            },
+          ],
+          400,
+          "Cannot break pack to different product"
+        );
+      }
+
+      if (toInventory && !toInventory.inventory) {
+        // Create inventory record if not exist
         toInventory.inventory = await Inventory.create(
           {
             combinationId: toCombinationId,
@@ -423,10 +437,11 @@ module.exports = {
           [
             {
               path: ["quantity"],
-              message: "Combinations are invalid",
+              message: "Not enough inventory to break pack",
             },
           ],
-          400
+          400,
+          "Not enough inventory to break pack"
         );
       }
       const user = await authService.getCurrent();
@@ -478,13 +493,13 @@ module.exports = {
       // Update Inventory
       await fromInventory.inventory.update(
         {
-          quantity: fromInventory.inventory.quantity - quantity,
+          quantity: parseInt(fromInventory.inventory.quantity) - quantity,
         },
         { transaction }
       );
       await toInventory.inventory.update(
         {
-          quantity: toInventory.inventory.quantity + totalQuantity,
+          quantity: parseInt(toInventory.inventory.quantity) + totalQuantity,
         },
         { transaction }
       );

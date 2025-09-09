@@ -1,3 +1,11 @@
+const {
+  sequelize,
+  Product,
+  ProductCombination,
+  Inventory,
+  Category,
+} = require("../../models");
+
 const { setupDatabase, resetDatabase } = require("../setup");
 const productService = require("../../services/product.service");
 const productCombinationService = require("../../services/productCombination.service");
@@ -12,6 +20,7 @@ const {
   combinations,
 } = require("../utils");
 const { getSKU } = require("../../utils/string");
+const variantTypeService = require("../../services/variantType.service");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -102,5 +111,88 @@ describe("Product Combination Service (Integration)", () => {
     expect(combo.combinations[0].inventory.quantity).toBe(9);
     expect(combo.combinations[1].unit).toBe("PCS");
     expect(combo.combinations[1].inventory.quantity).toBe(24);
+
+    await productCombinationService.breakPack({
+      fromCombinationId: 1,
+      quantity: 1,
+      toCombinationId: 2,
+    });
+    const combo2 = await productCombinationService.getByProductId(1);
+
+    expect(combo2.combinations[0].unit).toBe("BOX");
+    expect(combo2.combinations[0].inventory.quantity).toBe(8);
+    expect(combo2.combinations[1].unit).toBe("PCS");
+    expect(combo2.combinations[1].inventory.quantity).toBe(48);
+  });
+  it("should throw error if inventory is not enough", async () => {
+    await productCombinationService.stockAdjustment({
+      combinationId: 1,
+      newQuantity: 10,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    try {
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 11,
+        toCombinationId: 2,
+      });
+      throw new Error("Expected VALIDATION_ERROR but no error was thrown");
+    } catch (err) {
+      console.log("Prevent inventory not enough:", {
+        name: err.name,
+        message: err.message,
+        errors: err.errors?.map((e) => e.message),
+      });
+      expect(err.name).toBe("Error");
+      expect(err.message).toBe("Not enough inventory to break pack");
+    }
+  });
+  it("should throw error if different product", async () => {
+    await variantTypeService.create({
+      name: "Size",
+      values: [
+        {
+          value: "Blue",
+        },
+      ],
+      productId: 2,
+    });
+
+    await productCombinationService.updateByProductId(2, {
+      combinations: [
+        {
+          unit: "BOX",
+          price: 100,
+          reorderLevel: 1,
+          conversionFactor: 24,
+          values: [{ variantTypeId: 2, value: "Blue" }],
+        },
+      ],
+    });
+    const list = await productCombinationService.list();
+
+    await productCombinationService.stockAdjustment({
+      combinationId: 1,
+      newQuantity: 10,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    try {
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 11,
+        toCombinationId: 3,
+      });
+      throw new Error("Expected VALIDATION_ERROR but no error was thrown");
+    } catch (err) {
+      console.log("Prevent different product:", {
+        name: err.name,
+        message: err.message,
+        errors: err.errors?.map((e) => e.message),
+      });
+      expect(err.name).toBe("Error");
+      expect(err.message).toBe("Cannot break pack to different product");
+    }
   });
 });
