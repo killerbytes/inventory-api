@@ -24,6 +24,7 @@ const envPath = `.env.${env}`;
 const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
 const logger = require("./middlewares/logger");
+const { formatDate } = require("date-fns");
 
 dotenv.config({ path: envPath });
 
@@ -60,7 +61,7 @@ app.use("/api/payments", verifyToken, paymentRouter);
 
 app.get("/", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
-  res.send(BUILD_TIME);
+  res.send(`${env}: ${formatDate(BUILD_TIME, "yyyy-MMM-dd HH:mm:ss")}`);
 });
 
 module.exports = app;
