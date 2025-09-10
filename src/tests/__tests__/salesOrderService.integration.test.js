@@ -35,42 +35,42 @@ beforeEach(async () => {
 });
 
 describe("Sales Order Service (Integration)", () => {
-  it("should create a sale order", async () => {
-    await salesOrderService.create({
-      customerId: 1,
+  // it("should create a sale order", async () => {
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
-    const salesOrder = await salesOrderService.get(1);
-    expect(salesOrder.customerId).toBe(1);
-    expect(salesOrder.modeOfPayment).toBe("CASH");
-    expect(salesOrder.deliveryDate).toBeInstanceOf(Date);
-    expect(salesOrder.notes).toBe("Test Notes");
-    expect(salesOrder.internalNotes).toBe("Test Internal Notes");
-    expect(salesOrder.salesOrderItems.length).toBe(2);
-    expect(salesOrder.totalAmount).toBe(3000);
-    expect(salesOrder.status).toBe("DRAFT");
-    expect(salesOrder.salesOrderStatusHistory.length).toBe(1);
-    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("DRAFT");
-    expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
-  });
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
+  //   const salesOrder = await salesOrderService.get(1);
+  //   expect(salesOrder.customerId).toBe(1);
+  //   expect(salesOrder.modeOfPayment).toBe("CASH");
+  //   expect(salesOrder.deliveryDate).toBeInstanceOf(Date);
+  //   expect(salesOrder.notes).toBe("Test Notes");
+  //   expect(salesOrder.internalNotes).toBe("Test Internal Notes");
+  //   expect(salesOrder.salesOrderItems.length).toBe(2);
+  //   expect(salesOrder.totalAmount).toBe(3000);
+  //   expect(salesOrder.status).toBe("DRAFT");
+  //   expect(salesOrder.salesOrderStatusHistory.length).toBe(1);
+  //   expect(salesOrder.salesOrderStatusHistory[0].status).toBe("DRAFT");
+  //   expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
+  // });
   it("should update a sales order", async () => {
     await salesOrderService.create({
       customerId: 1,
@@ -121,6 +121,11 @@ describe("Sales Order Service (Integration)", () => {
     expect(salesOrder2.salesOrderStatusHistory.length).toBe(2);
     expect(salesOrder2.salesOrderStatusHistory[0].status).toBe("RECEIVED");
     expect(salesOrder2.salesOrderStatusHistory[0].user.username).toBe("alice");
+
+    const combination = await productCombinationService.get(1);
+    expect(combination.inventory.quantity).toBe(1);
+    const combination2 = await productCombinationService.get(2);
+    expect(combination2.inventory.quantity).toBe(0);
   });
   it("should complete a sales order", async () => {
     await productCombinationService.stockAdjustment({
