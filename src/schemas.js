@@ -190,6 +190,24 @@ const salesOrderItemSchema = salesOrderStatusSchema
   .required()
   .meta({ className: "salesOrderItem" });
 
+const salesOrderFormSchema = Joi.object({
+  customerId: Joi.number().required(),
+  isDelivery: Joi.boolean().optional(),
+  deliveryAddress: Joi.string().allow(null, "").when("isDelivery", {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  deliveryInstructions: Joi.string().optional().allow(null, ""),
+  deliveryDate: Joi.date().required(),
+  notes: Joi.string().optional().allow(null, ""),
+  internalNotes: Joi.string().optional().allow(null, ""),
+  modeOfPayment: Joi.string().required(),
+  salesOrderItems: Joi.array().items(salesOrderItemSchema).allow(null, ""),
+}).options({
+  stripUnknown: true,
+});
+
 const salesOrderSchema = Joi.object({
   salesOrderNumber: Joi.string().optional(),
   customerId: Joi.number().required(),
@@ -309,6 +327,7 @@ module.exports = {
   salesOrderStatusSchema,
   salesOrderItemSchema,
   salesOrderSchema,
+  salesOrderFormSchema,
   inventoryMovementSchema,
   inventoryPriceAdjustmentSchema,
   breakPackSchema,

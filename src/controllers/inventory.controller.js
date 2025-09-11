@@ -52,7 +52,7 @@ const inventoryController = {
 
   async getMovements(req, res, next) {
     try {
-      const result = await inventoryService.getMovements(req.query);
+      const result = await inventoryService.getMovements(req.body);
       return res.status(200).json(result);
     } catch (error) {
       next(error);

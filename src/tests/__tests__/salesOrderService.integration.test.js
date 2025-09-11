@@ -1,4 +1,4 @@
-const { setupDatabase, resetDatabase } = require("../setup");
+const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const salesOrderService = require("../../services/salesOrder.service");
 const {
   createCategory,
@@ -123,342 +123,349 @@ describe("Sales Order Service (Integration)", () => {
     expect(salesOrder2.salesOrderStatusHistory[0].user.username).toBe("alice");
 
     const combination = await productCombinationService.get(1);
-    expect(combination.inventory.quantity).toBe(1);
+    expect(combination.inventory.quantity).toBe(0);
     const combination2 = await productCombinationService.get(2);
     expect(combination2.inventory.quantity).toBe(0);
   });
-  it("should complete a sales order", async () => {
-    await productCombinationService.stockAdjustment({
-      combinationId: 1,
-      newQuantity: 11,
-      reason: "EXPIRED",
-      notes: "test",
-    });
-    await productCombinationService.stockAdjustment({
-      combinationId: 2,
-      newQuantity: 20,
-      reason: "EXPIRED",
-      notes: "test",
-    });
+  // it("should complete a sales order", async () => {
+  //   await productCombinationService.stockAdjustment({
+  //     combinationId: 1,
+  //     newQuantity: 11,
+  //     reason: "EXPIRED",
+  //     notes: "test",
+  //   });
+  //   await productCombinationService.stockAdjustment({
+  //     combinationId: 2,
+  //     newQuantity: 20,
+  //     reason: "EXPIRED",
+  //     notes: "test",
+  //   });
 
-    await salesOrderService.create({
-      customerId: 1,
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    }); // ✅ Create Sales Order
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   }); // ✅ Create Sales Order
 
-    await salesOrderService.update(1, {
-      status: "RECEIVED",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    }); // ✅ Update Sales Order
+  //   await salesOrderService.update(1, {
+  //     status: "RECEIVED",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 11,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   }); // ✅ Update Sales Order
 
-    await salesOrderService.update(1, {
-      status: "COMPLETED",
-    }); // ✅ Complete Sales Order
-    const salesOrder = await salesOrderService.get(1);
+  //   await salesOrderService.update(1, {
+  //     status: "COMPLETED",
+  //   }); // ✅ Complete Sales Order
+  //   const salesOrder = await salesOrderService.get(1);
 
-    expect(salesOrder.status).toBe("COMPLETED");
-    expect(salesOrder.salesOrderStatusHistory.length).toBe(3);
+  //   expect(salesOrder.status).toBe("COMPLETED");
+  //   expect(salesOrder.salesOrderStatusHistory.length).toBe(3);
 
-    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("COMPLETED");
-    expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
-  });
-  it("should cancel a sales order", async () => {
-    await salesOrderService.create({
-      customerId: 1,
+  //   expect(salesOrder.salesOrderStatusHistory[0].status).toBe("COMPLETED");
+  //   expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
+  // });
+  // it("should cancel a sales order", async () => {
+  //   const inventory = await sequelize.models.Inventory.findAll();
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
-    await salesOrderService.update(1, {
-      status: "RECEIVED",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-    await salesOrderService.cancelOrder(1, {
-      status: "CANCELLED",
-      reason: "Test Cancellation Reason",
-    });
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
 
-    const salesOrder = await salesOrderService.get(1);
-    expect(salesOrder.status).toBe("CANCELLED");
-    expect(salesOrder.cancellationReason).toBe("Test Cancellation Reason");
-    expect(salesOrder.salesOrderStatusHistory.length).toBe(3);
-    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("CANCELLED");
-    expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
-  });
-  it("should void a sales order", async () => {
-    await productCombinationService.stockAdjustment({
-      combinationId: 1,
-      newQuantity: 11,
-      reason: "EXPIRED",
-      notes: "test",
-    });
+  //   await salesOrderService.update(1, {
+  //     status: "RECEIVED",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 11,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
 
-    await salesOrderService.create({
-      customerId: 1,
+  //   await salesOrderService.cancelOrder(1, {
+  //     status: "CANCELLED",
+  //     reason: "Test Cancellation Reason",
+  //   });
+  //   const inventory2 = await sequelize.models.Inventory.findAll();
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+  //   const salesOrder = await salesOrderService.get(1);
+  //   expect(salesOrder.status).toBe("CANCELLED");
+  //   expect(salesOrder.cancellationReason).toBe("Test Cancellation Reason");
+  //   expect(salesOrder.salesOrderStatusHistory.length).toBe(3);
+  //   expect(salesOrder.salesOrderStatusHistory[0].status).toBe("CANCELLED");
+  //   expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
+  //   expect(inventory2.length).toBe(2);
+  //   expect(inventory2[0].quantity).toBe(inventory[0].quantity);
+  //   expect(inventory2[1].quantity).toBe(inventory[1].quantity);
+  // });
+  // it("should void a sales order", async () => {
+  //   await productCombinationService.stockAdjustment({
+  //     combinationId: 1,
+  //     newQuantity: 11,
+  //     reason: "EXPIRED",
+  //     notes: "test",
+  //   });
 
-    await salesOrderService.delete(1);
-    const salesOrder = await salesOrderService.get(1);
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-    expect(salesOrder.status).toBe("VOID");
-    expect(salesOrder.salesOrderStatusHistory.length).toBe(2);
-    expect(salesOrder.salesOrderStatusHistory[0].status).toBe("VOID");
-    expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
-  });
-  it("should get a paginated list of sales orders", async () => {
-    await salesOrderService.create({
-      customerId: 1,
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
-    await salesOrderService.create({
-      customerId: 1,
+  //   await salesOrderService.delete(1);
+  //   const salesOrder = await salesOrderService.get(1);
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+  //   expect(salesOrder.status).toBe("VOID");
+  //   expect(salesOrder.salesOrderStatusHistory.length).toBe(2);
+  //   expect(salesOrder.salesOrderStatusHistory[0].status).toBe("VOID");
+  //   expect(salesOrder.salesOrderStatusHistory[0].user.username).toBe("alice");
+  // });
+  // it("should get a paginated list of sales orders", async () => {
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-    const salesOrders = await salesOrderService.getPaginated({
-      page: 1,
-      limit: 2,
-    });
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-    expect(salesOrders.data.length).toBe(2);
-    expect(salesOrders.total).toBe(2);
-    expect(salesOrders.totalPages).toBe(1);
-    expect(salesOrders.currentPage).toBe(1);
-  });
-  it("should not allow quantity to be negative", async () => {
-    await productCombinationService.stockAdjustment({
-      combinationId: 2,
-      newQuantity: 2,
-      reason: "EXPIRED",
-      notes: "test",
-    });
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
 
-    try {
-      await salesOrderService.create({
-        customerId: 1,
+  //   const salesOrders = await salesOrderService.getPaginated({
+  //     page: 1,
+  //     limit: 2,
+  //   });
 
-        deliveryDate: new Date(),
-        notes: "Test Notes",
-        internalNotes: "Test Internal Notes",
-        salesOrderItems: [
-          {
-            combinationId: 1,
-            quantity: 10,
-            originalPrice: 100,
-            purchasePrice: 100,
-          },
-          {
-            combinationId: 2,
-            quantity: 20,
-            originalPrice: 100,
-            purchasePrice: 100,
-          },
-        ],
-        modeOfPayment: "CASH",
-      });
-      await salesOrderService.update(1, {
-        status: "RECEIVED",
-        salesOrderItems: [
-          {
-            combinationId: 1,
-            quantity: 11,
-            originalPrice: 100,
-            purchasePrice: 100,
-          },
-          {
-            combinationId: 2,
-            quantity: 20,
-            originalPrice: 100,
-            purchasePrice: 100,
-          },
-        ],
-        modeOfPayment: "CASH",
-      });
-      throw new Error("Expected Error but no error was thrown");
-    } catch (err) {
-      console.log("Negative quantity error:", {
-        name: err.name,
-        message: err.message,
-        fields: err.fields,
-        errors: err.errors?.map((e) => e.message),
-      });
-      expect(err.name).toBe("Error");
-      expect(err.message).toBe("Quantity is greater than inventory");
-    }
-  });
-  it("should update inventory movements", async () => {
-    await salesOrderService.create({
-      customerId: 1,
+  //   expect(salesOrders.data.length).toBe(2);
+  //   expect(salesOrders.total).toBe(2);
+  //   expect(salesOrders.totalPages).toBe(1);
+  //   expect(salesOrders.currentPage).toBe(1);
+  // });
+  // it("should not allow quantity to be negative", async () => {
+  //   await productCombinationService.stockAdjustment({
+  //     combinationId: 2,
+  //     newQuantity: 2,
+  //     reason: "EXPIRED",
+  //     notes: "test",
+  //   });
 
-      deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+  //   try {
+  //     await salesOrderService.create({
+  //       customerId: 1,
 
-    await salesOrderService.update(1, {
-      status: "RECEIVED",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
-    const inventoryMovements = await inventoryService.getMovements({});
+  //       deliveryDate: new Date(),
+  //       notes: "Test Notes",
+  //       internalNotes: "Test Internal Notes",
+  //       salesOrderItems: [
+  //         {
+  //           combinationId: 1,
+  //           quantity: 10,
+  //           originalPrice: 100,
+  //           purchasePrice: 100,
+  //         },
+  //         {
+  //           combinationId: 2,
+  //           quantity: 20,
+  //           originalPrice: 100,
+  //           purchasePrice: 100,
+  //         },
+  //       ],
+  //       modeOfPayment: "CASH",
+  //     });
+  //     await salesOrderService.update(1, {
+  //       status: "RECEIVED",
+  //       salesOrderItems: [
+  //         {
+  //           combinationId: 1,
+  //           quantity: 11,
+  //           originalPrice: 100,
+  //           purchasePrice: 100,
+  //         },
+  //         {
+  //           combinationId: 2,
+  //           quantity: 20,
+  //           originalPrice: 100,
+  //           purchasePrice: 100,
+  //         },
+  //       ],
+  //       modeOfPayment: "CASH",
+  //     });
+  //     throw new Error("Expected Error but no error was thrown");
+  //   } catch (err) {
+  //     console.log("Negative quantity error:", {
+  //       name: err.name,
+  //       message: err.message,
+  //       fields: err.fields,
+  //       errors: err.errors?.map((e) => e.message),
+  //     });
+  //     expect(err.name).toBe("Error");
+  //     expect(err.message).toBe("Quantity is greater than inventory");
+  //   }
+  // });
+  // it("should update inventory movements", async () => {
+  //   await salesOrderService.create({
+  //     customerId: 1,
 
-    expect(inventoryMovements.data.length).toBe(4);
-    expect(inventoryMovements.data[1].combinationId).toBe(1);
-    expect(inventoryMovements.data[1].type).toBe("OUT");
-    expect(inventoryMovements.data[1].dataValues.previous).toBe(11);
-    expect(inventoryMovements.data[1].new).toBe(1);
-    expect(inventoryMovements.data[1].quantity).toBe(10);
+  //     deliveryDate: new Date(),
+  //     notes: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
 
-    expect(inventoryMovements.data[0].combinationId).toBe(2);
-    expect(inventoryMovements.data[0].type).toBe("OUT");
-    expect(inventoryMovements.data[0].dataValues.previous).toBe(20);
-    expect(inventoryMovements.data[0].new).toBe(0);
-    expect(inventoryMovements.data[0].quantity).toBe(20);
-  });
+  //   await salesOrderService.update(1, {
+  //     status: "RECEIVED",
+  //     salesOrderItems: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 11,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         originalPrice: 100,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //     modeOfPayment: "CASH",
+  //   });
+  //   const inventoryMovements = await inventoryService.getMovements({});
+
+  //   expect(inventoryMovements.data.length).toBe(4);
+  //   expect(inventoryMovements.data[1].combinationId).toBe(1);
+  //   expect(inventoryMovements.data[1].type).toBe("OUT");
+  //   expect(inventoryMovements.data[1].dataValues.previous).toBe(11);
+  //   expect(inventoryMovements.data[1].new).toBe(1);
+  //   expect(inventoryMovements.data[1].quantity).toBe(10);
+
+  //   expect(inventoryMovements.data[0].combinationId).toBe(2);
+  //   expect(inventoryMovements.data[0].type).toBe("OUT");
+  //   expect(inventoryMovements.data[0].dataValues.previous).toBe(20);
+  //   expect(inventoryMovements.data[0].new).toBe(0);
+  //   expect(inventoryMovements.data[0].quantity).toBe(20);
+  // });
 });

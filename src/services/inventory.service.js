@@ -451,6 +451,19 @@ module.exports = {
       },
       { transaction }
     );
+    if (!increase) {
+      const inv = await Inventory.findOne({
+        where: {
+          combinationId: item.combinationId,
+        },
+        transaction,
+      });
+
+      // Check if inventory is enough
+      if (inv.quantity < item.quantity) {
+        throw new Error("Not enough inventory");
+      }
+    }
 
     await inventory.update(
       // Update inventory quantity
