@@ -1,4 +1,4 @@
-const { setupDatabase, resetDatabase } = require("../setup");
+const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const goodReceiptService = require("../../services/goodReceipt.service");
 const productService = require("../../services/product.service");
 const {
@@ -64,6 +64,30 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("DRAFT");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
+  // it("should create a good receipt status=RECEIVED", async () => {
+  //   await goodReceiptService.create({
+  //     supplierId: 1,
+  //     receiptDate: new Date(),
+  //     referenceNo: "Test Notes",
+  //     internalNotes: "Test Internal Notes",
+  //     status: "RECEIVED",
+  //     goodReceiptLines: [
+  //       {
+  //         combinationId: 1,
+  //         quantity: 10,
+  //         purchasePrice: 100,
+  //       },
+  //       {
+  //         combinationId: 2,
+  //         quantity: 20,
+  //         discount: 10,
+  //         purchasePrice: 100,
+  //       },
+  //     ],
+  //   });
+  //   const goodReceipt = await goodReceiptService.get(1);
+  //   expect(goodReceipt.status).toBe("RECEIVED");
+  // });
   it("should update a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
@@ -103,6 +127,8 @@ describe("Good Receipt Service (Integration)", () => {
     });
 
     const goodReceipt2 = await goodReceiptService.get(1);
+    const inventory = await sequelize.models.Inventory.findAll();
+
     expect(goodReceipt2.status).toBe("RECEIVED");
     expect(goodReceipt2.totalAmount).toBe(3090);
     expect(goodReceipt2.goodReceiptLines.length).toBe(2);
@@ -123,6 +149,9 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt2.goodReceiptStatusHistory[0].user.username).toBe(
       "alice"
     );
+    expect(inventory.length).toBe(2);
+    expect(inventory[0].quantity).toBe(11);
+    expect(inventory[1].quantity).toBe(20);
   });
 
   // it("should complete a good receipt", async () => {
