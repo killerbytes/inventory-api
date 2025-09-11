@@ -197,28 +197,17 @@ module.exports = {
       throw error;
     }
   },
-  async getMovements(query = {}) {
-    const {
-      q = null,
-      transactionType = null,
-      sort = "id",
-      startDate,
-      endDate,
-    } = query;
-    const limit = parseInt(query.limit) || PAGINATION.LIMIT;
-    const page = parseInt(query.page) || PAGINATION.PAGE;
+  async getMovements(payload = {}) {
+    const { q = null, type = null, sort = "id", startDate, endDate } = payload;
+    const limit = parseInt(payload.limit) || PAGINATION.LIMIT;
+    const page = parseInt(payload.page) || PAGINATION.PAGE;
 
     try {
-      const where = {
-        [Op.and]: [
-          ...(q
-            ? [{ "$inventory.product.name$": { [Op.like]: `%${q}%` } }]
-            : []),
-          ...(transactionType
-            ? [{ transactionType: { [Op.like]: `%${transactionType}%` } }]
-            : []),
-        ],
-      };
+      const where = {};
+      if (type) {
+        where.type = type;
+      }
+
       if (startDate || endDate) {
         where.updatedAt = {};
 
@@ -236,14 +225,15 @@ module.exports = {
 
       const offset = (page - 1) * limit;
       const order = [];
-      order.push([sort, query.order || "DESC"]);
+      order.push([sort, payload.order || "DESC"]);
 
       const { count, rows } = await InventoryMovement.findAndCountAll({
         limit,
         offset,
         order,
-        where,
+        where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
+        distinct: true,
         include: [
           {
             model: User,
@@ -252,6 +242,7 @@ module.exports = {
           {
             model: ProductCombination,
             as: "combination",
+            where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
             include: [
               {
                 model: Product,
