@@ -20,8 +20,10 @@ module.exports = (sequelize, DataTypes) => {
       sequelize,
       modelName: "InvoiceLine",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
+      paranoid: true,
+      deletedAt: "deletedAt",
     }
   );
 

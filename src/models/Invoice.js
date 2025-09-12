@@ -53,8 +53,19 @@ module.exports = (sequelize, DataTypes) => {
       sequelize,
       modelName: "Invoice",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
+      paranoid: true,
+      deletedAt: "deletedAt",
+      indexes: [
+        {
+          unique: true,
+          fields: ["invoiceNumber"],
+          where: {
+            deletedAt: null, // enforce uniqueness only for active rows
+          },
+        },
+      ],
     }
   );
 

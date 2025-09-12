@@ -29,29 +29,19 @@ module.exports = (sequelize, DataTypes) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true,
       },
       description: DataTypes.TEXT,
       order: DataTypes.INTEGER,
-      deletedAt: { type: DataTypes.DATE, allowNull: true }, // required for paranoid index in SQLite
     },
     {
       sequelize,
       modelName: "Category",
       timestamps: false,
       tableName: "Categories",
-      paranoid: true,
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
       },
-      indexes: [
-        {
-          unique: true,
-          fields: ["name"],
-          where: {
-            deletedAt: null, // enforce uniqueness only for active rows
-          },
-        },
-      ],
     }
   );
 

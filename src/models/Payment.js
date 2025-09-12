@@ -37,8 +37,10 @@ module.exports = (sequelize, DataTypes) => {
       sequelize,
       modelName: "Payment",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
+      paranoid: true,
+      deletedAt: "deletedAt",
     }
   );
 

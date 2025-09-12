@@ -27,6 +27,8 @@ module.exports = (sequelize) => {
       defaultScope: {
         attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
+      paranoid: true,
+      deletedAt: "deletedAt",
       indexes: [
         {
           unique: true,
@@ -36,7 +38,6 @@ module.exports = (sequelize) => {
           },
         },
       ],
-      paranoid: true,
     }
   );
 
