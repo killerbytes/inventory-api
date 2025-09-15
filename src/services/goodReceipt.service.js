@@ -591,6 +591,7 @@ const updateOrder = async (
     if (updateOrderItems) {
       await GoodReceiptLine.destroy({
         where: { goodReceiptId: goodReceipt.id },
+        force: true,
         transaction,
       });
 

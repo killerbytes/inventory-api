@@ -28,10 +28,11 @@ module.exports = (sequelize, DataTypes) => {
       sequelize,
       modelName: "Inventory",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
       unique: ["productVariantId"],
       paranoid: true,
+      deletedAt: "deletedAt",
     }
   );
 

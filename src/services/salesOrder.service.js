@@ -588,6 +588,7 @@ const updateOrder = async (
     if (updateOrderItems) {
       await SalesOrderItem.destroy({
         where: { salesOrderId: salesOrder.id },
+        force: true,
         transaction,
       });
 
@@ -619,9 +620,9 @@ const updateOrder = async (
               transaction,
             }
           );
-
+          const { id, ...rest } = item;
           const props = {
-            ...item,
+            ...rest,
             salesOrderId: salesOrder.id,
             originalPrice: productCombination.price,
             totalAmount: getAmount(item),

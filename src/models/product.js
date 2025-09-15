@@ -35,8 +35,9 @@ module.exports = (sequelize, DataTypes) => {
       sequelize,
       modelName: "Product",
       paranoid: true,
+      deletedAt: "deletedAt",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
       indexes: [
         {

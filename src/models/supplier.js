@@ -40,6 +40,7 @@ module.exports = (sequelize) => {
         },
       ],
       paranoid: true,
+      deletedAt: "deletedAt",
     }
   );
 

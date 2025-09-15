@@ -69,8 +69,10 @@ module.exports = (sequelize) => {
       sequelize,
       modelName: "SalesOrder",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
       },
+      paranoid: true,
+      deletedAt: "deletedAt",
     }
   );
 
