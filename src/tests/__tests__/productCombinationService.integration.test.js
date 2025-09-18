@@ -108,6 +108,14 @@ describe("Product Combination Service (Integration)", () => {
     });
     const combo = await productCombinationService.getByProductId(1);
     expect(combo.combinations[0].inventory.quantity).toBe(10);
+    await productCombinationService.stockAdjustment({
+      combinationId: 3,
+      newQuantity: 11,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    const combo2 = await productCombinationService.getByProductId(1);
+    expect(combo2.combinations[0].inventory.quantity).toBe(11);
   });
 
   it("should break a product combination to another unit", async () => {

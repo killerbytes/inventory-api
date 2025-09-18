@@ -465,7 +465,7 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
       salesOrderItems.map(async (item) => {
         await inventoryIncrease(
           item,
-          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_SALE,
           id,
           payload.reason,
           transaction

@@ -13,6 +13,7 @@ const { getMappedProductComboName } = require("../utils/mapped");
 const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
 const authService = require("./auth.service");
 const productService = require("./product.service");
+const { inventoryDecrease, inventoryIncrease } = require("./inventory.service");
 const {
   InventoryMovement,
   Product,
@@ -294,8 +295,7 @@ module.exports = {
           where: { combinationId: combination.id },
           defaults: {
             combinationId: combination.id,
-            quantity: combo.quantity ?? 0,
-            // price: combo.price ?? 0,
+            quantity: 0,
           },
           transaction,
         });
@@ -569,7 +569,7 @@ module.exports = {
       if (!combination) throw new Error("Combination not found");
       const user = await authService.getCurrent();
 
-      await StockAdjustment.create(
+      const adjustment = await StockAdjustment.create(
         {
           referenceNo: "REF" + Math.random(),
           combinationId: combination.id,
@@ -589,7 +589,7 @@ module.exports = {
           previous: combination.inventory?.quantity || 0,
           new: newQuantity,
           quantity: newQuantity,
-          reference: combination.id,
+          reference: adjustment.id,
           type: INVENTORY_MOVEMENT_TYPE.STOCK_ADJUSTMENT,
           costPerUnit: combination.inventory.averagePrice,
           sellingPrice: combination.price,
@@ -599,21 +599,16 @@ module.exports = {
         },
         { transaction }
       );
-      if (combination.inventory) {
-        await combination.inventory.update(
-          {
-            quantity: newQuantity,
-          },
-          { transaction }
-        );
+
+      if (!combination.inventory) {
+        throw new Error("Inventory not found");
       } else {
-        combination.inventory = await Inventory.create(
-          {
-            combinationId: combination.id,
-            quantity: newQuantity,
-          },
-          { transaction }
-        );
+
+
+        combination.inventory.update({
+          quantity: newQuantity,
+          averagePrice,
+        });
       }
 
       transaction.commit();
