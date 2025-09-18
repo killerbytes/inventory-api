@@ -1,5 +1,3 @@
-const { getSKU } = require("../utils/string");
-
 module.exports = (sequelize, DataTypes) => {
   const ProductCombination = sequelize.define(
     "ProductCombination",

@@ -8,7 +8,7 @@ const {
   PAGINATION,
 } = require("../definitions.js");
 const authService = require("./auth.service");
-const { processInventoryUpdates } = require("./inventory.service");
+const { inventoryDecrease, inventoryIncrease } = require("./inventory.service");
 const { getMappedVariantValues } = require("../utils/mapped");
 const ApiError = require("./ApiError");
 const { getAmount, getTotalAmount } = require("../utils/compute.js");
@@ -463,13 +463,12 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
 
     await Promise.all(
       salesOrderItems.map(async (item) => {
-        await processInventoryUpdates(
+        await inventoryIncrease(
           item,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
           id,
           payload.reason,
-          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
-          transaction,
-          true
+          transaction
         );
       })
     );
@@ -540,16 +539,16 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
   }
   await Promise.all(
     payload.salesOrderItems.map(async (item) => {
-      await processInventoryUpdates(
+      const { combinationId, quantity } = item;
+      await inventoryDecrease(
         {
-          combinationId: item.combinationId,
-          quantity: item.quantity,
+          combinationId,
+          quantity,
         },
+        INVENTORY_MOVEMENT_TYPE.OUT,
         id,
         null,
-        INVENTORY_MOVEMENT_TYPE.OUT,
-        transaction,
-        false // Decrease Inventory
+        transaction
       );
     })
   );

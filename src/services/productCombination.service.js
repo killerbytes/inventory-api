@@ -471,12 +471,21 @@ module.exports = {
           new: fromInventory.inventory.quantity - quantity,
           quantity: quantity,
           reference: fromInventory.inventory.id,
+          costPerUnit: fromInventory.inventory.averagePrice,
+          sellingPrice: fromInventory.price,
           reason: "Break pack",
           userId: user.id,
           combinationId: fromCombinationId,
         },
         { transaction }
       );
+      const oldQty = toInventory.inventory.quantity;
+      const oldPrice = toInventory.inventory.averagePrice;
+
+      const newQty = oldQty + totalQuantity;
+      const newPrice =
+        (oldQty * oldPrice + quantity * toInventory.price) / newQty;
+
       // Log Repack movement
       await InventoryMovement.create(
         {
@@ -485,6 +494,8 @@ module.exports = {
           new: toInventory.inventory.quantity + totalQuantity,
           quantity: totalQuantity,
           reference: fromInventory.inventory.id,
+          costPerUnit: newPrice,
+          sellingPrice: toInventory.price,
           reason: "Repack",
           userId: user.id,
           combinationId: toCombinationId,
@@ -580,6 +591,8 @@ module.exports = {
           quantity: newQuantity,
           reference: combination.id,
           type: INVENTORY_MOVEMENT_TYPE.STOCK_ADJUSTMENT,
+          costPerUnit: combination.inventory.averagePrice,
+          sellingPrice: combination.price,
           reason,
           combinationId: combination.id,
           userId: user.id,

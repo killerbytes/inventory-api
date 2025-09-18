@@ -405,66 +405,120 @@ module.exports = {
       console.log(1, error);
     }
   },
-  async processInventoryUpdates(
+  async inventoryIncrease(
     item,
+    type,
     reference = null,
     reason = null,
-    transactionType,
-    transaction,
-    increase = true //Add inventory
+    transaction
   ) {
     const user = await authService.getCurrent();
-    const { combinationId } = item;
+    const { combinationId, quantity, purchasePrice } = item;
 
-    const [inventory] = await sequelize.models.Inventory.findOrCreate({
-      //Find or create inventory exclude quantity
-      where: { combinationId: item.combinationId },
-      defaults: {
-        combinationId,
-        quantity: 0,
-      },
+    const inventory = await Inventory.findOne({
+      where: { combinationId },
       transaction,
     });
+
+    if (!inventory) {
+      //Find or create inventory exclude quantity
+      Inventory.create(
+        {
+          combinationId,
+          quantity,
+          averagePrice: purchasePrice,
+        },
+        { transaction }
+      );
+    } else {
+      const oldQty = inventory.quantity;
+      const oldPrice = inventory.averagePrice;
+
+      const newQty = oldQty + quantity;
+      const newPrice = (oldQty * oldPrice + quantity * purchasePrice) / newQty;
+
+      await inventory.update(
+        // Update inventory quantity
+        {
+          averagePrice: newPrice,
+          quantity: newQty,
+        },
+        { transaction }
+      );
+    }
+    const productCombination = await ProductCombination.findByPk(combinationId);
 
     await sequelize.models.InventoryMovement.create(
       // Create inventory movement
       {
         combinationId: item.combinationId,
         previous: inventory.quantity,
-        new: increase
-          ? parseInt(inventory.quantity) + parseInt(item.quantity)
-          : parseInt(inventory.quantity) - parseInt(item.quantity),
-        quantity: item.quantity,
-        type: transactionType,
+        new: inventory.quantity + quantity,
+        quantity,
+        type,
         userId: user.id,
+        costPerUnit: inventory.averagePrice,
+        sellingPrice: productCombination.price,
         reference,
         reason,
       },
       { transaction }
     );
-    if (!increase) {
-      const inv = await Inventory.findOne({
-        where: {
-          combinationId: item.combinationId,
-        },
-        transaction,
-      });
 
+    return inventory;
+  },
+  async inventoryDecrease(
+    item,
+    type,
+    reference = null,
+    reason = null,
+    transaction
+  ) {
+    const user = await authService.getCurrent();
+    const { combinationId, quantity, purchasePrice } = item;
+
+    const inventory = await Inventory.findOne({
+      where: { combinationId },
+      transaction,
+    });
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    } else {
       // Check if inventory is enough
-      if (inv.quantity < item.quantity) {
+      if (inventory.quantity < quantity) {
         throw new Error("Not enough inventory");
       }
+      const productCombination = await ProductCombination.findByPk(
+        combinationId
+      );
+
+      await sequelize.models.InventoryMovement.create(
+        // Create inventory movement
+        {
+          combinationId: combinationId,
+          previous: inventory.quantity,
+          new: parseInt(inventory.quantity) - parseInt(item.quantity),
+          quantity: item.quantity,
+          costPerUnit: inventory.averagePrice,
+          sellingPrice: productCombination.price,
+          type,
+          userId: user.id,
+          reference,
+          reason,
+        },
+        { transaction }
+      );
+
+      await inventory.update(
+        // Update inventory quantity
+        {
+          quantity: inventory.quantity - quantity,
+        },
+        { transaction }
+      );
     }
 
-    await inventory.update(
-      // Update inventory quantity
-      {
-        quantity: increase
-          ? inventory.quantity + item.quantity
-          : inventory.quantity - item.quantity,
-      },
-      { transaction }
-    );
     return inventory;
   },
 };

@@ -10,7 +10,10 @@ const {
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
 const ApiError = require("./ApiError.js");
-const { processInventoryUpdates } = require("./inventory.service.js");
+const {
+  inventoryIncrease,
+  inventoryDecrease,
+} = require("./inventory.service.js");
 const { getTotalAmount, getAmount } = require("../utils/compute.js");
 const {
   VariantValue,
@@ -479,13 +482,12 @@ const processCancelledOrder = async (goodReceipt, payload) => {
     const { goodReceiptLines, id } = goodReceipt;
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        await processInventoryUpdates(
+        await inventoryDecrease(
           item,
+          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
           id,
           payload.reason,
-          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
-          transaction,
-          false
+          transaction
         );
       })
     );
@@ -534,14 +536,16 @@ const processReceivedOrder = async (payload, goodReceipt) => {
 
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        await processInventoryUpdates(
+        const { combinationId, quantity, purchasePrice } = item;
+        await inventoryIncrease(
           {
-            combinationId: item.combinationId,
-            quantity: item.quantity,
+            combinationId,
+            quantity,
+            purchasePrice,
           },
+          INVENTORY_MOVEMENT_TYPE.IN,
           id,
           null,
-          INVENTORY_MOVEMENT_TYPE.IN,
           transaction
         );
       })

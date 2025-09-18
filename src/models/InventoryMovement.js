@@ -21,6 +21,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    costPerUnit: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    sellingPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
     reference: {
       type: DataTypes.INTEGER,
       allowNull: false,

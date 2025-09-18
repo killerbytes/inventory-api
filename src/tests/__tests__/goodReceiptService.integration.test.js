@@ -152,6 +152,47 @@ describe("Good Receipt Service (Integration)", () => {
     expect(inventory.length).toBe(2);
     expect(inventory[0].quantity).toBe(11);
     expect(inventory[1].quantity).toBe(20);
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          discount: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    await goodReceiptService.update(2, {
+      status: "RECEIVED",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 11,
+          purchasePrice: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          discount: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+    const inventory2 = await sequelize.models.Inventory.findAll();
+
+    expect(inventory2.length).toBe(2);
+    expect(inventory2[0].quantity).toBe(22);
+    expect(inventory2[1].quantity).toBe(40);
   });
 
   // it("should complete a good receipt", async () => {
