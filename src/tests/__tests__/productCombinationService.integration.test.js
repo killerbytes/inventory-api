@@ -130,20 +130,17 @@ describe("Product Combination Service (Integration)", () => {
       quantity: 1,
       toCombinationId: 2,
     });
-
     const combo = await productCombinationService.getByProductId(1);
     expect(combo.combinations[0].unit).toBe("BOX");
     expect(combo.combinations[0].inventory.quantity).toBe(9);
     expect(combo.combinations[1].unit).toBe("PCS");
     expect(combo.combinations[1].inventory.quantity).toBe(24);
-
     await productCombinationService.breakPack({
       fromCombinationId: 1,
       quantity: 1,
       toCombinationId: 2,
     });
     const combo2 = await productCombinationService.getByProductId(1);
-
     expect(combo2.combinations[0].unit).toBe("BOX");
     expect(combo2.combinations[0].inventory.quantity).toBe(8);
     expect(combo2.combinations[1].unit).toBe("PCS");

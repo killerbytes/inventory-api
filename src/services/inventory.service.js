@@ -405,15 +405,9 @@ module.exports = {
       console.log(1, error);
     }
   },
-  async inventoryIncrease(
-    item,
-    type,
-    reference = null,
-    reason = null,
-    transaction
-  ) {
+  async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
     const user = await authService.getCurrent();
-    const { combinationId, quantity, purchasePrice } = item;
+    const { combinationId, quantity, averagePrice = null } = item;
 
     const inventory = await Inventory.findOne({
       where: { combinationId },
@@ -426,41 +420,35 @@ module.exports = {
         {
           combinationId,
           quantity,
-          averagePrice: purchasePrice,
+          averagePrice,
         },
         { transaction }
       );
     } else {
       const oldQty = inventory.quantity;
-      const oldPrice = inventory.averagePrice;
-
       const newQty = oldQty + quantity;
-      const newPrice = (oldQty * oldPrice + quantity * purchasePrice) / newQty;
 
       await inventory.update(
         // Update inventory quantity
         {
-          averagePrice: newPrice,
+          ...(averagePrice && { averagePrice }),
           quantity: newQty,
         },
         { transaction }
       );
     }
-    const productCombination = await ProductCombination.findByPk(combinationId);
 
     await sequelize.models.InventoryMovement.create(
       // Create inventory movement
       {
-        combinationId: item.combinationId,
-        previous: inventory.quantity,
-        new: inventory.quantity + quantity,
-        quantity,
         type,
+        quantity,
+        costPerUnit: averagePrice || inventory.averagePrice,
+        totalCost: quantity * inventory.averagePrice,
+        referenceType,
+        referenceId,
         userId: user.id,
-        costPerUnit: inventory.averagePrice,
-        sellingPrice: productCombination.price,
-        reference,
-        reason,
+        combinationId: item.combinationId,
       },
       { transaction }
     );
@@ -470,8 +458,8 @@ module.exports = {
   async inventoryDecrease(
     item,
     type,
-    reference = null,
-    reason = null,
+    referenceId = null,
+    referenceType = null,
     transaction
   ) {
     const user = await authService.getCurrent();
@@ -489,23 +477,20 @@ module.exports = {
       if (inventory.quantity < quantity) {
         throw new Error("Not enough inventory");
       }
-      const productCombination = await ProductCombination.findByPk(
-        combinationId
-      );
+
+      const newQuantity = inventory.quantity - quantity;
 
       await sequelize.models.InventoryMovement.create(
         // Create inventory movement
         {
           combinationId: combinationId,
-          previous: inventory.quantity,
-          new: parseInt(inventory.quantity) - parseInt(item.quantity),
-          quantity: item.quantity,
+          quantity,
           costPerUnit: inventory.averagePrice,
-          sellingPrice: productCombination.price,
+          totalCost: quantity * inventory.averagePrice,
           type,
           userId: user.id,
-          reference,
-          reason,
+          referenceId,
+          referenceType,
         },
         { transaction }
       );
@@ -513,7 +498,7 @@ module.exports = {
       await inventory.update(
         // Update inventory quantity
         {
-          quantity: inventory.quantity - quantity,
+          quantity: newQuantity,
         },
         { transaction }
       );

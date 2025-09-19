@@ -6,6 +6,7 @@ const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
   PAGINATION,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE,
 } = require("../definitions.js");
 const authService = require("./auth.service");
 const { inventoryDecrease, inventoryIncrease } = require("./inventory.service");
@@ -23,6 +24,7 @@ const {
   OrderStatusHistory,
   VariantType,
   Category,
+  InventoryMovement,
 } = db;
 
 module.exports = {
@@ -181,6 +183,8 @@ module.exports = {
       transaction.commit();
       return result;
     } catch (error) {
+      console.log(error);
+
       transaction.rollback();
       throw error;
     }
@@ -447,9 +451,6 @@ const processCompletedOrder = async (payload, salesOrder, transaction) => {
 
 const processCancelledOrder = async (salesOrder, payload, transaction) => {
   try {
-    const inventories = await db.Inventory.findAll({
-      transaction,
-    });
     await updateOrder(
       {
         status: ORDER_STATUS.CANCELLED,
@@ -458,16 +459,25 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
       salesOrder,
       transaction
     );
-
-    const { salesOrderItems, id } = salesOrder;
+    const salesMovements = await InventoryMovement.findAll({
+      where: {
+        referenceId: salesOrder.id,
+        referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
+        type: INVENTORY_MOVEMENT_TYPE.OUT,
+      },
+      transaction,
+    });
 
     await Promise.all(
-      salesOrderItems.map(async (item) => {
+      salesMovements.map(async ({ combinationId, quantity }) => {
         await inventoryIncrease(
-          item,
-          INVENTORY_MOVEMENT_TYPE.CANCEL_SALE,
-          id,
-          payload.reason,
+          {
+            combinationId,
+            quantity,
+          },
+          INVENTORY_MOVEMENT_TYPE.CANCELLATION,
+          salesOrder.id,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
           transaction
         );
       })
@@ -547,7 +557,7 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
         },
         INVENTORY_MOVEMENT_TYPE.OUT,
         id,
-        null,
+        INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
         transaction
       );
     })

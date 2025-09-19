@@ -20,7 +20,8 @@ module.exports = {
       allowNull: true,
     });
 
-    // await queryInterface.removeColumn("InventoryMovements", "sellingPrice");
+    await queryInterface.removeColumn("InventoryMovements", "reason");
+    await queryInterface.removeColumn("InventoryMovements", "reference");
     await queryInterface.removeColumn("InventoryMovements", "previous");
     await queryInterface.removeColumn("InventoryMovements", "new");
   },
@@ -30,10 +31,14 @@ module.exports = {
     await queryInterface.removeColumn("InventoryMovements", "costPerUnit");
     await queryInterface.removeColumn("InventoryMovements", "totalCost");
     await queryInterface.removeColumn("InventoryMovements", "referenceType");
-    // await queryInterface.addColumn("InventoryMovements", "sellingPrice", {
-    //   type: Sequelize.DECIMAL(10, 2),
-    //   allowNull: true,
-    // });
+    await queryInterface.addColumn("InventoryMovements", "reason", {
+      type: Sequelize.STRING,
+      allowNull: true,
+    });
+    await queryInterface.addColumn("InventoryMovements", "reference", {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+    });
     await queryInterface.addColumn("InventoryMovements", "previous", {
       type: Sequelize.INTEGER,
       allowNull: true,

@@ -10,7 +10,10 @@ const ApiError = require("./ApiError");
 const Joi = require("joi");
 const { getSKU, toMoney } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
-const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
+const {
+  INVENTORY_MOVEMENT_TYPE,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE,
+} = require("../definitions");
 const authService = require("./auth.service");
 const productService = require("./product.service");
 const { inventoryDecrease, inventoryIncrease } = require("./inventory.service");
@@ -436,16 +439,16 @@ module.exports = {
         );
       }
 
-      if (toInventory && !toInventory.inventory) {
-        // Create inventory record if not exist
-        toInventory.inventory = await Inventory.create(
-          {
-            combinationId: toCombinationId,
-            quantity: 0,
-          },
-          { transaction }
-        );
-      }
+      // if (toInventory && !toInventory.inventory) {
+      //   // Create inventory record if not exist
+      //   toInventory.inventory = await Inventory.create(
+      //     {
+      //       combinationId: toCombinationId,
+      //       quantity: 0,
+      //     },
+      //     { transaction }
+      //   );
+      // }
 
       if (fromInventory && fromInventory.inventory.quantity < quantity) {
         throw ApiError.validation(
@@ -463,7 +466,7 @@ module.exports = {
 
       const totalQuantity = quantity * conversionFactor;
 
-      // Update Inventory
+      // Update Parent Inventory
       await inventoryDecrease(
         {
           combinationId: fromCombinationId,
@@ -471,35 +474,48 @@ module.exports = {
         },
         INVENTORY_MOVEMENT_TYPE.BREAK_PACK,
         fromInventory.id,
-        "Break pack",
+        INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
         transaction
       );
+
       const averagePrice =
         fromInventory.inventory.averagePrice / conversionFactor;
-      await toInventory.inventory.update(
+      // await toInventory.inventory.update(
+      //   {
+      //     quantity: toInventory.inventory.quantity + totalQuantity,
+      //     averagePrice,
+      //   },
+      //   { transaction }
+      // );
+
+      //Update Child inventory
+      await inventoryIncrease(
         {
-          quantity: toInventory.inventory.quantity + totalQuantity,
+          combinationId: toCombinationId,
+          quantity: totalQuantity,
           averagePrice,
         },
-        { transaction }
+        INVENTORY_MOVEMENT_TYPE.RE_PACK,
+        toInventory.id,
+        INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
+        transaction
       );
 
-      // Log Repack movement
-      await InventoryMovement.create(
-        {
-          type: INVENTORY_MOVEMENT_TYPE.RE_PACK,
-          previous: toInventory.inventory.quantity,
-          new: toInventory.inventory.quantity + totalQuantity,
-          quantity: totalQuantity,
-          reference: toInventory.id,
-          costPerUnit: averagePrice,
-          sellingPrice: toInventory.price,
-          reason: "Repack",
-          userId: user.id,
-          combinationId: toCombinationId,
-        },
-        { transaction }
-      );
+      // // Log Repack movement
+      // await InventoryMovement.create(
+      //   {
+      //     type: INVENTORY_MOVEMENT_TYPE.RE_PACK,
+      //     previous: toInventory.inventory.quantity,
+      //     new: toInventory.inventory.quantity + totalQuantity,
+      //     quantity: totalQuantity,
+      //     reference: toInventory.id,
+      //     costPerUnit: averagePrice,
+      //     reason: "Repack",
+      //     userId: user.id,
+      //     combinationId: toCombinationId,
+      //   },
+      //   { transaction }
+      // );
 
       await BreakPack.create(
         {
@@ -540,26 +556,21 @@ module.exports = {
     const transaction = await sequelize.transaction();
     try {
       const { combinationId, newQuantity, reason, notes } = payload;
-      const combination = await ProductCombination.findByPk(combinationId, {
-        include: [
-          {
-            model: Inventory,
-            as: "inventory",
-          },
-          { model: Product, as: "product" },
-        ],
+      const inventory = await Inventory.findOne({
+        where: { combinationId },
         transaction,
       });
-      if (!combination) throw new Error("Combination not found");
+
+      if (!inventory) throw new Error("Combination not found");
       const user = await authService.getCurrent();
 
       const adjustment = await StockAdjustment.create(
         {
           referenceNo: "REF" + Math.random(),
-          combinationId: combination.id,
-          systemQuantity: combination.inventory?.quantity || 0,
+          combinationId,
+          systemQuantity: inventory?.quantity || 0,
           newQuantity,
-          difference: newQuantity - combination.inventory?.quantity || 0,
+          difference: newQuantity - inventory?.quantity || 0,
           reason,
           notes,
           createdAt: new Date(),
@@ -568,37 +579,50 @@ module.exports = {
         { transaction }
       );
 
-      const oldQty = combination.inventory.quantity;
+      const oldQty = inventory.quantity;
       const diff = newQuantity - oldQty;
       if (diff !== 0) {
-        await InventoryMovement.create(
-          {
-            combinationId,
-            type: INVENTORY_MOVEMENT_TYPE.STOCK_ADJUSTMENT,
-            previous: combination.inventory.quantity,
-            new: newQuantity,
-            quantity: diff, // can be negative or positive
-            costPerUnit: combination.inventory.averagePrice,
-            sellingPrice: combination.price,
-            reference: adjustment.id,
-            reason,
-            userId: user.id,
-          },
-          { transaction }
-        );
-      }
+        // console.log({
+        //   combinationId,
+        //   type: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
+        //   quantity: diff, // can be negative or positive
+        //   costPerUnit: combination.inventory.averagePrice,
+        //   totalCost: newQuantity * combination.inventory.averagePrice,
+        //   referenceId: adjustment.id,
+        //   referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
+        //   userId: user.id,
+        // });
 
-      if (!combination.inventory) {
-        throw new Error("Inventory not found");
-      } else {
-        combination.inventory.update({
-          quantity: newQuantity,
-          averagePrice: combination.inventory.averagePrice,
-        });
+        if (!inventory) {
+          throw new Error("Inventory not found");
+        } else {
+          await inventory.update(
+            {
+              quantity: newQuantity,
+              averagePrice: inventory.averagePrice,
+            },
+            {
+              transaction,
+            }
+          );
+          await InventoryMovement.create(
+            {
+              combinationId,
+              type: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
+              quantity: diff, // can be negative or positive
+              costPerUnit: inventory.averagePrice,
+              totalCost: newQuantity * inventory.averagePrice,
+              referenceId: adjustment.id,
+              referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
+              userId: user.id,
+            },
+            { transaction }
+          );
+        }
       }
 
       transaction.commit();
-      return combination;
+      return true;
     } catch (error) {
       console.log(error);
 
