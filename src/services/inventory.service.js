@@ -475,7 +475,7 @@ module.exports = {
     transaction
   ) {
     const user = await authService.getCurrent();
-    const { combinationId, quantity, purchasePrice } = item;
+    const { combinationId, quantity } = item;
 
     const inventory = await Inventory.findOne({
       where: { combinationId },

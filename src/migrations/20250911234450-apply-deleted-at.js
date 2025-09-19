@@ -6,7 +6,7 @@ module.exports = {
     await queryInterface.removeColumn("Categories", "deletedAt");
     await queryInterface.removeColumn("StockAdjustments", "deletedAt");
 
-    await queryInterface.addIndex("Customers", ["deletedAt"]);
+    // await queryInterface.addIndex("Customers", ["deletedAt"]);
     await queryInterface.addColumn("GoodReceipts", "deletedAt", {
       type: Sequelize.DATE,
       allowNull: true,
@@ -17,7 +17,7 @@ module.exports = {
       allowNull: true,
     });
     await queryInterface.addIndex("GoodReceiptLines", ["deletedAt"]);
-    await queryInterface.addIndex("Inventories", ["deletedAt"]);
+    // await queryInterface.addIndex("Inventories", ["deletedAt"]);
     await queryInterface.addColumn("Invoices", "deletedAt", {
       type: Sequelize.DATE,
       allowNull: true,
@@ -38,8 +38,8 @@ module.exports = {
       allowNull: true,
     });
     await queryInterface.addIndex("PaymentApplications", ["deletedAt"]);
-    await queryInterface.addIndex("Products", ["deletedAt"]);
-    await queryInterface.addIndex("ProductCombinations", ["deletedAt"]);
+    // await queryInterface.addIndex("Products", ["deletedAt"]);
+    // await queryInterface.addIndex("ProductCombinations", ["deletedAt"]);
     await queryInterface.addColumn("SalesOrders", "deletedAt", {
       type: Sequelize.DATE,
       allowNull: true,
@@ -50,8 +50,8 @@ module.exports = {
       allowNull: true,
     });
     await queryInterface.addIndex("SalesOrderItems", ["deletedAt"]);
-    await queryInterface.addIndex("Suppliers", ["deletedAt"]);
-    await queryInterface.addIndex("Users", ["deletedAt"]);
+    // await queryInterface.addIndex("Suppliers", ["deletedAt"]);
+    // await queryInterface.addIndex("Users", ["deletedAt"]);
   },
 
   async down(queryInterface, Sequelize) {
