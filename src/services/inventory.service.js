@@ -405,66 +405,105 @@ module.exports = {
       console.log(1, error);
     }
   },
-  async processInventoryUpdates(
-    item,
-    reference = null,
-    reason = null,
-    transactionType,
-    transaction,
-    increase = true //Add inventory
-  ) {
+  async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
     const user = await authService.getCurrent();
-    const { combinationId } = item;
+    const { combinationId, quantity, averagePrice = null } = item;
 
-    const [inventory] = await sequelize.models.Inventory.findOrCreate({
-      //Find or create inventory exclude quantity
-      where: { combinationId: item.combinationId },
-      defaults: {
-        combinationId,
-        quantity: 0,
-      },
+    const inventory = await Inventory.findOne({
+      where: { combinationId },
       transaction,
     });
+
+    if (!inventory) {
+      //Find or create inventory exclude quantity
+      Inventory.create(
+        {
+          combinationId,
+          quantity,
+          averagePrice,
+        },
+        { transaction }
+      );
+    } else {
+      const oldQty = inventory.quantity;
+      const newQty = oldQty + quantity;
+
+      await inventory.update(
+        // Update inventory quantity
+        {
+          ...(averagePrice && { averagePrice }),
+          quantity: newQty,
+        },
+        { transaction }
+      );
+    }
 
     await sequelize.models.InventoryMovement.create(
       // Create inventory movement
       {
-        combinationId: item.combinationId,
-        previous: inventory.quantity,
-        new: increase
-          ? parseInt(inventory.quantity) + parseInt(item.quantity)
-          : parseInt(inventory.quantity) - parseInt(item.quantity),
-        quantity: item.quantity,
-        type: transactionType,
+        type,
+        quantity,
+        costPerUnit: averagePrice || inventory.averagePrice,
+        totalCost: quantity * inventory.averagePrice,
+        referenceType,
+        referenceId,
         userId: user.id,
-        reference,
-        reason,
+        combinationId: item.combinationId,
       },
       { transaction }
     );
-    if (!increase) {
-      const inv = await Inventory.findOne({
-        where: {
-          combinationId: item.combinationId,
-        },
-        transaction,
-      });
 
+    return inventory;
+  },
+  async inventoryDecrease(
+    item,
+    type,
+    referenceId = null,
+    referenceType = null,
+    transaction
+  ) {
+    const user = await authService.getCurrent();
+    const { combinationId, quantity } = item;
+
+    const inventory = await Inventory.findOne({
+      where: { combinationId },
+      transaction,
+    });
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    } else {
       // Check if inventory is enough
-      if (inv.quantity < item.quantity) {
+      if (inventory.quantity < quantity) {
         throw new Error("Not enough inventory");
       }
+
+      const newQuantity = inventory.quantity - quantity;
+
+      await sequelize.models.InventoryMovement.create(
+        // Create inventory movement
+        {
+          combinationId: combinationId,
+          quantity,
+          costPerUnit: inventory.averagePrice,
+          totalCost: quantity * inventory.averagePrice,
+          type,
+          userId: user.id,
+          referenceId,
+          referenceType,
+        },
+        { transaction }
+      );
+
+      await inventory.update(
+        // Update inventory quantity
+        {
+          quantity: newQuantity,
+        },
+        { transaction }
+      );
     }
 
-    await inventory.update(
-      // Update inventory quantity
-      {
-        quantity: increase
-          ? inventory.quantity + item.quantity
-          : inventory.quantity - item.quantity,
-      },
-      { transaction }
-    );
     return inventory;
   },
 };

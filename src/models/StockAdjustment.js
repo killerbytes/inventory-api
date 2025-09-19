@@ -28,9 +28,9 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   StockAdjustment.associate = (models) => {
-    StockAdjustment.hasMany(models.InventoryMovement, {
-      foreignKey: "referenceId",
-    });
+    // StockAdjustment.hasMany(models.InventoryMovement, {
+    //   foreignKey: "referenceId",
+    // });
     StockAdjustment.belongsTo(models.User, {
       foreignKey: "createdBy",
       as: "user",

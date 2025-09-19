@@ -19,3 +19,5 @@ cross-env NODE_ENV=staging npm run restore
 npx sequelize migration:generate --name fix-product-name-unique-index
 
 psql -U postgres -h localhost -d inventory_db
+
+ALTER TABLE "InventoryMovements" DROP CONSTRAINT "InventoryMovements_referenceId_fkey";

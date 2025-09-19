@@ -1,4 +1,7 @@
-const { INVENTORY_MOVEMENT_TYPE } = require("../definitions");
+const {
+  INVENTORY_MOVEMENT_TYPE,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE,
+} = require("../definitions");
 
 module.exports = (sequelize, DataTypes) => {
   const InventoryMovement = sequelize.define("InventoryMovement", {
@@ -9,23 +12,27 @@ module.exports = (sequelize, DataTypes) => {
         isIn: [Object.values(INVENTORY_MOVEMENT_TYPE)],
       },
     },
-    previous: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    new: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    reference: {
+    costPerUnit: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    totalCost: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    referenceType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [Object.values(INVENTORY_MOVEMENT_REFERENCE_TYPE)],
+      },
+    },
+    referenceId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    reason: DataTypes.STRING,
   });
 
   InventoryMovement.associate = (models) => {
@@ -38,9 +45,9 @@ module.exports = (sequelize, DataTypes) => {
       as: "combination",
     });
 
-    InventoryMovement.belongsTo(models.StockAdjustment, {
-      foreignKey: "referenceId",
-    });
+    // InventoryMovement.belongsTo(models.StockAdjustment, {
+    //   foreignKey: "referenceId",
+    // });
   };
 
   return InventoryMovement;

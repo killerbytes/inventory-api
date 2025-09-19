@@ -6,11 +6,15 @@ const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
   PAGINATION,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE,
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
 const ApiError = require("./ApiError.js");
-const { processInventoryUpdates } = require("./inventory.service.js");
+const {
+  inventoryIncrease,
+  inventoryDecrease,
+} = require("./inventory.service.js");
 const { getTotalAmount, getAmount } = require("../utils/compute.js");
 const {
   VariantValue,
@@ -411,18 +415,19 @@ module.exports = {
   },
 
   async cancelOrder(id, payload) {
-    const goodReceipt = await GoodReceipt.findByPk(id, {
-      include: [
-        {
-          model: GoodReceiptLine,
-          as: "goodReceiptLines",
-        },
-      ],
-    });
-    if (!goodReceipt) {
-      throw new Error("Good Receipt not found");
-    }
-    await processCancelledOrder(goodReceipt, payload);
+    throw new Error("Not implemented");
+    // const goodReceipt = await GoodReceipt.findByPk(id, {
+    //   include: [
+    //     {
+    //       model: GoodReceiptLine,
+    //       as: "goodReceiptLines",
+    //     },
+    //   ],
+    // });
+    // if (!goodReceipt) {
+    //   throw new Error("Good Receipt not found");
+    // }
+    // await processCancelledOrder(goodReceipt, payload);
   },
 };
 
@@ -479,13 +484,15 @@ const processCancelledOrder = async (goodReceipt, payload) => {
     const { goodReceiptLines, id } = goodReceipt;
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        await processInventoryUpdates(
-          item,
+        await inventoryDecrease(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+          },
+          INVENTORY_MOVEMENT_TYPE.CANCELLATION,
           id,
-          payload.reason,
-          INVENTORY_MOVEMENT_TYPE.CANCEL_PURCHASE,
-          transaction,
-          false
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
+          transaction
         );
       })
     );
@@ -534,14 +541,30 @@ const processReceivedOrder = async (payload, goodReceipt) => {
 
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        await processInventoryUpdates(
+        const { combinationId, quantity, purchasePrice } = item;
+
+        const inventory = await db.Inventory.findOne({
+          where: { combinationId },
+          transaction,
+        });
+        if (!inventory) {
+          throw new Error("Inventory not found");
+        }
+        const oldQty = inventory.quantity;
+        const oldPrice = inventory.averagePrice;
+        const newQty = oldQty + quantity;
+        const averagePrice =
+          (oldQty * oldPrice + quantity * purchasePrice) / newQty;
+
+        await inventoryIncrease(
           {
-            combinationId: item.combinationId,
-            quantity: item.quantity,
+            combinationId,
+            quantity,
+            averagePrice,
           },
-          id,
-          null,
           INVENTORY_MOVEMENT_TYPE.IN,
+          id,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
           transaction
         );
       })

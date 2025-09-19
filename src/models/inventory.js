@@ -18,6 +18,10 @@ module.exports = (sequelize, DataTypes) => {
   Inventory.init(
     {
       combinationId: { type: DataTypes.INTEGER, allowNull: false },
+      averagePrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0,
+      },
       quantity: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
