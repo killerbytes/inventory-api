@@ -617,6 +617,10 @@ const updateOrder = async (
         force: true,
         transaction,
       });
+      const gr = await GoodReceiptLine.findAll({
+        where: { goodReceiptId: goodReceipt.id },
+        transaction,
+      });
 
       const items = await Promise.all(
         payload.goodReceiptLines.map(async (item) => {
