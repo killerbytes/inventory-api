@@ -81,6 +81,14 @@ const goodReceiptController = {
       next(error);
     }
   },
+  async getByProductCombination(req, res, next) {
+    try {
+      const result = await goodReceiptService.getByProductCombination(req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = goodReceiptController;
