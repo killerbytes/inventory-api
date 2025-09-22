@@ -4,14 +4,18 @@ async function getNextSequence(name, sequelize) {
   const dialect = sequelize.getDialect();
 
   if (dialect === "postgres") {
-    // Native sequence
-    const [[{ nextval }]] = await sequelize.query(`SELECT nextval('${name}');`);
+    // Ensure the sequence exists
+    await sequelize.query(`CREATE SEQUENCE IF NOT EXISTS "${name}" START 1;`);
+
+    // Get next value
+    const [[{ nextval }]] = await sequelize.query(
+      `SELECT nextval('"${name}"');`
+    );
     return Number(nextval);
   }
 
   if (dialect === "sqlite") {
     // Fallback: emulate with Sequences table
-
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS Sequences (
         name TEXT PRIMARY KEY,
@@ -31,8 +35,7 @@ async function getNextSequence(name, sequelize) {
       }
     );
 
-    // Now fetch the latest value
-    const [rows] = await sequelize.query(
+    const [row] = await sequelize.query(
       `SELECT value FROM Sequences WHERE name = :name`,
       {
         replacements: { name },
@@ -40,7 +43,7 @@ async function getNextSequence(name, sequelize) {
       }
     );
 
-    return rows.value;
+    return row.value;
   }
 
   throw new Error(`Unsupported dialect: ${dialect}`);

@@ -10,6 +10,7 @@ const {
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
+const { toMoney } = require("../utils/string.js");
 const ApiError = require("./ApiError.js");
 const {
   inventoryIncrease,
@@ -60,6 +61,14 @@ module.exports = {
         ],
         nest: true,
         order: [
+          [
+            {
+              model: GoodReceiptLine,
+              as: "goodReceiptLines",
+            },
+            "id",
+            "ASC",
+          ],
           [
             { model: OrderStatusHistory, as: "goodReceiptStatusHistory" },
             "id",
@@ -276,7 +285,7 @@ module.exports = {
 
     // Search by name if query exists
     if (q) {
-      where.name = { [Op.like]: `%${q}%` };
+      where.referenceNo = { [Op.like]: `%${q}%` };
     }
     if (status) {
       where.status = status;
@@ -429,6 +438,34 @@ module.exports = {
     // }
     // await processCancelledOrder(goodReceipt, payload);
   },
+
+  async getByProductCombination(list) {
+    const result = [];
+    try {
+      for (const id of list) {
+        const gr = await GoodReceiptLine.findOne({
+          where: {
+            id,
+          },
+        });
+
+        const { purchasePrice, quantity, discount, discountNote, totalAmount } =
+          gr;
+        result.push({
+          id: gr.id,
+          comboId: gr.combinationId,
+          purchasePrice,
+          unitPrice: totalAmount / quantity,
+          quantity,
+          discount,
+          discountNote,
+        });
+      }
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 const processCompletedOrder = async (payload, goodReceipt) => {
@@ -541,7 +578,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
 
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        const { combinationId, quantity, purchasePrice } = item;
+        const { combinationId, quantity, purchasePrice, discount } = item;
 
         const inventory = await db.Inventory.findOne({
           where: { combinationId },
@@ -553,8 +590,11 @@ const processReceivedOrder = async (payload, goodReceipt) => {
         const oldQty = inventory.quantity;
         const oldPrice = inventory.averagePrice;
         const newQty = oldQty + quantity;
+        const priceAfterDiscount =
+          (quantity * purchasePrice - discount) / quantity;
+
         const averagePrice =
-          (oldQty * oldPrice + quantity * purchasePrice) / newQty;
+          (oldQty * oldPrice + quantity * priceAfterDiscount) / newQty;
 
         await inventoryIncrease(
           {
@@ -611,51 +651,68 @@ const updateOrder = async (
 ) => {
   try {
     await goodReceipt.update(payload, { transaction });
+
     if (updateOrderItems) {
+      // Existing line IDs from the payload (preserve them)
+      const payloadIds = payload.goodReceiptLines
+        .filter((i) => i.id) // only ones with id
+        .map((i) => i.id);
+
+      // Delete lines missing from payload
       await GoodReceiptLine.destroy({
-        where: { goodReceiptId: goodReceipt.id },
-        force: true,
+        where: {
+          goodReceiptId: goodReceipt.id,
+          id: { [Op.notIn]: payloadIds.length > 0 ? payloadIds : [0] }, // avoid deleting everything if empty
+        },
         transaction,
       });
 
-      const items = await Promise.all(
-        payload.goodReceiptLines.map(async (item) => {
-          const productCombination = await ProductCombination.findByPk(
-            item.combinationId,
-            {
-              include: [
-                {
-                  model: Product,
-                  as: "product",
-                  include: [
-                    { model: Category, as: "category" },
-                    {
-                      model: VariantType,
-                      as: "variants",
-                      include: [{ model: VariantValue, as: "values" }],
-                    },
-                  ],
-                },
-                {
-                  model: VariantValue,
-                  as: "values",
-                  through: { attributes: [] },
-                  order: [["variantTypeId", "ASC"]],
-                },
-              ],
-            }
-          );
+      // Upsert each line
+      for (const item of payload.goodReceiptLines) {
+        const productCombination = await ProductCombination.findByPk(
+          item.combinationId,
+          {
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [
+                  { model: Category, as: "category" },
+                  {
+                    model: VariantType,
+                    as: "variants",
+                    include: [{ model: VariantValue, as: "values" }],
+                  },
+                ],
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+                order: [["variantTypeId", "ASC"]],
+              },
+            ],
+          }
+        );
 
-          return {
-            ...item,
-            ...mappedProductCombinationProps(productCombination),
-            totalAmount: getAmount(item),
-            goodReceiptId: goodReceipt.id,
-          };
-        })
-      );
+        const lineData = {
+          ...item,
+          ...mappedProductCombinationProps(productCombination),
+          totalAmount: getAmount(item),
+          goodReceiptId: goodReceipt.id,
+        };
 
-      await GoodReceiptLine.bulkCreate(items, { transaction });
+        if (item.id) {
+          // Update existing line
+          await GoodReceiptLine.update(lineData, {
+            where: { id: item.id },
+            transaction,
+          });
+        } else {
+          // Insert new line
+          await GoodReceiptLine.create(lineData, { transaction });
+        }
+      }
     }
   } catch (error) {
     console.log(321, error);

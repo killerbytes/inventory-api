@@ -594,61 +594,79 @@ const updateOrder = async (
 ) => {
   try {
     await salesOrder.update(payload, { transaction });
+
     if (updateOrderItems) {
+      // Collect IDs from payload
+      const payloadIds = payload.salesOrderItems
+        .filter((i) => i.id)
+        .map((i) => i.id);
+
+      // Remove items not in payload
       await SalesOrderItem.destroy({
-        where: { salesOrderId: salesOrder.id },
-        force: true,
+        where: {
+          salesOrderId: salesOrder.id,
+          id: { [Op.notIn]: payloadIds.length > 0 ? payloadIds : [0] },
+        },
         transaction,
       });
 
-      const items = await Promise.all(
-        payload.salesOrderItems.map(async (item) => {
-          const productCombination = await ProductCombination.findByPk(
-            item.combinationId,
-            {
-              include: [
-                {
-                  model: Product,
-                  as: "product",
-                  include: [
-                    { model: Category, as: "category" },
-                    {
-                      model: VariantType,
-                      as: "variants",
-                      include: [{ model: VariantValue, as: "values" }],
-                    },
-                  ],
-                },
-                {
-                  model: VariantValue,
-                  as: "values",
-                  through: { attributes: [] },
-                  order: [["variantTypeId", "ASC"]],
-                },
-              ],
-              transaction,
-            }
-          );
-          const { id, ...rest } = item;
-          const props = {
-            ...rest,
-            salesOrderId: salesOrder.id,
-            originalPrice: productCombination.price,
-            totalAmount: getAmount(item),
-            unit: productCombination.unit,
-            nameSnapshot: productCombination.name,
-            categorySnapshot: productCombination.product.category,
-            variantSnapshot: getMappedVariantValues(
-              productCombination.product.variants,
-              productCombination.values
-            ),
-            skuSnapshot: productCombination.sku,
-          };
-          return props;
-        })
-      );
+      // Loop through payload items
+      for (const item of payload.salesOrderItems) {
+        const productCombination = await ProductCombination.findByPk(
+          item.combinationId,
+          {
+            include: [
+              {
+                model: Product,
+                as: "product",
+                include: [
+                  { model: Category, as: "category" },
+                  {
+                    model: VariantType,
+                    as: "variants",
+                    include: [{ model: VariantValue, as: "values" }],
+                  },
+                ],
+              },
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+                order: [["variantTypeId", "ASC"]],
+              },
+            ],
+            transaction,
+          }
+        );
 
-      await SalesOrderItem.bulkCreate(items, { transaction });
+        const { id, ...rest } = item;
+
+        const props = {
+          ...rest,
+          salesOrderId: salesOrder.id,
+          originalPrice: productCombination.price,
+          totalAmount: getAmount(item),
+          unit: productCombination.unit,
+          nameSnapshot: productCombination.name,
+          categorySnapshot: productCombination.product.category,
+          variantSnapshot: getMappedVariantValues(
+            productCombination.product.variants,
+            productCombination.values
+          ),
+          skuSnapshot: productCombination.sku,
+        };
+
+        if (id) {
+          // Update existing
+          await SalesOrderItem.update(props, {
+            where: { id },
+            transaction,
+          });
+        } else {
+          // Insert new
+          await SalesOrderItem.create(props, { transaction });
+        }
+      }
     }
   } catch (error) {
     console.log(error);

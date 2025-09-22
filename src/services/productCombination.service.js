@@ -650,6 +650,19 @@ module.exports = {
       transaction.rollback();
     }
   },
+  async bulkGet(list) {
+    const result = [];
+    try {
+      for (const id of list) {
+        const combo = await ProductCombination.findByPk(id);
+
+        result.push(combo);
+      }
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 function validateCombinations(payload, product) {
