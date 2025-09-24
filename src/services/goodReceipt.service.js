@@ -295,17 +295,17 @@ module.exports = {
 
     // Add date filtering if dates are provided
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.receiptDate = {};
 
       if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where.createdAt[Op.gte] = start;
+        where.receiptDate[Op.gte] = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.createdAt[Op.lte] = end;
+        where.receiptDate[Op.lte] = end;
       }
     }
 
