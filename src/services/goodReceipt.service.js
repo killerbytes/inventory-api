@@ -449,18 +449,22 @@ module.exports = {
           where: {
             id,
           },
+          include: [
+            {
+              model: ProductCombination,
+              as: "combinations",
+            },
+          ],
         });
 
-        const { purchasePrice, quantity, discount, discountNote, totalAmount } =
-          gr;
+        const { purchasePrice, quantity, totalAmount, combinations } = gr;
         result.push({
           id: gr.id,
           comboId: gr.combinationId,
           purchasePrice,
           unitPrice: totalAmount / quantity,
           quantity,
-          discount,
-          discountNote,
+          price: combinations.price,
         });
       }
       return result;
@@ -580,7 +584,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
 
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        const { combinationId, quantity, purchasePrice, discount } = item;
+        const { combinationId, quantity, purchasePrice, discount = 0 } = item;
 
         const inventory = await db.Inventory.findOne({
           where: { combinationId },
@@ -602,7 +606,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
           {
             combinationId,
             quantity,
-            averagePrice,
+            averagePrice: toMoney(averagePrice),
           },
           INVENTORY_MOVEMENT_TYPE.IN,
           id,

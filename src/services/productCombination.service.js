@@ -673,7 +673,7 @@ module.exports = {
         }
         await combo.update(
           {
-            price: parseFloat(i.price),
+            price: parseFloat(i.price.replace(",", "")),
           },
           {
             transaction,
