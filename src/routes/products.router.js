@@ -2,6 +2,7 @@ const express = require("express");
 const productsController = require("../controllers/products.controller");
 const router = express.Router();
 
+router.post("/updateSheet", productsController.updateSheet);
 router.post("/:id/convertToUnit", productsController.cloneToUnit);
 router.get("/all", productsController.getAllProducts);
 router.get("/list", productsController.list);
