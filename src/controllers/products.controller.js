@@ -84,6 +84,15 @@ const productController = {
       next(error);
     }
   },
+
+  async updateSheet(req, res, next) {
+    try {
+      const products = await productService.updateSheet();
+      return res.status(200).json(products);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = productController;

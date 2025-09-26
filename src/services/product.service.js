@@ -1,3 +1,5 @@
+const path = require("path");
+const { google } = require("googleapis");
 const { sequelize } = require("../models");
 const { Op } = require("sequelize");
 const db = require("../models");
@@ -395,6 +397,95 @@ module.exports = {
       transaction.rollback();
       throw error;
     }
+  },
+
+  async updateSheet() {
+    // auth with service account
+
+    const auth = new google.auth.GoogleAuth({
+      keyFile: path.join("src", "config", "service-account.json"),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
+
+    const spreadsheetId = "1BFW_9PCJY9_b9vq-k-dYHndkjZ_l6foUh1j-lPICzDE"; // from the sheet URL
+    const range = "Sheet1!A1"; // cell or range you want to update
+    const valueInputOption = "USER_ENTERED";
+
+    let headers;
+    let result = [];
+
+    const categories = await Category.findAll({
+      where: { parentId: null }, // top-level only
+      order: [["order", "ASC"]],
+      raw: true,
+    });
+
+    for (const category of categories) {
+      const products = await Product.findAll({
+        attributes: [],
+        include: [
+          {
+            model: ProductCombination,
+            as: "combinations",
+            attributes: ["id", "name", "unit", "price"],
+            include: [
+              {
+                model: Inventory,
+                as: "inventory",
+                attributes: ["averagePrice", "quantity"],
+              },
+            ],
+          },
+        ],
+        where: { categoryId: category.id },
+        order: [["name", "ASC"]],
+        raw: true,
+        nest: true,
+      });
+
+      for (const row of products) {
+        delete row.combinations.inventory.id;
+      }
+
+      // products are now plain objects already
+      category.products = products;
+      result.push([null, category.name]);
+
+      result = [
+        ...result,
+        ...products.map(({ combinations }) => [
+          combinations.id,
+          combinations.name,
+          combinations.unit,
+          combinations.price,
+          combinations.inventory?.averagePrice,
+          combinations.inventory?.quantity,
+        ]),
+      ];
+    }
+    headers = ["ID", "NAME", "UNIT", "PRICE", "AVERAGEPRICE", "QUANTITY"];
+
+    console.log(headers);
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption,
+      requestBody: { values: [headers] },
+    });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: "Sheet1!A2",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: result,
+      },
+    });
+    return result;
   },
 };
 
