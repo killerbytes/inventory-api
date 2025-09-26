@@ -459,14 +459,14 @@ module.exports = {
         ...products.map(({ combinations }) => [
           combinations.id,
           combinations.name,
-          combinations.unit,
-          combinations.price,
-          combinations.inventory?.averagePrice,
           combinations.inventory?.quantity,
+          combinations.unit,
+          combinations.inventory?.averagePrice,
+          combinations.price,
         ]),
       ];
     }
-    headers = ["ID", "NAME", "UNIT", "PRICE", "AVERAGEPRICE", "QUANTITY"];
+    headers = ["ID", "NAME", "QTY", "UNIT", "AVERAGEPRICE", "SRP"];
 
     console.log(headers);
 
