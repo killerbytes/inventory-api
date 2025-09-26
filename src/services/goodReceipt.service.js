@@ -295,17 +295,17 @@ module.exports = {
 
     // Add date filtering if dates are provided
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.receiptDate = {};
 
       if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where.createdAt[Op.gte] = start;
+        where.receiptDate[Op.gte] = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.createdAt[Op.lte] = end;
+        where.receiptDate[Op.lte] = end;
       }
     }
 
@@ -449,18 +449,22 @@ module.exports = {
           where: {
             id,
           },
+          include: [
+            {
+              model: ProductCombination,
+              as: "combinations",
+            },
+          ],
         });
 
-        const { purchasePrice, quantity, discount, discountNote, totalAmount } =
-          gr;
+        const { purchasePrice, quantity, totalAmount, combinations } = gr;
         result.push({
           id: gr.id,
           comboId: gr.combinationId,
           purchasePrice,
           unitPrice: totalAmount / quantity,
           quantity,
-          discount,
-          discountNote,
+          price: combinations.price,
         });
       }
       return result;
@@ -580,7 +584,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
 
     await Promise.all(
       goodReceiptLines.map(async (item) => {
-        const { combinationId, quantity, purchasePrice, discount } = item;
+        const { combinationId, quantity, purchasePrice, discount = 0 } = item;
 
         const inventory = await db.Inventory.findOne({
           where: { combinationId },
@@ -602,7 +606,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
           {
             combinationId,
             quantity,
-            averagePrice,
+            averagePrice: toMoney(averagePrice),
           },
           INVENTORY_MOVEMENT_TYPE.IN,
           id,

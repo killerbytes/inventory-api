@@ -14,7 +14,7 @@ const {
   createCombination,
   createCustomer,
 } = require("../utils");
-const { getSKU } = require("../../utils/string");
+const { getSKU, toMoney } = require("../../utils/string");
 const { where } = require("sequelize");
 
 beforeAll(async () => {
@@ -147,12 +147,14 @@ describe("Inventory Service (Integration)", () => {
       ],
     });
     const movements = await sequelize.models.InventoryMovement.findAll();
+    const costPerUnit0 = toMoney((10 * 100 - 5) / 10);
     expect(movements.length).toBe(1);
     expect(movements[0].combinationId).toBe(1);
     expect(movements[0].type).toBe("IN");
     expect(movements[0].quantity).toBe(10);
-    expect(movements[0].costPerUnit).toBe((100 * 10) / 10);
-    expect(movements[0].totalCost).toBe(1000);
+    expect(costPerUnit0).toBe(99.5);
+    expect(movements[0].costPerUnit).toBe(costPerUnit0);
+    expect(movements[0].totalCost).toBe(costPerUnit0 * 10);
     expect(movements[0].referenceId).toBe(1);
     expect(movements[0].referenceType).toBe("GOOD_RECEIPT");
 
@@ -186,15 +188,16 @@ describe("Inventory Service (Integration)", () => {
       ],
     });
 
+    const costPerUnit = toMoney((20 * 200 - 10 + 995) / 30);
+
     const movements2 = await sequelize.models.InventoryMovement.findAll();
     expect(movements2.length).toBe(2);
     expect(movements2[1].combinationId).toBe(1);
     expect(movements2[1].type).toBe("IN");
     expect(movements2[1].quantity).toBe(20);
-    expect(Math.round(movements2[1].costPerUnit)).toBe(
-      Math.round(166.66666666666666)
-    );
-    expect(Math.round(movements2[1].totalCost)).toBe(Math.round(3333.333333));
+    expect(costPerUnit).toBe(166.17);
+    expect(movements2[1].costPerUnit).toBe(costPerUnit);
+    expect(movements2[1].totalCost).toBe(costPerUnit * 20);
     expect(movements2[1].referenceId).toBe(2);
     expect(movements2[1].referenceType).toBe("GOOD_RECEIPT");
 
@@ -225,14 +228,16 @@ describe("Inventory Service (Integration)", () => {
         },
       ],
     });
+    const costPerUnit2 = toMoney((166.17 * 30 + 30 * 300) / 60);
 
     const movements3 = await sequelize.models.InventoryMovement.findAll();
     expect(movements3.length).toBe(3);
     expect(movements3[2].combinationId).toBe(1);
     expect(movements3[2].type).toBe("IN");
     expect(movements3[2].quantity).toBe(30);
-    expect(Math.round(movements3[2].costPerUnit)).toBe(Math.round(233.3333333));
-    expect(Math.round(movements3[2].totalCost)).toBe(Math.round(7000));
+    expect(costPerUnit2).toBe(233.08);
+    expect(movements3[2].costPerUnit).toBe(costPerUnit2);
+    expect(movements3[2].totalCost).toBe(costPerUnit2 * 30);
     expect(movements3[2].referenceId).toBe(3);
     expect(movements3[2].referenceType).toBe("GOOD_RECEIPT");
 
@@ -241,7 +246,7 @@ describe("Inventory Service (Integration)", () => {
     });
 
     expect(inv.quantity).toBe(60);
-    expect(Math.round(inv.averagePrice)).toBe(Math.round(233.3333333));
+    expect(inv.averagePrice).toBe(costPerUnit2);
 
     await salesOrderService.create({
       customerId: 1,
@@ -273,8 +278,8 @@ describe("Inventory Service (Integration)", () => {
     expect(movements4[3].combinationId).toBe(1);
     expect(movements4[3].type).toBe("OUT");
     expect(movements4[3].quantity).toBe(10);
-    expect(Math.round(movements4[3].costPerUnit)).toBe(Math.round(233.3333333));
-    expect(Math.round(movements4[3].totalCost)).toBe(Math.round(2333));
+    expect(movements4[3].costPerUnit).toBe(233.08);
+    expect(movements4[3].totalCost).toBe(233.08 * 10);
 
     await salesOrderService.cancelOrder(1, {
       reason: "Test",
@@ -292,5 +297,46 @@ describe("Inventory Service (Integration)", () => {
     expect(movements5[4].combinationId).toBe(1);
     expect(movements5[4].type).toBe("CANCELLATION");
     expect(movements5[4].quantity).toBe(10);
+
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    await goodReceiptService.update(4, {
+      status: "RECEIVED",
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    const movements6 = await sequelize.models.InventoryMovement.findAll();
+    const costPerUnit3 = toMoney((233.08 * 60 + 10 * 100) / 70);
+    expect(movements6.length).toBe(6);
+    expect(movements6[5].combinationId).toBe(1);
+    expect(movements6[5].type).toBe("IN");
+    // expect(movements6[2].quantity).toBe(30);
+    expect(costPerUnit3).toBe(214.07);
+    expect(movements6[5].costPerUnit).toBe(214.07);
+    expect(movements6[5].totalCost).toBe(214.07 * 10);
+    // expect(movements6[2].referenceId).toBe(3);
+    // expect(movements6[2].referenceType).toBe("GOOD_RECEIPT");
   });
 });

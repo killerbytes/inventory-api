@@ -663,6 +663,30 @@ module.exports = {
       throw error;
     }
   },
+  async updatePrices(list) {
+    const transaction = await sequelize.transaction();
+    try {
+      for (const i of list) {
+        const combo = await ProductCombination.findByPk(i.combo_id);
+        if (!combo) {
+          throw new Error("combo not found");
+        }
+        await combo.update(
+          {
+            price: parseFloat(i.price.replace(",", "")),
+          },
+          {
+            transaction,
+          }
+        );
+      }
+      transaction.commit();
+      return true;
+    } catch (error) {
+      transaction.rollback();
+      throw error;
+    }
+  },
 };
 
 function validateCombinations(payload, product) {
