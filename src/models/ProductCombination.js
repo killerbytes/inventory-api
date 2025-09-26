@@ -9,6 +9,8 @@ module.exports = (sequelize, DataTypes) => {
       conversionFactor: DataTypes.INTEGER,
       price: DataTypes.DECIMAL(10, 2),
       reorderLevel: DataTypes.INTEGER,
+      isBreakPack: DataTypes.BOOLEAN,
+      isActive: DataTypes.BOOLEAN,
     },
     {
       defaultScope: {
