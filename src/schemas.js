@@ -84,6 +84,8 @@ const productCombinationSchema = Joi.object({
   conversionFactor: Joi.number().required(),
   price: Joi.number().required(),
   reorderLevel: Joi.number().required(),
+  isBreakPack: Joi.boolean().default(false).allow(null),
+  isActive: Joi.boolean().default(true).allow(null),
   values: Joi.alternatives().try(
     Joi.array().items(variantValueSchema).required()
     // Joi.object()

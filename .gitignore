@@ -27,3 +27,4 @@ logs
 .env*
 ./src/config/config.js
 ./src/config/service-account.json
+src/config/service-account.json
