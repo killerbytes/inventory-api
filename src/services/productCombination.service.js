@@ -385,6 +385,9 @@ module.exports = {
         },
       ],
       order: [["name", "ASC"]],
+      where: {
+        isActive: true,
+      },
     });
 
     return products;
