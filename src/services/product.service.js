@@ -415,7 +415,7 @@ module.exports = {
     const sheets = google.sheets({ version: "v4", auth: client });
 
     const spreadsheetId = "1BFW_9PCJY9_b9vq-k-dYHndkjZ_l6foUh1j-lPICzDE"; // from the sheet URL
-    const range = "Sheet1!A1"; // cell or range you want to update
+    const range = "Sheet1!A:G"; // cell or range you want to update
     const valueInputOption = "USER_ENTERED";
 
     let headers;
@@ -434,7 +434,7 @@ module.exports = {
           {
             model: ProductCombination,
             as: "combinations",
-            attributes: ["id", "name", "unit", "price"],
+            attributes: ["id", "name", "unit", "price", "isBreakPack"],
             include: [
               {
                 model: Inventory,
@@ -467,12 +467,18 @@ module.exports = {
           combinations.unit,
           combinations.inventory?.averagePrice,
           combinations.price,
+          combinations.isBreakPack,
         ]),
       ];
     }
     headers = ["ID", "NAME", "QTY", "UNIT", "AVERAGEPRICE", "SRP"];
 
     console.log(headers);
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range,
+    });
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
