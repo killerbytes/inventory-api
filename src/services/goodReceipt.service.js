@@ -361,7 +361,7 @@ module.exports = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
-        currentPage: page,
+        currentPage: Number(page),
       };
     } catch (error) {
       console.log(error);
