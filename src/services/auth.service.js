@@ -25,7 +25,7 @@ module.exports = {
     return token;
   },
 
-  getCurrent: async () => {
+  async getCurrent() {
     try {
       const env = process.env.NODE_ENV || "development";
       if (env === "test") return await User.findOne({ where: { id: 1 } });
@@ -48,5 +48,15 @@ module.exports = {
       console.log("auth.service.getCurrent error", error);
       throw error;
     }
+  },
+
+  async changePassword(payload) {
+    const { password } = payload;
+    const logged = await this.getCurrent();
+    const user = await User.findByPk(logged.id);
+
+    user.password = User.generateHash(password);
+    await user.save();
+    return "Password changed successfully";
   },
 };
