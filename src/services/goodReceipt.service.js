@@ -27,10 +27,17 @@ const {
   VariantType,
   Category,
 } = db;
+const redis = require("../utils/redis");
 
 module.exports = {
   async get(id) {
     try {
+      const cacheKey = `goodReceipt:${id}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
       const goodReceipt = await GoodReceipt.findByPk(id, {
         include: [
           {
@@ -79,6 +86,7 @@ module.exports = {
       if (!goodReceipt) {
         throw ApiError.notFound("Good Receipt not found");
       }
+      await redis.setEx(cacheKey, 300, JSON.stringify(goodReceipt));
 
       return goodReceipt;
     } catch (error) {
@@ -163,6 +171,9 @@ module.exports = {
         { transaction }
       );
       transaction.commit();
+      await redis.del("goodReceipt:list");
+      await redis.del("goodReceipt:paginated");
+
       return result;
     } catch (error) {
       console.log(error);
@@ -174,6 +185,12 @@ module.exports = {
   },
 
   async list() {
+    const cacheKey = `goodReceipt:list`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const result = await GoodReceipt.findAll({
       include: [
         {
@@ -190,6 +207,7 @@ module.exports = {
       raw: true,
       nest: true,
     });
+    await redis.setEx(cacheKey, 300, JSON.stringify(result));
     return result;
   },
 
@@ -205,6 +223,10 @@ module.exports = {
     if (!goodReceipt) {
       throw new Error("Good Receipt not found");
     }
+
+    await redis.del("goodReceipt:list");
+    await redis.del("goodReceipt:paginated");
+    await redis.del(`goodReceipt:${id}`);
 
     switch (true) {
       case goodReceipt.status === ORDER_STATUS.DRAFT &&
@@ -262,6 +284,9 @@ module.exports = {
           transaction,
         }
       );
+      await redis.del("goodReceipt:list");
+      await redis.del("goodReceipt:paginated");
+      await redis.del(`goodReceipt:${id}`);
 
       transaction.commit();
       return goodReceipt;
@@ -283,7 +308,11 @@ module.exports = {
     } = params;
     const where = {};
 
-    // Build the where clause
+    const cacheKey = `goodReceipt:all`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
 
     // Search by name if query exists
     if (q) {
@@ -356,13 +385,14 @@ module.exports = {
           },
         ],
       });
-
-      return {
+      const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: Number(page),
       };
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return result;
     } catch (error) {
       console.log(error);
       throw error;

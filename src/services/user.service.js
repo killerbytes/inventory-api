@@ -3,16 +3,23 @@ const { Op } = require("sequelize");
 const db = require("../models");
 const { userBaseSchema, userSchema } = require("../schemas");
 const { User } = db;
+const redis = require("../utils/redis");
 
 module.exports = {
   async get(id) {
     try {
+      const cacheKey = `user:${id}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
       const user = await User.findByPk(id, {
         raw: true,
       });
       if (!user) {
         throw new Error("User not found");
       }
+      await redis.setEx(cacheKey, 300, JSON.stringify(user));
       return user;
     } catch (error) {
       throw error;
@@ -34,6 +41,9 @@ module.exports = {
         username,
         password: User.generateHash(password),
       });
+      await redis.del("user:list");
+      await redis.del("user:paginated");
+
       return "User created successfully";
     } catch (error) {
       throw error;
@@ -41,7 +51,14 @@ module.exports = {
   },
 
   async list() {
+    const cacheKey = `user:list`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const result = await User.findAll();
+    await redis.setEx(cacheKey, 300, JSON.stringify(result));
     return result;
   },
 
@@ -59,6 +76,10 @@ module.exports = {
         throw new Error("User not found");
       }
       await user.update(params);
+      await redis.del("user:list");
+      await redis.del("user:paginated");
+      await redis.del(`user:${id}`);
+
       return user;
     } catch (error) {
       throw error;
@@ -71,6 +92,9 @@ module.exports = {
       //   throw new Error("User not found");
       // }
       const deleted = await User.destroy({ where: { id } });
+      await redis.del("user:list");
+      await redis.del("user:paginated");
+      await redis.del(`user:${id}`);
       return deleted > 0;
     } catch (error) {
       throw error;
@@ -80,6 +104,11 @@ module.exports = {
     const { q = null, sort } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
+    const cacheKey = `user:paginated`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
 
     try {
       const where = q
@@ -111,12 +140,16 @@ module.exports = {
         raw: true,
         nest: true,
       });
-      return {
+
+      const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return result;
     } catch (error) {
       throw error;
     }

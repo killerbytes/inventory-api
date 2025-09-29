@@ -6,7 +6,7 @@ const {
   stockAdjustmentSchema,
 } = require("../schemas");
 const ApiError = require("./ApiError");
-
+const redis = require("../utils/redis");
 const Joi = require("joi");
 const { getSKU, toMoney } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
@@ -372,6 +372,12 @@ module.exports = {
   },
 
   async list() {
+    const cacheKey = `productCombination:list`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const products = await ProductCombination.findAll({
       include: [
         {
@@ -389,7 +395,7 @@ module.exports = {
         isActive: true,
       },
     });
-
+    await redis.setEx(cacheKey, 300, JSON.stringify(products));
     return products;
   },
 

@@ -3,14 +3,21 @@ const { Op } = require("sequelize");
 const db = require("../models");
 const { supplierSchema } = require("../schemas");
 const { Supplier } = db;
-
+const redis = require("../utils/redis");
 module.exports = {
   async get(id) {
     try {
+      const cacheKey = `supplier:${id}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
       const supplier = await Supplier.findByPk(id, { raw: true });
       if (!supplier) {
         throw new Error("Supplier not found");
       }
+      await redis.setEx(cacheKey, 300, JSON.stringify(supplier));
       return supplier;
     } catch (error) {
       throw error;
@@ -32,6 +39,9 @@ module.exports = {
         phone,
         address,
       });
+      await redis.del("supplier:list");
+      await redis.del("supplier:paginated");
+
       return result;
     } catch (error) {
       throw error;
@@ -39,11 +49,18 @@ module.exports = {
   },
 
   async list() {
+    const cacheKey = `supplier:list`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const result = await Supplier.findAll({
       raw: true,
       order: [["name", "ASC"]],
       attributes: ["id", "name"],
     });
+    await redis.setEx(cacheKey, 300, JSON.stringify(result));
     return result;
   },
 
@@ -61,6 +78,10 @@ module.exports = {
         throw new Error("Supplier not found");
       }
       await supplier.update(params);
+      await redis.del("supplier:list");
+      await redis.del("supplier:paginated");
+      await redis.del(`supplier:${id}`);
+
       return supplier;
     } catch (error) {
       throw error;
@@ -73,6 +94,10 @@ module.exports = {
         throw new Error("Supplier not found");
       }
       const deleted = await Supplier.destroy({ where: { id } });
+      await redis.del("supplier:list");
+      await redis.del("supplier:paginated");
+      await redis.del(`supplier:${id}`);
+
       return deleted > 0;
     } catch (error) {
       throw error;
@@ -82,6 +107,11 @@ module.exports = {
     const { q = null, sort } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
+    const cacheKey = `supplier:paginated`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
 
     try {
       const where = q
@@ -116,12 +146,14 @@ module.exports = {
         raw: true,
         nest: true,
       });
-      return {
+      const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return result;
     } catch (error) {
       throw error;
     }

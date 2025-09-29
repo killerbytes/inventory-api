@@ -7,6 +7,8 @@ const { productSchema } = require("../schemas");
 const ApiError = require("./ApiError");
 const { getSKU } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
+const redis = require("../utils/redis");
+
 const {
   Product,
   VariantType,
@@ -25,13 +27,11 @@ module.exports = {
     if (error) {
       throw error;
     }
-
     const transaction = await sequelize.transaction();
-
     try {
       const product = await Product.create(payload, { transaction });
-
       await transaction.commit();
+      await redis.del("products:all");
       return product;
     } catch (err) {
       await transaction.rollback();
@@ -71,8 +71,6 @@ module.exports = {
   },
 
   async update(id, payload) {
-    const { name, description, unit, categoryId, conversionFactor } = payload;
-
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
     });
@@ -90,6 +88,7 @@ module.exports = {
       await product.update(payload, { transaction });
 
       await transaction.commit();
+      await redis.del("products:all");
       return product; // { message: "Product updated successfully" };
     } catch (err) {
       await transaction.rollback();
@@ -131,6 +130,7 @@ module.exports = {
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
       const deleted = await Product.destroy({ where: { id }, transaction });
+      await redis.del("products:all");
       await transaction.commit();
       return deleted > 0;
     } catch (err) {
@@ -140,7 +140,14 @@ module.exports = {
   },
   async getPaginated(query = {}) {
     const { q, categoryId } = query;
+    const cacheKey = `products:all`;
+    const cached = await redis.get(cacheKey);
+    console.log(1);
 
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    console.log(2);
     const where = q
       ? {
           [Op.or]: [
@@ -151,7 +158,7 @@ module.exports = {
       : {};
 
     if (categoryId) {
-      where["$product.categoryId$"] = categoryId;
+      where.categoryId = categoryId;
     }
 
     try {
@@ -232,6 +239,7 @@ module.exports = {
       const result = Object.values(groupedByCategory).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
 
       return {
         data: result,

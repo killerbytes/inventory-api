@@ -1,8 +1,6 @@
-const { Op } = require("sequelize");
 const db = require("../models");
 const { sequelize } = require("../models");
 const { variantTypesSchema } = require("../schemas");
-const ApiError = require("./ApiError");
 
 const { VariantType, VariantValue } = db;
 

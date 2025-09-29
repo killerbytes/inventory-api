@@ -14,6 +14,7 @@ const { getMappedVariantValues } = require("../utils/mapped");
 const ApiError = require("./ApiError");
 const { getAmount, getTotalAmount } = require("../utils/compute.js");
 const productCombinationService = require("./productCombination.service.js");
+const redis = require("../utils/redis");
 
 const {
   VariantValue,
@@ -30,6 +31,11 @@ const {
 module.exports = {
   async get(id) {
     try {
+      const cacheKey = `salesOrder:${id}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
       const salesOrder = await SalesOrder.findByPk(id, {
         // attributes: {
         //   exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
@@ -69,6 +75,7 @@ module.exports = {
       if (!salesOrder) {
         throw ApiError.notFound("SalesOrder not found");
       }
+      await redis.setEx(cacheKey, 300, JSON.stringify(salesOrder));
       return salesOrder;
     } catch (error) {
       throw error;
@@ -181,6 +188,9 @@ module.exports = {
       }
 
       transaction.commit();
+      await redis.del("salesOrder:list");
+      await redis.del("salesOrder:paginated");
+
       return result;
     } catch (error) {
       console.log(error);
@@ -202,6 +212,9 @@ module.exports = {
     if (!salesOrder) {
       throw new Error("SalesOrder not found");
     }
+    await redis.del("salesOrder:list");
+    await redis.del("salesOrder:paginated");
+    await redis.del(`salesOrder:${id}`);
 
     const transaction = await sequelize.transaction();
     try {
@@ -231,6 +244,12 @@ module.exports = {
     }
   },
   async list() {
+    const cacheKey = `salesOrder:list`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const result = await SalesOrder.findAll({
       include: [
         {
@@ -247,6 +266,7 @@ module.exports = {
       raw: true,
       nest: true,
     });
+    await redis.setEx(cacheKey, 300, JSON.stringify(result));
     return result;
   },
 
@@ -288,6 +308,10 @@ module.exports = {
       );
 
       await transaction.commit();
+      await redis.del("salesOrder:list");
+      await redis.del("salesOrder:paginated");
+      await redis.del(`salesOrder:${id}`);
+
       return salesOrder;
     } catch (error) {
       console.log(error);
@@ -307,7 +331,11 @@ module.exports = {
     } = params;
     const where = {};
 
-    // Build the where clause
+    const cacheKey = `salesOrder:paginated`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
 
     // Search by name if query exists
     if (q) {
@@ -378,13 +406,14 @@ module.exports = {
           },
         ],
       });
-
-      return {
+      const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return result;
     } catch (error) {
       console.log(error);
       throw error;
@@ -407,7 +436,10 @@ module.exports = {
       if (!salesOrder) {
         throw new Error("SalesOrder not found");
       }
-      // console.log("CANCEL", JSON.stringify(salesOrder, null, 2));
+      await redis.del("salesOrder:list");
+      await redis.del("salesOrder:paginated");
+      await redis.del(`salesOrder:${id}`);
+
       await processCancelledOrder(salesOrder, payload, transaction);
       transaction.commit();
     } catch (error) {
