@@ -97,6 +97,7 @@ module.exports = {
       await transaction.commit();
       await redis.del("products:paginated");
       await redis.del("products:list");
+      await redis.del(`products:${id}`);
 
       return product; // { message: "Product updated successfully" };
     } catch (err) {
