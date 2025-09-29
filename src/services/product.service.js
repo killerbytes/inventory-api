@@ -142,12 +142,10 @@ module.exports = {
     const { q, categoryId } = query;
     const cacheKey = `products:all`;
     const cached = await redis.get(cacheKey);
-    console.log(1);
 
     if (cached) {
       return JSON.parse(cached);
     }
-    console.log(2);
     const where = q
       ? {
           [Op.or]: [
@@ -236,14 +234,14 @@ module.exports = {
       });
 
       // Sort by category order
-      const result = Object.values(groupedByCategory).sort(
+      const data = Object.values(groupedByCategory).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
-      await redis.setEx(cacheKey, 300, JSON.stringify(result));
-
-      return {
-        data: result,
+      const result = {
+        data,
       };
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return;
     } catch (error) {
       console.error("getPaginated error:", error);
       throw error;
