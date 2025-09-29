@@ -31,7 +31,8 @@ module.exports = {
     try {
       const product = await Product.create(payload, { transaction });
       await transaction.commit();
-      await redis.del("products:all");
+      await redis.del("products:paginated");
+      await redis.del("products:list");
       return product;
     } catch (err) {
       await transaction.rollback();
@@ -42,12 +43,18 @@ module.exports = {
   async get(id) {
     const order = [...getDefaultOrder()];
     try {
+      const cacheKey = `products:${id}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
       const product = await Product.findByPk(id, {
         include: [...getDefaultIncludes()],
         order,
       });
       if (!product) throw ApiError.notFound("Product not found");
-
+      await redis.setEx(cacheKey, 300, JSON.stringify(product));
       return product;
     } catch (error) {
       console.log(error);
@@ -88,7 +95,9 @@ module.exports = {
       await product.update(payload, { transaction });
 
       await transaction.commit();
-      await redis.del("products:all");
+      await redis.del("products:paginated");
+      await redis.del("products:list");
+
       return product; // { message: "Product updated successfully" };
     } catch (err) {
       await transaction.rollback();
@@ -130,7 +139,9 @@ module.exports = {
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
       const deleted = await Product.destroy({ where: { id }, transaction });
-      await redis.del("products:all");
+      await redis.del("products:paginated");
+      await redis.del("products:list");
+
       await transaction.commit();
       return deleted > 0;
     } catch (err) {
@@ -140,9 +151,8 @@ module.exports = {
   },
   async getPaginated(query = {}) {
     const { q, categoryId } = query;
-    const cacheKey = `products:all`;
+    const cacheKey = `products:paginated`;
     const cached = await redis.get(cacheKey);
-
     if (cached) {
       return JSON.parse(cached);
     }
@@ -249,6 +259,12 @@ module.exports = {
   },
   async list() {
     try {
+      const cacheKey = `products:list`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
       const products = await Product.findAll({
         include: [
           {
@@ -303,6 +319,7 @@ module.exports = {
       const result = Object.values(groupedByCategory).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
 
       return result;
     } catch (error) {

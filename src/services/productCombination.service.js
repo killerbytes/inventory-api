@@ -318,6 +318,8 @@ module.exports = {
       }
 
       await transaction.commit();
+      await redis.del("products:paginated");
+      await redis.del("products:list");
       return { message: "Product updated successfully" };
     } catch (err) {
       console.log(22, err);
