@@ -251,7 +251,7 @@ module.exports = {
         data,
       };
       await redis.setEx(cacheKey, 300, JSON.stringify(result));
-      return;
+      return result;
     } catch (error) {
       console.error("getPaginated error:", error);
       throw error;
