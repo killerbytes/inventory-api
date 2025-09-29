@@ -2,7 +2,7 @@ const { createClient } = require("redis");
 
 let client;
 
-if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === undefined) {
+if (process.env.NODE_ENV === "test") {
   client = {
     get: async () => null,
     setEx: async () => {},

@@ -64,6 +64,12 @@ module.exports = {
   },
 
   async getByProductId(id) {
+    const cacheKey = `productsCombination:${id}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const combinations = await ProductCombination.findAll({
       where: { productId: id },
       include: [
@@ -95,11 +101,13 @@ module.exports = {
         },
       ],
     });
-
-    return {
+    const result = {
       combinations,
       variants,
     };
+    await redis.setEx(cacheKey, 300, JSON.stringify(result));
+
+    return result;
   },
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
@@ -320,6 +328,8 @@ module.exports = {
       await transaction.commit();
       await redis.del("products:paginated");
       await redis.del("products:list");
+      await redis.del(`products:${productId}`);
+
       return { message: "Product updated successfully" };
     } catch (err) {
       console.log(22, err);
