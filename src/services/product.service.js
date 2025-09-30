@@ -43,18 +43,11 @@ module.exports = {
   async get(id) {
     const order = [...getDefaultOrder()];
     try {
-      const cacheKey = `products:${id}`;
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-
       const product = await Product.findByPk(id, {
         include: [...getDefaultIncludes()],
         order,
       });
       if (!product) throw ApiError.notFound("Product not found");
-      await redis.setEx(cacheKey, 300, JSON.stringify(product));
       return product;
     } catch (error) {
       console.log(error);

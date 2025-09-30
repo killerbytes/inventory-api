@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === "test") {
   console.log("Redis skipped in test environment");
 } else {
   client = createClient({
-    url: process.env.REDIS_URL || "redis://localhost:6379",
+    url: process.env.REDIS_URL || "redis://localhost:6500",
   });
 
   client.on("error", (err) => console.error("Redis Client Error", err));
