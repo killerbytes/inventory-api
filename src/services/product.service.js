@@ -452,6 +452,9 @@ module.exports = {
             model: ProductCombination,
             as: "combinations",
             attributes: ["id", "name", "unit", "price", "isBreakPack"],
+            where: {
+              isActive: true,
+            },
             include: [
               {
                 model: Inventory,
