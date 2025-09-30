@@ -308,12 +308,6 @@ module.exports = {
     } = params;
     const where = {};
 
-    const cacheKey = `goodReceipt:${JSON.stringify(params)}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
-
     // Search by name if query exists
     if (q) {
       where.referenceNo = { [Op.like]: `%${q}%` };
@@ -391,7 +385,6 @@ module.exports = {
         totalPages: Math.ceil(count / limit),
         currentPage: Number(page),
       };
-      await redis.setEx(cacheKey, 300, JSON.stringify(result));
       return result;
     } catch (error) {
       console.log(error);
