@@ -322,7 +322,7 @@ module.exports = {
   async getPaginated(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q,
       startDate,
       endDate,
@@ -330,12 +330,6 @@ module.exports = {
       sort,
     } = params;
     const where = {};
-
-    const cacheKey = `salesOrder:paginated`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
 
     // Search by name if query exists
     if (q) {
@@ -365,19 +359,22 @@ module.exports = {
 
     try {
       const order = [
-        [
-          {
-            model: OrderStatusHistory,
-            as: "salesOrderStatusHistory",
-          },
-          "id",
-          "ASC",
-        ],
+        // [
+        //   {
+        //     model: OrderStatusHistory,
+        //     as: "salesOrderStatusHistory",
+        //   },
+        //   "id",
+        //   "ASC",
+        // ],
       ];
 
-      // if (sort) {
-      //   order.push([sort , order || "ASC"]);
-      // }
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      } else {
+        order.push(["id", "ASC"]); // Default sort
+      }
+
       const { count, rows } = await SalesOrder.findAndCountAll({
         limit,
         offset,
@@ -412,7 +409,6 @@ module.exports = {
         totalPages: Math.ceil(count / limit),
         currentPage: page,
       };
-      await redis.setEx(cacheKey, 300, JSON.stringify(result));
       return result;
     } catch (error) {
       console.log(error);
