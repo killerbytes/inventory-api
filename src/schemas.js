@@ -1,6 +1,5 @@
 const Joi = require("joi");
 const { INVENTORY_MOVEMENT_TYPE, INVOICE_STATUS } = require("./definitions");
-const { application } = require("express");
 
 const userBaseSchema = Joi.object({
   name: Joi.string().required(),
@@ -194,6 +193,7 @@ const salesOrderItemSchema = salesOrderStatusSchema
 
 const salesOrderFormSchema = Joi.object({
   customerId: Joi.number().required(),
+  orderDate: Joi.date().required(),
   isDelivery: Joi.boolean().optional(),
   deliveryAddress: Joi.string().allow(null, "").when("isDelivery", {
     is: true,
@@ -201,7 +201,11 @@ const salesOrderFormSchema = Joi.object({
     otherwise: Joi.optional(),
   }),
   deliveryInstructions: Joi.string().optional().allow(null, ""),
-  deliveryDate: Joi.date().required(),
+  deliveryDate: Joi.date().allow(null, "").when("isDelivery", {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   notes: Joi.string().optional().allow(null, ""),
   internalNotes: Joi.string().optional().allow(null, ""),
   modeOfPayment: Joi.string().required(),

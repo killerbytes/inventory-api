@@ -39,6 +39,7 @@ module.exports = (sequelize) => {
           isIn: [Object.values(ORDER_STATUS)],
         },
       },
+      orderDate: DataTypes.DATE,
       isDelivery: { type: DataTypes.BOOLEAN, defaultValue: false },
       isDeliveryCompleted: DataTypes.BOOLEAN,
       deliveryAddress: DataTypes.TEXT,
