@@ -10,11 +10,16 @@
 
 const env = process.env.NODE_ENV || "development";
 require("dotenv").config({ path: `.env.${env}` });
-
 const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
+const {
+  S3Client,
+  PutObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 
 const {
   DB_HOST,
@@ -22,6 +27,11 @@ const {
   DB_PASSWORD,
   DB_NAME,
   DB_PORT = 5432,
+  B2_BUCKET,
+  AWS_ENDPOINT,
+  AWS_DEFAULT_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
 } = process.env;
 
 const BACKUP_DIR = process.env.BACKUP_DIR || "./backups";
@@ -75,11 +85,15 @@ async function backup({ dataOnly = false } = {}) {
     const gzip = zlib.createGzip();
     const outStream = fs.createWriteStream(outFile);
     dumpProcess.stdout.pipe(gzip).pipe(outStream);
-    outStream.on("finish", () => console.log(`Backup saved: ${outFile}`));
+    outStream.on("finish", async () => {
+      console.log(`Backup saved: ${outFile}`);
+      await uploadToBackblaze(outFile);
+    });
   } else {
     // custom dump → write directly
     await runCommand(`${dumpCmd} -f "${outFile}"`);
     console.log(`Backup saved: ${outFile}`);
+    await uploadToBackblaze(outFile);
   }
 }
 
@@ -124,6 +138,69 @@ async function restoreAndDev(filePath) {
   await restore(filePath);
   console.log("Starting dev server...");
   runCommand("npm run dev");
+}
+
+async function uploadToBackblaze(filePath) {
+  if (!B2_BUCKET) return;
+
+  const s3 = new S3Client({
+    region: AWS_DEFAULT_REGION || "us-east-005",
+    endpoint: AWS_ENDPOINT,
+    forcePathStyle: true, // 👈 Backblaze requires this
+    credentials: {
+      accessKeyId: AWS_ACCESS_KEY_ID,
+      secretAccessKey: AWS_SECRET_ACCESS_KEY,
+    },
+  });
+
+  const key = path.basename(filePath);
+  const fileStream = fs.createReadStream(filePath);
+
+  try {
+    // 1️⃣ Upload file
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: B2_BUCKET,
+        Key: key,
+        Body: fileStream,
+      })
+    );
+    console.log(`✅ Uploaded ${key} → Backblaze B2`);
+
+    // 2️⃣ Delete local file
+    fs.unlinkSync(filePath);
+    console.log(`🗑️  Local file deleted: ${filePath}`);
+
+    // 3️⃣ Remote cleanup: keep only last 7 files
+    const KEEP_LAST = 7;
+
+    const listResp = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: B2_BUCKET,
+      })
+    );
+
+    if (listResp.Contents && listResp.Contents.length > KEEP_LAST) {
+      // sort by LastModified, newest first
+      const sorted = listResp.Contents.sort(
+        (a, b) => new Date(b.LastModified) - new Date(a.LastModified)
+      );
+
+      const oldFiles = sorted.slice(KEEP_LAST); // keep only first 7
+
+      for (const file of oldFiles) {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: B2_BUCKET,
+            Key: file.Key,
+          })
+        );
+        console.log(`🗑️  Deleted old backup from B2: ${file.Key}`);
+      }
+    }
+  } catch (err) {
+    console.error("❌ Backblaze upload/cleanup failed:", err.message);
+  }
 }
 
 // CLI
