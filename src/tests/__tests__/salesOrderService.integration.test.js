@@ -38,8 +38,7 @@ describe("Sales Order Service (Integration)", () => {
   it("should create a sale order", async () => {
     await salesOrderService.create({
       customerId: 1,
-
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -60,8 +59,8 @@ describe("Sales Order Service (Integration)", () => {
     });
     const salesOrder = await salesOrderService.get(1);
     expect(salesOrder.customerId).toBe(1);
+    expect(salesOrder.orderDate).toBeInstanceOf(Date);
     expect(salesOrder.modeOfPayment).toBe("CASH");
-    expect(salesOrder.deliveryDate).toBeInstanceOf(Date);
     expect(salesOrder.notes).toBe("Test Notes");
     expect(salesOrder.internalNotes).toBe("Test Internal Notes");
     expect(salesOrder.salesOrderItems.length).toBe(2);
@@ -75,7 +74,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
       status: "RECEIVED",
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -104,8 +103,7 @@ describe("Sales Order Service (Integration)", () => {
   it("should update a sales order", async () => {
     await salesOrderService.create({
       customerId: 1,
-
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -174,7 +172,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
 
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -230,7 +228,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
 
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -296,7 +294,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
 
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -327,8 +325,7 @@ describe("Sales Order Service (Integration)", () => {
   it("should get a paginated list of sales orders", async () => {
     await salesOrderService.create({
       customerId: 1,
-
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -349,8 +346,7 @@ describe("Sales Order Service (Integration)", () => {
     });
     await salesOrderService.create({
       customerId: 1,
-
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -392,7 +388,7 @@ describe("Sales Order Service (Integration)", () => {
       await salesOrderService.create({
         customerId: 1,
 
-        deliveryDate: new Date(),
+        orderDate: new Date(),
         notes: "Test Notes",
         internalNotes: "Test Internal Notes",
         salesOrderItems: [
@@ -444,7 +440,7 @@ describe("Sales Order Service (Integration)", () => {
   it("should update inventory movements", async () => {
     await salesOrderService.create({
       customerId: 1,
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -529,6 +525,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
       isDelivery: true,
+      orderDate: new Date(),
       deliveryAddress: "Test Address",
       deliveryDate: new Date(),
       notes: "Test Notes",
@@ -543,14 +540,15 @@ describe("Sales Order Service (Integration)", () => {
       ],
       modeOfPayment: "CASH",
     });
-    const saleOrder = await salesOrderService.get(1);
-    expect(saleOrder.isDelivery).toBe(true);
-    expect(saleOrder.deliveryAddress).toBe("Test Address");
+    const salesOrder = await salesOrderService.get(1);
+    expect(salesOrder.isDelivery).toBe(true);
+    expect(salesOrder.deliveryDate).toBeInstanceOf(Date);
+    expect(salesOrder.deliveryAddress).toBe("Test Address");
   });
   it("should create a sales order with bank as payment", async () => {
     await salesOrderService.create({
       customerId: 1,
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -571,7 +569,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
       status: "RECEIVED",
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
@@ -606,7 +604,7 @@ describe("Sales Order Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
       status: "RECEIVED",
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [

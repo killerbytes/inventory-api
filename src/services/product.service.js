@@ -431,7 +431,7 @@ module.exports = {
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
-    const spreadsheetId = "1BFW_9PCJY9_b9vq-k-dYHndkjZ_l6foUh1j-lPICzDE"; // from the sheet URL
+    const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
     const range = "Sheet1!A:G"; // cell or range you want to update
     const valueInputOption = "USER_ENTERED";
 

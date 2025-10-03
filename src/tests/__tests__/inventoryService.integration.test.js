@@ -251,7 +251,7 @@ describe("Inventory Service (Integration)", () => {
     await salesOrderService.create({
       customerId: 1,
       status: "RECEIVED",
-      deliveryDate: new Date(),
+      orderDate: new Date(),
       notes: "Test Notes",
       internalNotes: "Test Internal Notes",
       salesOrderItems: [
