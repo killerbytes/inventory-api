@@ -4,6 +4,7 @@ const pinoHttp = require("pino-http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { randomUUID } = require("crypto");
+const { spawn } = require("child_process");
 
 const usersRouter = require("./routes/users.router");
 const authRouter = require("./routes/auth.router");
@@ -58,6 +59,23 @@ app.use("/api/variantTypes", verifyToken, variantTypesRouter);
 app.use("/api/productCombinations", verifyToken, productCombinationRouter);
 app.use("/api/invoices", verifyToken, invoiceRouter);
 app.use("/api/payments", verifyToken, paymentRouter);
+app.post("/api/backup", (req, res) => {
+  const backup = spawn("node", ["backup.js", "backup"], {
+    stdio: "inherit", // pipes logs to server logs
+  });
+
+  backup.on("close", (code) => {
+    if (code === 0) {
+      res.send("✅ Backup finished successfully!");
+    } else {
+      res.status(500).send(`❌ Backup failed with exit code ${code}`);
+    }
+  });
+
+  backup.on("error", (err) => {
+    res.status(500).send("❌ Failed to start backup: " + err.message);
+  });
+});
 
 app.get("/api", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
