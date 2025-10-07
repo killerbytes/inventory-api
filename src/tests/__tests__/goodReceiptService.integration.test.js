@@ -121,7 +121,7 @@ describe("Good Receipt Service (Integration)", () => {
           combinationId: 2,
           quantity: 20,
           discount: 10,
-          purchasePrice: 100,
+          purchasePrice: 200,
         },
       ],
     });
@@ -130,7 +130,7 @@ describe("Good Receipt Service (Integration)", () => {
     const inventory = await sequelize.models.Inventory.findAll();
 
     expect(goodReceipt2.status).toBe("RECEIVED");
-    expect(goodReceipt2.totalAmount).toBe(3090);
+    expect(goodReceipt2.totalAmount).toBe(5090);
     expect(goodReceipt2.goodReceiptLines.length).toBe(2);
     expect(goodReceipt2.goodReceiptLines[0].quantity).toBe(11);
     expect(goodReceipt2.goodReceiptLines[0].nameSnapshot).toBe("Shovel - Red");

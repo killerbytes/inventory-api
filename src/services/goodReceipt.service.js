@@ -591,12 +591,10 @@ const processReceivedOrder = async (payload, goodReceipt) => {
   const transaction = await db.sequelize.transaction();
   const user = await authService.getCurrent();
   try {
-    const totalAmount = getTotalAmount(payload.goodReceiptLines);
     await updateOrder(
       {
         ...payload,
         status: ORDER_STATUS.RECEIVED,
-        totalAmount,
       },
       goodReceipt,
       transaction,
@@ -679,7 +677,15 @@ const updateOrder = async (
   updateOrderItems = false
 ) => {
   try {
-    await goodReceipt.update(payload, { transaction });
+    await goodReceipt.update(
+      {
+        ...payload,
+        ...(payload.goodReceiptLines && {
+          totalAmount: getTotalAmount(payload.goodReceiptLines),
+        }),
+      },
+      { transaction }
+    );
 
     if (updateOrderItems) {
       // Existing line IDs from the payload (preserve them)
