@@ -376,6 +376,7 @@ module.exports = {
     } = params;
     try {
       const order = [];
+      const offset = (page - 1) * limit;
       const where = productId
         ? {
             [Op.or]: [{ productId }],
@@ -385,7 +386,10 @@ module.exports = {
       if (sort) {
         order.push([sort, params.order || "ASC"]);
       }
-      const priceHistories = await PriceHistory.findAll({
+      const { count, rows } = await PriceHistory.findAndCountAll({
+        limit,
+        offset,
+        distinct: true,
         nest: true,
         order,
         where,
@@ -397,10 +401,19 @@ module.exports = {
           {
             model: ProductCombination,
             as: "combinations",
+            where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
           },
         ],
       });
-      return { data: priceHistories };
+
+      const result = {
+        data: rows,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+        currentPage: Number(page),
+      };
+
+      return result;
     } catch (error) {
       console.log(1, error);
     }
