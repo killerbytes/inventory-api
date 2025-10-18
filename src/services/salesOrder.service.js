@@ -341,17 +341,17 @@ module.exports = {
 
     // Add date filtering if dates are provided
     if (startDate || endDate) {
-      where.updatedAt = {};
+      where.orderDate = {};
 
       if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where.updatedAt[Op.gte] = start;
+        where.orderDate[Op.gte] = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.updatedAt[Op.lte] = end;
+        where.orderDate[Op.lte] = end;
       }
     }
 

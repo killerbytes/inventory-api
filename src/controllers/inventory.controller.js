@@ -86,6 +86,14 @@ const inventoryController = {
       next(error);
     }
   },
+  async getReorderLevels(req, res, next) {
+    try {
+      const reorders = await inventoryService.getReordersLevels(req.query);
+      return res.status(200).json(reorders);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = inventoryController;

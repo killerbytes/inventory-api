@@ -366,7 +366,7 @@ module.exports = {
   async getPriceHistory(params) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q = null,
       startDate,
       endDate,
@@ -418,6 +418,56 @@ module.exports = {
       console.log(1, error);
     }
   },
+
+  async getReordersLevels(params) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION.PAGE,
+      q = null,
+      productId,
+      sort = "quantity",
+    } = params;
+    const offset = (page - 1) * limit;
+
+    const order = [];
+    order.push([sort, params.order || "DESC"]);
+
+    const where = {
+      quantity: { [Op.lt]: sequelize.col("combinations.reorderLevel") },
+    };
+
+    if (q) {
+      where[Op.or] = [{ "$combinations.name$": { [Op.iLike]: `%${q}%` } }];
+    }
+
+    const { count, rows } = await Inventory.findAndCountAll({
+      limit,
+      offset,
+      distinct: true,
+      nest: true,
+      order,
+      where,
+      include: [
+        {
+          model: ProductCombination,
+          as: "combinations",
+          // where: {
+          //   isActive: true,
+          // },
+        },
+      ],
+    });
+
+    const result = {
+      data: rows,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: Number(page),
+    };
+
+    return result;
+  },
+
   async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
     const user = await authService.getCurrent();
     const { combinationId, quantity, averagePrice = null } = item;
