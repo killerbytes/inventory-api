@@ -433,8 +433,12 @@ module.exports = {
     order.push([sort, params.order || "DESC"]);
 
     const where = {
-      quantity: { [Op.lt]: sequelize.col("combination.reorderLevel") },
+      quantity: { [Op.lt]: sequelize.col("combinations.reorderLevel") },
     };
+
+    if (q) {
+      where[Op.or] = [{ "$combinations.name$": { [Op.iLike]: `%${q}%` } }];
+    }
 
     const { count, rows } = await Inventory.findAndCountAll({
       limit,
@@ -446,7 +450,10 @@ module.exports = {
       include: [
         {
           model: ProductCombination,
-          as: "combination",
+          as: "combinations",
+          // where: {
+          //   isActive: true,
+          // },
         },
       ],
     });
