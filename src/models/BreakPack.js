@@ -11,13 +11,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     quantity: {
-      // how many packs broken
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(18, 6),
       allowNull: false,
     },
     conversionFactor: {
-      // singles per pack
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(18, 6),
       allowNull: false,
     },
     createdBy: {

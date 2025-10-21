@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     quantity: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(18, 6),
       allowNull: false,
     },
     costPerUnit: {

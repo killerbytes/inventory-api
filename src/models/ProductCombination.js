@@ -6,8 +6,8 @@ module.exports = (sequelize, DataTypes) => {
       name: { type: DataTypes.STRING, allowNull: false },
       sku: { type: DataTypes.STRING }, // no unique here anymore
       unit: { type: DataTypes.STRING, allowNull: false },
-      conversionFactor: DataTypes.DECIMAL(10, 2),
-      price: DataTypes.DECIMAL(10, 2),
+      conversionFactor: DataTypes.DECIMAL(18, 6),
+      price: DataTypes.DECIMAL(18, 6),
       reorderLevel: DataTypes.INTEGER,
       isBreakPack: DataTypes.BOOLEAN,
       isActive: DataTypes.BOOLEAN,

@@ -488,7 +488,9 @@ module.exports = {
         { transaction }
       );
     } else {
-      const oldQty = inventory.quantity;
+      const oldQty = parseFloat(inventory.quantity);
+      console.log(333, oldQty, quantity);
+
       const newQty = oldQty + quantity;
 
       await inventory.update(

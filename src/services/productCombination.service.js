@@ -431,7 +431,7 @@ module.exports = {
         }
       );
 
-      const conversionFactor = fromInventory.conversionFactor;
+      const conversionFactor = parseFloat(fromInventory.conversionFactor);
 
       const toInventory = await ProductCombination.findByPk(toCombinationId, {
         include: {
@@ -480,6 +480,7 @@ module.exports = {
       const user = await authService.getCurrent();
 
       const totalQuantity = quantity * conversionFactor;
+      console.log(321, totalQuantity, conversionFactor);
 
       // Update Parent Inventory
       await inventoryDecrease(
