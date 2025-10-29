@@ -1,8 +1,6 @@
 const { setupDatabase, resetDatabase, sequelize } = require("../setup");
 const productCombinationService = require("../../services/productCombination.service");
 const inventoryService = require("../../services/inventory.service");
-const goodReceiptService = require("../../services/goodReceipt.service");
-const salesOrderService = require("../../services/salesOrder.service");
 
 const {
   loginUser,
@@ -14,8 +12,6 @@ const {
   createCombination,
   createCustomer,
 } = require("../utils");
-const { getSKU, toMoney } = require("../../utils/string");
-const { where } = require("sequelize");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -63,31 +59,31 @@ beforeEach(async () => {
 });
 
 describe("Inventory Service (Integration)", () => {
-  // it("should list inventory movements", async () => {
-  //   await productCombinationService.stockAdjustment({
-  //     combinationId: 1,
-  //     newQuantity: 10,
-  //     reason: "EXPIRED",
-  //     notes: "test",
-  //   });
-  //   await productCombinationService.breakPack({
-  //     fromCombinationId: 1,
-  //     quantity: 1,
-  //     toCombinationId: 2,
-  //   });
+  it("should list inventory movements", async () => {
+    await productCombinationService.stockAdjustment({
+      combinationId: 1,
+      newQuantity: 10,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    await productCombinationService.breakPack({
+      fromCombinationId: 1,
+      quantity: 1,
+      toCombinationId: 2,
+    });
 
-  //   const inventoryMovements = await inventoryService.getMovements({
-  //     order: "ASC",
-  //   });
+    const inventoryMovements = await inventoryService.getMovements({
+      order: "ASC",
+    });
 
-  //   expect(inventoryMovements.data.length).toBe(3);
-  //   expect(inventoryMovements.data[0].combinationId).toBe(1);
-  //   expect(inventoryMovements.data[0].type).toBe("ADJUSTMENT");
-  //   expect(inventoryMovements.data[1].combinationId).toBe(1);
-  //   expect(inventoryMovements.data[1].type).toBe("BREAK_PACK");
-  //   expect(inventoryMovements.data[2].combinationId).toBe(2);
-  //   expect(inventoryMovements.data[2].type).toBe("RE_PACK");
-  // });
+    expect(inventoryMovements.data.length).toBe(3);
+    expect(inventoryMovements.data[0].combinationId).toBe(1);
+    expect(inventoryMovements.data[0].type).toBe("ADJUSTMENT");
+    expect(inventoryMovements.data[1].combinationId).toBe(1);
+    expect(inventoryMovements.data[1].type).toBe("BREAK_PACK");
+    expect(inventoryMovements.data[2].combinationId).toBe(2);
+    expect(inventoryMovements.data[2].type).toBe("RE_PACK");
+  });
 
   it("should list break packs", async () => {
     await productCombinationService.stockAdjustment({
@@ -105,15 +101,6 @@ describe("Inventory Service (Integration)", () => {
       quantity: 1,
       toCombinationId: 2,
     });
-
-    const breakPacks = await inventoryService.getBreakPacks();
-    expect(breakPacks.data.length).toBe(1);
-    expect(breakPacks.data[0].fromCombinationId).toBe(1);
-    expect(breakPacks.data[0].toCombinationId).toBe(2);
-    expect(breakPacks.data[0].quantity).toBe(1);
-    expect(breakPacks.data[0].conversionFactor).toBe(2.5);
-    expect(breakPacks.data[0].createdAt).toBeInstanceOf(Date);
-    expect(breakPacks.data[0].createdBy).toBe(1);
 
     const inventory = await sequelize.models.Inventory.findAll();
     expect(inventory.length).toBe(2);

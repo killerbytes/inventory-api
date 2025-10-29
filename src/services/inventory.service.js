@@ -270,6 +270,7 @@ module.exports = {
   },
 
   async getBreakPacks(params = {}) {
+    throw new Error("Not implemented");
     const {
       limit = PAGINATION.LIMIT,
       page = PAGINATION.PAGE,
@@ -489,7 +490,6 @@ module.exports = {
       );
     } else {
       const oldQty = parseFloat(inventory.quantity);
-      console.log(333, oldQty, quantity);
 
       const newQty = oldQty + quantity;
 

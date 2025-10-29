@@ -57,6 +57,11 @@ module.exports = {
       allowNull: false,
       defaultValue: 0,
     });
+    await queryInterface.changeColumn("StockAdjustments", "difference", {
+      type: Sequelize.DECIMAL(18, 6),
+      allowNull: false,
+      defaultValue: 0,
+    });
 
     await queryInterface.dropTable("InventoryBreakPacks");
   },
@@ -111,6 +116,11 @@ module.exports = {
       defaultValue: 0,
     });
     await queryInterface.changeColumn("StockAdjustments", "newQuantity", {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    });
+    await queryInterface.changeColumn("StockAdjustments", "difference", {
       type: Sequelize.INTEGER,
       allowNull: false,
       defaultValue: 0,

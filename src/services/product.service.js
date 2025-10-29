@@ -524,32 +524,27 @@ function getDefaultIncludes() {
     {
       model: VariantType,
       as: "variants",
-      // required: false,
       include: [
         {
           model: VariantValue,
           as: "values",
-          // required: false,
         },
       ],
     },
     {
       model: ProductCombination,
       as: "combinations",
-      // required: true,
+      order: [["name", "ASC"]],
       include: [
         {
           model: Inventory,
           as: "inventory",
-          // required: false,
         },
         {
           model: VariantValue,
           as: "values",
-          // required: false,
           through: {
             attributes: [],
-            // where: {}, // 👈 forces LEFT JOIN
           },
         },
       ],

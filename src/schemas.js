@@ -259,6 +259,8 @@ const breakPackSchema = Joi.object({
   toCombinationId: Joi.number().required(),
 }).meta({ className: "breakPack" });
 
+const rePackSchema = breakPackSchema.meta({ className: "rePack" });
+
 const stockAdjustmentSchema = Joi.object({
   referenceNo: Joi.string().required(),
   combinationId: Joi.number().required(),
@@ -337,6 +339,7 @@ module.exports = {
   inventoryMovementSchema,
   inventoryPriceAdjustmentSchema,
   breakPackSchema,
+  rePackSchema,
   stockAdjustmentSchema,
   invoiceLineSchema,
   invoiceSchema,

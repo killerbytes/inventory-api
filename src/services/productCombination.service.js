@@ -4,6 +4,7 @@ const {
   breakPackSchema,
   productCombinationSchema,
   stockAdjustmentSchema,
+  rePackSchema,
 } = require("../schemas");
 const ApiError = require("./ApiError");
 const redis = require("../utils/redis");
@@ -137,7 +138,6 @@ module.exports = {
     const { combinations } = payload;
 
     try {
-      // 2. Upsert VariantTypes and VariantValues
       const variantTypeMap = {};
       const variantValueMap = {};
       const variants = await VariantType.findAll({
@@ -175,7 +175,6 @@ module.exports = {
         }
       }
 
-      // 3. Delete existing combinations that are not in the payload
       const existingCombinations = await ProductCombination.findAll({
         where: { productId },
         include: [
@@ -406,155 +405,115 @@ module.exports = {
   },
 
   async breakPack(payload) {
-    const { error } = breakPackSchema.validate(payload, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw error;
-    }
+    const { error } = breakPackSchema.validate(payload, { abortEarly: false });
+    if (error) throw error;
 
     const { fromCombinationId, quantity, toCombinationId } = payload;
-
     const transaction = await sequelize.transaction();
+
     try {
       const fromInventory = await ProductCombination.findByPk(
         fromCombinationId,
         {
           include: [
-            {
-              model: Inventory,
-              as: "inventory",
-            },
+            { model: Inventory, as: "inventory" },
             { model: Product, as: "product" },
           ],
           transaction,
         }
       );
 
-      const conversionFactor = parseFloat(fromInventory.conversionFactor);
-
       const toInventory = await ProductCombination.findByPk(toCombinationId, {
-        include: {
-          model: Inventory,
-          as: "inventory",
-        },
+        include: { model: Inventory, as: "inventory" },
         transaction,
       });
+
+      if (!fromInventory || !toInventory)
+        throw new Error("Invalid combination IDs provided.");
 
       if (fromInventory.productId !== toInventory.productId) {
         throw ApiError.validation(
           [
             {
               path: ["toCombinationId"],
-              message: "Cannot break pack to different product",
+              message: "Cannot convert between different products",
             },
           ],
           400,
-          "Cannot break pack to different product"
+          "Cannot convert between different products"
         );
       }
 
-      // if (toInventory && !toInventory.inventory) {
-      //   // Create inventory record if not exist
-      //   toInventory.inventory = await Inventory.create(
-      //     {
-      //       combinationId: toCombinationId,
-      //       quantity: 0,
-      //     },
-      //     { transaction }
-      //   );
-      // }
+      const fromFactor = parseFloat(fromInventory.conversionFactor);
+      const toFactor = parseFloat(toInventory.conversionFactor);
 
-      if (fromInventory && fromInventory.inventory.quantity < quantity) {
+      let totalQuantity;
+      let type;
+      let averagePrice;
+
+      if (fromFactor > toFactor) {
+        // 🧩 BREAK PACK: big → small
+        type = "BREAK_PACK";
+        totalQuantity = quantity * (fromFactor / toFactor);
+
+        // Keep cost consistent
+        const totalCost = fromInventory.inventory.averagePrice * quantity;
+        averagePrice = totalCost / totalQuantity;
+      } else {
+        // 🧩 RE PACK: small → big
+        type = "RE_PACK";
+        totalQuantity = quantity / (toFactor / fromFactor);
+
+        // Keep cost consistent
+        const totalCost = fromInventory.inventory.averagePrice * quantity;
+        averagePrice = totalCost / totalQuantity;
+      }
+
+      if (fromInventory.inventory.quantity < quantity) {
         throw ApiError.validation(
           [
             {
               path: ["quantity"],
-              message: "Not enough inventory to break pack",
+              message: "Not enough inventory to perform operation",
             },
           ],
           400,
-          "Not enough inventory to break pack"
+          "Not enough inventory"
         );
       }
-      const user = await authService.getCurrent();
 
-      const totalQuantity = quantity * conversionFactor;
-      console.log(321, totalQuantity, conversionFactor);
-
-      // Update Parent Inventory
+      // ⬇️ Decrease inventory from source (same type)
       await inventoryDecrease(
         {
           combinationId: fromCombinationId,
           quantity,
         },
-        INVENTORY_MOVEMENT_TYPE.BREAK_PACK,
+        INVENTORY_MOVEMENT_TYPE[type],
         fromInventory.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
         transaction
       );
 
-      const averagePrice =
-        fromInventory.inventory.averagePrice / conversionFactor;
-      // await toInventory.inventory.update(
-      //   {
-      //     quantity: toInventory.inventory.quantity + totalQuantity,
-      //     averagePrice,
-      //   },
-      //   { transaction }
-      // );
-
-      //Update Child inventory
+      // ⬆️ Increase inventory to target (same type)
       await inventoryIncrease(
         {
           combinationId: toCombinationId,
           quantity: totalQuantity,
           averagePrice,
         },
-        INVENTORY_MOVEMENT_TYPE.RE_PACK,
+        INVENTORY_MOVEMENT_TYPE[type],
         toInventory.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
         transaction
       );
 
-      // // Log Repack movement
-      // await InventoryMovement.create(
-      //   {
-      //     type: INVENTORY_MOVEMENT_TYPE.RE_PACK,
-      //     previous: toInventory.inventory.quantity,
-      //     new: toInventory.inventory.quantity + totalQuantity,
-      //     quantity: totalQuantity,
-      //     reference: toInventory.id,
-      //     costPerUnit: averagePrice,
-      //     reason: "Repack",
-      //     userId: user.id,
-      //     combinationId: toCombinationId,
-      //   },
-      //   { transaction }
-      // );
-
-      await BreakPack.create(
-        {
-          fromCombinationId,
-          toCombinationId,
-          quantity,
-          conversionFactor,
-          createdBy: user.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        { transaction }
-      );
-
       await transaction.commit();
-      return toInventory;
+      return { type, fromInventory, toInventory, totalQuantity, averagePrice };
     } catch (error) {
-      console.log(1, error);
-      transaction.rollback();
+      await transaction.rollback();
       throw error;
     }
   },
-
   async stockAdjustment(payload) {
     const partialSchema = Joi.object({
       combinationId: stockAdjustmentSchema.extract("combinationId"),

@@ -21,6 +21,7 @@ const {
 } = require("../utils");
 const { getSKU } = require("../../utils/string");
 const variantTypeService = require("../../services/variantType.service");
+const goodReceiptService = require("../../services/goodReceipt.service");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -45,7 +46,6 @@ describe("Product Combination Service (Integration)", () => {
     await productCombinationService.updateByProductId(1, {
       combinations,
     });
-
     const combo = await productCombinationService.getByProductId(1);
     const product = await productService.get(1);
     const sku = getSKU(
@@ -72,15 +72,12 @@ describe("Product Combination Service (Integration)", () => {
     expect(combo.variants[0].productId).toBe(1);
     expect(combo.variants[0].values[0].id).toBe(2);
     expect(combo.variants[0].values[1].id).toBe(1);
-
     await productCombinationService.updateByProductId(1, {
       combinations,
     });
   });
-
   it("should update price and create price history", async () => {
     const { combinations } = await productCombinationService.getByProductId(1);
-
     await productCombinationService.updateByProductId(1, {
       combinations: combinations.map((c) => ({ ...c.dataValues, price: 123 })),
     });
@@ -94,12 +91,10 @@ describe("Product Combination Service (Integration)", () => {
     expect(priceHistories[1].fromPrice).toBe(100);
     expect(priceHistories[1].toPrice).toBe(123);
   });
-
   it("should make a stock adjustment", async () => {
     await productCombinationService.updateByProductId(1, {
       combinations,
     });
-
     await productCombinationService.stockAdjustment({
       combinationId: 3,
       newQuantity: 10,
@@ -118,13 +113,63 @@ describe("Product Combination Service (Integration)", () => {
     expect(combo2.combinations[0].inventory.quantity).toBe(11);
   });
 
-  it("should break a product combination to another unit", async () => {
-    await productCombinationService.stockAdjustment({
-      combinationId: 1,
-      newQuantity: 10,
-      reason: "EXPIRED",
-      notes: "test",
+  it("should break/repack a product combination to another unit", async () => {
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 1,
+          purchasePrice: 100,
+        },
+      ],
     });
+
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 2,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    await productCombinationService.updateByProductId(1, {
+      combinations: [
+        {
+          id: 1,
+          conversionFactor: 100,
+          unit: "BOX",
+          price: 100,
+          reorderLevel: 10,
+          values: [
+            {
+              value: "Red",
+              variantTypeId: 1,
+            },
+          ],
+        },
+        {
+          id: 2,
+          conversionFactor: 1,
+          unit: "PCS",
+          price: 5,
+          reorderLevel: 10,
+          values: [
+            {
+              value: "Red",
+              variantTypeId: 1,
+            },
+          ],
+        },
+      ],
+    });
+
     await productCombinationService.breakPack({
       fromCombinationId: 1,
       quantity: 1,
@@ -132,9 +177,12 @@ describe("Product Combination Service (Integration)", () => {
     });
     const combo = await productCombinationService.getByProductId(1);
     expect(combo.combinations[0].unit).toBe("BOX");
-    expect(combo.combinations[0].inventory.quantity).toBe(9);
+    expect(combo.combinations[0].inventory.quantity).toBe(1);
+    expect(combo.combinations[0].inventory.averagePrice).toBe(100);
     expect(combo.combinations[1].unit).toBe("PCS");
-    expect(combo.combinations[1].inventory.quantity).toBe(24);
+    expect(combo.combinations[1].inventory.quantity).toBe(100);
+    expect(combo.combinations[1].inventory.averagePrice).toBe(1);
+
     await productCombinationService.breakPack({
       fromCombinationId: 1,
       quantity: 1,
@@ -142,9 +190,68 @@ describe("Product Combination Service (Integration)", () => {
     });
     const combo2 = await productCombinationService.getByProductId(1);
     expect(combo2.combinations[0].unit).toBe("BOX");
-    expect(combo2.combinations[0].inventory.quantity).toBe(8);
+    expect(combo2.combinations[0].inventory.quantity).toBe(0);
+    expect(combo2.combinations[0].inventory.averagePrice).toBe(100);
     expect(combo2.combinations[1].unit).toBe("PCS");
-    expect(combo2.combinations[1].inventory.quantity).toBe(48);
+    expect(combo2.combinations[1].inventory.quantity).toBe(200);
+    expect(combo2.combinations[1].inventory.averagePrice).toBe(1);
+
+    await productCombinationService.breakPack({
+      fromCombinationId: 2,
+      quantity: 100,
+      toCombinationId: 1,
+    });
+
+    await productCombinationService.breakPack({
+      fromCombinationId: 2,
+      quantity: 100,
+      toCombinationId: 1,
+    });
+
+    const combo3 = await productCombinationService.getByProductId(1);
+
+    expect(combo3.combinations[0].unit).toBe("BOX");
+    expect(combo3.combinations[0].inventory.quantity).toBe(2);
+    expect(combo3.combinations[0].inventory.averagePrice).toBe(100);
+    expect(combo3.combinations[1].unit).toBe("PCS");
+    expect(combo3.combinations[1].inventory.quantity).toBe(0);
+    expect(combo3.combinations[1].inventory.averagePrice).toBe(1);
+  });
+
+  it("should re pack a product combination to another unit", async () => {
+    await productCombinationService.stockAdjustment({
+      combinationId: 1,
+      newQuantity: 0,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+
+    await productCombinationService.stockAdjustment({
+      combinationId: 2,
+      newQuantity: 24,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    await productCombinationService.breakPack({
+      fromCombinationId: 2,
+      quantity: 24,
+      toCombinationId: 1,
+    });
+    const combo = await productCombinationService.getByProductId(1);
+    expect(combo.combinations[0].unit).toBe("BOX");
+    expect(combo.combinations[0].inventory.quantity).toBe(1);
+    expect(combo.combinations[1].unit).toBe("PCS");
+    expect(combo.combinations[1].inventory.quantity).toBe(0);
+    await productCombinationService.breakPack({
+      fromCombinationId: 1,
+      quantity: 1,
+      toCombinationId: 2,
+    });
+    const combo2 = await productCombinationService.getByProductId(1);
+    expect(combo2.combinations[0].unit).toBe("BOX");
+    expect(combo2.combinations[0].inventory.quantity).toBe(0);
+    expect(combo2.combinations[1].unit).toBe("PCS");
+    expect(combo2.combinations[1].inventory.quantity).toBe(24);
   });
   it("should throw error if inventory is not enough", async () => {
     await productCombinationService.stockAdjustment({
@@ -167,7 +274,7 @@ describe("Product Combination Service (Integration)", () => {
         errors: err.errors?.map((e) => e.message),
       });
       expect(err.name).toBe("Error");
-      expect(err.message).toBe("Not enough inventory to break pack");
+      expect(err.message).toBe("Not enough inventory");
     }
   });
   it("should throw error if different product", async () => {
@@ -180,7 +287,6 @@ describe("Product Combination Service (Integration)", () => {
       ],
       productId: 2,
     });
-
     await productCombinationService.updateByProductId(2, {
       combinations: [
         {
@@ -193,7 +299,6 @@ describe("Product Combination Service (Integration)", () => {
       ],
     });
     const list = await productCombinationService.list();
-
     await productCombinationService.stockAdjustment({
       combinationId: 1,
       newQuantity: 10,
@@ -214,7 +319,7 @@ describe("Product Combination Service (Integration)", () => {
         errors: err.errors?.map((e) => e.message),
       });
       expect(err.name).toBe("Error");
-      expect(err.message).toBe("Cannot break pack to different product");
+      expect(err.message).toBe("Cannot convert between different products");
     }
   });
 });
