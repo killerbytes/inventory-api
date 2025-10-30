@@ -146,7 +146,9 @@ module.exports = {
   async getPaginated(query = {}) {
     const { q, categoryId } = query;
     const cacheKey = `products:paginated`;
+    console.time("Redis Query");
     const cached = await redis.get(cacheKey);
+    console.timeEnd("Redis Query");
     if (cached) {
       return JSON.parse(cached);
     }
@@ -164,6 +166,7 @@ module.exports = {
     }
 
     try {
+      console.time("DB Query");
       const products = await Product.findAll({
         where,
         // logging: console.log,
@@ -183,6 +186,7 @@ module.exports = {
         ],
         // order: [...getDefaultOrder()],
       });
+      console.timeEnd("DB Query");
 
       // Fetch parent + subcategories for grouping
       const categories = await Category.findAll({
