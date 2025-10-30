@@ -148,6 +148,7 @@ const combinations = [
     unit: "PCS",
     reorderLevel: 1,
     conversionFactor: 1,
+    isBreakPackOfId: 1,
     values: [
       {
         value: "Red",

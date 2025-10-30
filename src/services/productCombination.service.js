@@ -78,7 +78,8 @@ module.exports = {
           as: "inventory",
         },
       ],
-      order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
+      // order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
+      order: [["name", "ASC"]],
     });
 
     if (!combinations) throw new Error("Combination not found");
@@ -444,6 +445,23 @@ module.exports = {
         );
       }
 
+      // Check if break pack is valid based on chain
+      if (
+        fromInventory.id !== toInventory.isBreakPackOfId &&
+        toInventory.id !== fromInventory.isBreakPackOfId
+      ) {
+        throw ApiError.validation(
+          [
+            {
+              path: ["toCombinationId"],
+              message: "Invalid break pack path. Not directly related.",
+            },
+          ],
+          400,
+          "Invalid break pack relationship"
+        );
+      }
+
       const fromFactor = parseFloat(fromInventory.conversionFactor);
       const toFactor = parseFloat(toInventory.conversionFactor);
 
@@ -451,23 +469,18 @@ module.exports = {
       let type;
       let averagePrice;
 
-      if (fromFactor > toFactor) {
-        // 🧩 BREAK PACK: big → small
+      const conversionRate = fromFactor;
+
+      if (fromInventory.id === toInventory.isBreakPackOfId) {
         type = "BREAK_PACK";
-        totalQuantity = quantity * (fromFactor / toFactor);
-
-        // Keep cost consistent
-        const totalCost = fromInventory.inventory.averagePrice * quantity;
-        averagePrice = totalCost / totalQuantity;
-      } else {
-        // 🧩 RE PACK: small → big
+        totalQuantity = quantity * conversionRate;
+      } else if (fromInventory.isBreakPackOfId === toInventory.id) {
         type = "RE_PACK";
-        totalQuantity = quantity / (toFactor / fromFactor);
-
-        // Keep cost consistent
-        const totalCost = fromInventory.inventory.averagePrice * quantity;
-        averagePrice = totalCost / totalQuantity;
+        totalQuantity = quantity / toFactor;
       }
+
+      const totalCost = fromInventory.inventory.averagePrice * quantity;
+      averagePrice = totalCost / totalQuantity;
 
       if (fromInventory.inventory.quantity < quantity) {
         throw ApiError.validation(
@@ -481,7 +494,6 @@ module.exports = {
           "Not enough inventory"
         );
       }
-
       // ⬇️ Decrease inventory from source (same type)
       await inventoryDecrease(
         {

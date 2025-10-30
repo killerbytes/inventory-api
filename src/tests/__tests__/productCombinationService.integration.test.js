@@ -160,6 +160,7 @@ describe("Product Combination Service (Integration)", () => {
           unit: "PCS",
           price: 5,
           reorderLevel: 10,
+          isBreakPackOfId: 1,
           values: [
             {
               value: "Red",

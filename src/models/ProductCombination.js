@@ -32,6 +32,14 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   ProductCombination.associate = (models) => {
+    ProductCombination.belongsTo(models.ProductCombination, {
+      as: "parentCombination",
+      foreignKey: "isBreakPackOfId",
+    });
+    ProductCombination.hasMany(models.ProductCombination, {
+      as: "childCombinations",
+      foreignKey: "isBreakPackOfId",
+    });
     ProductCombination.belongsTo(models.Product, {
       foreignKey: "productId",
       as: "product",

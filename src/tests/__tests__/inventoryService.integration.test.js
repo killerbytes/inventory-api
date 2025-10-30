@@ -82,7 +82,7 @@ describe("Inventory Service (Integration)", () => {
     expect(inventoryMovements.data[1].combinationId).toBe(1);
     expect(inventoryMovements.data[1].type).toBe("BREAK_PACK");
     expect(inventoryMovements.data[2].combinationId).toBe(2);
-    expect(inventoryMovements.data[2].type).toBe("RE_PACK");
+    expect(inventoryMovements.data[2].type).toBe("BREAK_PACK");
   });
 
   it("should list break packs", async () => {

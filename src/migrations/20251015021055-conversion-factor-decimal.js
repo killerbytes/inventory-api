@@ -63,6 +63,17 @@ module.exports = {
       defaultValue: 0,
     });
 
+    await queryInterface.addColumn("ProductCombinations", "isBreakPackOfId", {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      references: {
+        model: "ProductCombinations",
+        key: "id",
+      },
+      onDelete: "SET NULL",
+      onUpdate: "CASCADE",
+    });
+
     await queryInterface.dropTable("InventoryBreakPacks");
   },
 
@@ -125,6 +136,8 @@ module.exports = {
       allowNull: false,
       defaultValue: 0,
     });
+
+    await queryInterface.removeColumn("ProductCombinations", "isBreakPackOfId");
 
     await queryInterface.createTable("InventoryBreakPacks", {
       id: {
