@@ -28,7 +28,7 @@ beforeEach(async () => {
   await createProduct(1);
   await createVariantType(0);
   await createSupplier(0);
-  await createCombination(0);
+  await createCombination();
   await createStockAdjustment(0);
   await createStockAdjustment(1);
   await loginUser();

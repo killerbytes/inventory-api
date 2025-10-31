@@ -39,9 +39,9 @@ function createSupplier(index) {
   return supplierService.create({ ...suppliers[index] });
 }
 
-function createCombination(index) {
+function createCombination(payload = combinations) {
   return productCombinationService.updateByProductId(1, {
-    combinations,
+    combinations: payload,
   });
 }
 function createStockAdjustment(index) {
@@ -148,6 +148,7 @@ const combinations = [
     unit: "PCS",
     reorderLevel: 1,
     conversionFactor: 1,
+    isBreakPackOfId: 1,
     values: [
       {
         value: "Red",

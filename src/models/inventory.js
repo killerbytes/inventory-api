@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
       },
       quantity: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DECIMAL(18, 6),
         defaultValue: 0,
         allowNull: false,
       },

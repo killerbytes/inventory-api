@@ -85,6 +85,7 @@ const productCombinationSchema = Joi.object({
   reorderLevel: Joi.number().required(),
   isBreakPack: Joi.boolean().default(false).allow(null),
   isActive: Joi.boolean().default(true).allow(null),
+  isBreakPackOfId: Joi.number().optional().allow(null),
   values: Joi.alternatives().try(
     Joi.array().items(variantValueSchema).required()
     // Joi.object()
@@ -259,6 +260,8 @@ const breakPackSchema = Joi.object({
   toCombinationId: Joi.number().required(),
 }).meta({ className: "breakPack" });
 
+const rePackSchema = breakPackSchema.meta({ className: "rePack" });
+
 const stockAdjustmentSchema = Joi.object({
   referenceNo: Joi.string().required(),
   combinationId: Joi.number().required(),
@@ -337,6 +340,7 @@ module.exports = {
   inventoryMovementSchema,
   inventoryPriceAdjustmentSchema,
   breakPackSchema,
+  rePackSchema,
   stockAdjustmentSchema,
   invoiceLineSchema,
   invoiceSchema,

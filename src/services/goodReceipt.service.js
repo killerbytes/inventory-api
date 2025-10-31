@@ -614,8 +614,8 @@ const processReceivedOrder = async (payload, goodReceipt) => {
         if (!inventory) {
           throw new Error("Inventory not found");
         }
-        const oldQty = inventory.quantity;
-        const oldPrice = inventory.averagePrice;
+        const oldQty = Number(inventory.quantity);
+        const oldPrice = Number(inventory.averagePrice);
         const newQty = oldQty + quantity;
         const priceAfterDiscount =
           (quantity * purchasePrice - discount) / quantity;

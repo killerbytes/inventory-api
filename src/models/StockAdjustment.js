@@ -6,9 +6,21 @@ module.exports = (sequelize, DataTypes) => {
     {
       referenceNo: DataTypes.STRING,
       combinationId: DataTypes.INTEGER,
-      systemQuantity: DataTypes.INTEGER,
-      newQuantity: DataTypes.INTEGER,
-      difference: DataTypes.INTEGER,
+      systemQuantity: {
+        type: DataTypes.DECIMAL(18, 6),
+        allowNull: false,
+        defaultValue: 0,
+      },
+      newQuantity: {
+        type: DataTypes.DECIMAL(18, 6),
+        allowNull: false,
+        defaultValue: 0,
+      },
+      difference: {
+        type: DataTypes.DECIMAL(18, 6),
+        allowNull: false,
+        defaultValue: 0,
+      },
       reason: {
         type: DataTypes.STRING,
         allowNull: false,

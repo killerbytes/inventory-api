@@ -26,7 +26,7 @@ beforeEach(async () => {
   await createProduct(1);
   await createVariantType(0);
   await createSupplier(0);
-  await createCombination(0);
+  await createCombination();
   await loginUser();
 });
 
@@ -64,30 +64,7 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("DRAFT");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
-  // it("should create a good receipt status=RECEIVED", async () => {
-  //   await goodReceiptService.create({
-  //     supplierId: 1,
-  //     receiptDate: new Date(),
-  //     referenceNo: "Test Notes",
-  //     internalNotes: "Test Internal Notes",
-  //     status: "RECEIVED",
-  //     goodReceiptLines: [
-  //       {
-  //         combinationId: 1,
-  //         quantity: 10,
-  //         purchasePrice: 100,
-  //       },
-  //       {
-  //         combinationId: 2,
-  //         quantity: 20,
-  //         discount: 10,
-  //         purchasePrice: 100,
-  //       },
-  //     ],
-  //   });
-  //   const goodReceipt = await goodReceiptService.get(1);
-  //   expect(goodReceipt.status).toBe("RECEIVED");
-  // });
+
   it("should update a good receipt", async () => {
     await goodReceiptService.create({
       supplierId: 1,
