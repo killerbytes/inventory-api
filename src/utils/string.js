@@ -5,7 +5,10 @@ function shortenNameTo(str, length = 3) {
     .toUpperCase();
 
   // Remove special characters, convert to uppercase, and split into words
-  const words = name.replace(/[^a-zA-Z0-9 ]/g, "").split(" ");
+  // const words = name.replace(/[^a-zA-Z0-9 ]/g, "").split(" ");
+  const words = name
+    .replace(/[^a-zA-Z0-9 \u00BC-\u00BE\u2150-\u215E]/g, "")
+    .split(/\s+/);
 
   // Take first 2-3 letters of each word (max 3 words)
   const shortened = words

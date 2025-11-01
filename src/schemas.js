@@ -57,6 +57,7 @@ const variantTypesSchema = Joi.object({
   id: Joi.number().optional(),
   name: Joi.string().required(),
   isTemplate: Joi.boolean().optional().allow(null),
+  isBreakpackFilter: Joi.boolean().optional().allow(null),
   values: Joi.array()
     .items(
       Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema)

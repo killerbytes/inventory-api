@@ -6,6 +6,11 @@ module.exports = (sequelize, DataTypes) => {
       name: { type: DataTypes.STRING, allowNull: false },
       productId: DataTypes.INTEGER,
       isTemplate: DataTypes.BOOLEAN,
+      isBreakpackFilter: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+      },
     },
     {
       defaultScope: {
