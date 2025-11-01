@@ -77,13 +77,27 @@ module.exports = {
     if (error) {
       throw error;
     }
-
     try {
       const variantTypes = await VariantType.findByPk(id);
       if (!variantTypes) {
         throw new Error("VariantType not found");
       }
       const transaction = await sequelize.transaction();
+
+      if (params.isBreakpackFilter) {
+        const variantsExists = await VariantType.findAll({
+          where: {
+            productId: variantTypes.productId,
+            id: { [db.Sequelize.Op.ne]: id },
+            isBreakpackFilter: true,
+          },
+        });
+        if (variantsExists.length > 0) {
+          throw new Error(
+            "Breakpack variant type already exists for this product. Please remove it before adding another."
+          );
+        }
+      }
 
       try {
         await variantTypes.update(params, { transaction });
