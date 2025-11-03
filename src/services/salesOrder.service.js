@@ -344,14 +344,14 @@ module.exports = {
       where.orderDate = {};
 
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.orderDate[Op.gte] = start;
+        // const start = new Date(startDate);
+        // start.setHours(0, 0, 0, 0);
+        where.orderDate[Op.gte] = startDate;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.orderDate[Op.lte] = end;
+        // const end = new Date(endDate);
+        // end.setHours(23, 59, 59, 999);
+        where.orderDate[Op.lte] = endDate;
       }
     }
 
