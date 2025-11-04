@@ -344,15 +344,16 @@ module.exports = {
       where.orderDate = {};
 
       if (startDate) {
-        // const start = new Date(startDate);
-        // start.setHours(0, 0, 0, 0);
-        where.orderDate[Op.gte] = startDate;
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.orderDate[Op.gte] = start;
       }
       if (endDate) {
-        // const end = new Date(endDate);
-        // end.setHours(23, 59, 59, 999);
-        where.orderDate[Op.lte] = endDate;
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.orderDate[Op.lte] = end;
       }
+      console.log(where);
     }
 
     const offset = (page - 1) * limit;
