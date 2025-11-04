@@ -15,6 +15,7 @@ const ApiError = require("./ApiError");
 const { getAmount, getTotalAmount } = require("../utils/compute.js");
 const productCombinationService = require("./productCombination.service.js");
 const redis = require("../utils/redis");
+const moment = require("moment-timezone");
 
 const {
   VariantValue,
@@ -342,16 +343,25 @@ module.exports = {
     // Add date filtering if dates are provided
     if (startDate || endDate) {
       where.orderDate = {};
-
+      const timezone = "Asia/Manila";
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.orderDate[Op.gte] = start;
+        // const start = new Date(startDate);
+        // start.setHours(0, 0, 0, 0);
+
+        where.orderDate[Op.gte] = moment
+          .tz(startDate, timezone)
+          .startOf("day")
+          .utc()
+          .toDate();
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.orderDate[Op.lte] = end;
+        // const end = new Date(endDate);
+        // end.setHours(23, 59, 59, 999);
+        where.orderDate[Op.lte] = moment
+          .tz(endDate, timezone)
+          .endOf("day")
+          .utc()
+          .toDate();
       }
       console.log(where);
     }
