@@ -12,6 +12,9 @@ const {
   createGoodReceipt,
 } = require("../utils");
 const { getTotalAmount } = require("../../utils/compute");
+const {
+  stockAdjustment,
+} = require("../../services/productCombination.service");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -274,5 +277,237 @@ describe("Good Receipt Service (Integration)", () => {
       status: "POSTED",
     });
     expect(goodReceipts3.length).toBe(0);
+  });
+
+  it("should return to supplier", async () => {
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          discount: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 11,
+          purchasePrice: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          discount: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    const returns = [
+      {
+        combinationId: 1,
+        quantity: 11,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+      },
+    ];
+
+    const result = await goodReceiptService.supplierReturns(
+      1,
+      returns,
+      "reason"
+    );
+    const inventory = await sequelize.models.Inventory.findAll();
+    const inventoryMovement =
+      await sequelize.models.InventoryMovement.findAll();
+    const returnTransaction =
+      await sequelize.models.ReturnTransaction.findAll();
+    const returnItems = await sequelize.models.ReturnItem.findAll();
+
+    expect(result.success).toBe(true);
+    expect(inventory[0].quantity).toBe(0);
+    expect(inventory[0].averagePrice).toBe(100);
+    expect(inventory[1].quantity).toBe(0);
+    expect(inventory[1].averagePrice).toBe(99.5);
+    expect(inventoryMovement.length).toBe(4);
+    expect(inventoryMovement[2].id).toBe(3);
+    expect(inventoryMovement[2].type).toBe("SUPPLIER_RETURN");
+    expect(inventoryMovement[2].referenceType).toBe("GOOD_RECEIPT");
+    expect(inventoryMovement[2].quantity).toBe(11);
+    expect(inventoryMovement[3].type).toBe("SUPPLIER_RETURN");
+    expect(inventoryMovement[3].referenceType).toBe("GOOD_RECEIPT");
+    expect(inventoryMovement[3].quantity).toBe(20);
+    expect(returnTransaction.length).toBe(1);
+    expect(returnTransaction[0].id).toBe(1);
+    expect(returnTransaction[0].sourceType).toBe("PURCHASE");
+    expect(returnTransaction[0].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[0].totalReturnAmount).toBe(3090);
+    expect(returnTransaction[0].paymentDifference).toBe(-3090);
+    expect(returnItems.length).toBe(2);
+    expect(returnItems[0].id).toBe(1);
+    expect(returnItems[0].returnTransactionId).toBe(1);
+    expect(returnItems[0].quantity).toBe(11);
+    expect(returnItems[0].unitPrice).toBe(100);
+    expect(returnItems[0].reason).toBe("reason");
+    expect(returnItems[0].combinationId).toBe(1);
+    expect(returnItems[0].totalAmount).toBe(1100);
+    expect(returnItems[1].id).toBe(2);
+    expect(returnItems[1].returnTransactionId).toBe(1);
+    expect(returnItems[1].quantity).toBe(20);
+    expect(returnItems[1].unitPrice).toBe(99.5);
+    expect(returnItems[1].reason).toBe("reason");
+    expect(returnItems[1].combinationId).toBe(2);
+    expect(returnItems[1].totalAmount).toBe(1990);
+  });
+
+  it("should return to supplier twice", async () => {
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    const returns = [
+      {
+        combinationId: 1,
+        quantity: 1,
+      },
+    ];
+
+    await goodReceiptService.supplierReturns(1, returns, "reason");
+    await goodReceiptService.supplierReturns(1, returns, "reason");
+
+    const returnTransaction =
+      await sequelize.models.ReturnTransaction.findAll();
+    const returnItems = await sequelize.models.ReturnItem.findAll();
+
+    expect(returnTransaction.length).toBe(2);
+    expect(returnTransaction[0].id).toBe(1);
+    expect(returnTransaction[0].referenceId).toBe(1);
+    expect(returnTransaction[0].sourceType).toBe("PURCHASE");
+    expect(returnTransaction[0].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[0].totalReturnAmount).toBe(100);
+    expect(returnTransaction[0].paymentDifference).toBe(-100);
+    expect(returnTransaction[1].id).toBe(2);
+    expect(returnTransaction[1].referenceId).toBe(1);
+    expect(returnTransaction[1].sourceType).toBe("PURCHASE");
+    expect(returnTransaction[1].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[1].totalReturnAmount).toBe(100);
+    expect(returnTransaction[1].paymentDifference).toBe(-100);
+    expect(returnItems.length).toBe(2);
+    expect(returnItems[0].id).toBe(1);
+    expect(returnItems[0].returnTransactionId).toBe(1);
+    expect(returnItems[0].quantity).toBe(1);
+    expect(returnItems[0].unitPrice).toBe(100);
+    expect(returnItems[0].reason).toBe("reason");
+    expect(returnItems[0].combinationId).toBe(1);
+    expect(returnItems[0].totalAmount).toBe(100);
+    expect(returnItems[1].id).toBe(2);
+    expect(returnItems[1].returnTransactionId).toBe(2);
+    expect(returnItems[1].quantity).toBe(1);
+    expect(returnItems[1].unitPrice).toBe(100);
+    expect(returnItems[1].reason).toBe("reason");
+    expect(returnItems[1].combinationId).toBe(1);
+    expect(returnItems[1].totalAmount).toBe(100);
+  });
+
+  it("should not allow return to supplier if more than the actual order quantity", async () => {
+    await stockAdjustment({
+      combinationId: 1,
+      newQuantity: 10,
+      reason: "EXPIRED",
+      notes: "test",
+    });
+    await goodReceiptService.create({
+      supplierId: 1,
+      receiptDate: new Date(),
+      referenceNo: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      goodReceiptLines: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    const returns = [
+      {
+        combinationId: 1,
+        quantity: 2,
+      },
+    ];
+
+    try {
+      await goodReceiptService.supplierReturns(1, returns, "reason");
+      await goodReceiptService.supplierReturns(1, returns, "reason");
+      await goodReceiptService.supplierReturns(
+        1,
+        [
+          {
+            combinationId: 1,
+            quantity: 10,
+          },
+        ],
+        "reason"
+      );
+      throw new Error(
+        "Expected SequelizeUniqueConstraintError but no error was thrown"
+      );
+    } catch (error) {
+      console.log("Unique error:", {
+        name: error.name,
+        message: error.message,
+        fields: error.fields,
+        errors: error.errors?.map((e) => e.message),
+      });
+
+      expect(error.name).toBe("Error");
+      expect(error.message).toBe("Return quantity exceeds sold quantity");
+    }
   });
 });

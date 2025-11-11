@@ -29,6 +29,7 @@
     "googleapis": "^160.0.0",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.6.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",

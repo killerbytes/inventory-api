@@ -94,6 +94,26 @@ const inventoryController = {
       next(error);
     }
   },
+
+  async getReturnTransaction(req, res, next) {
+    try {
+      const returnTransaction = await inventoryService.getReturnTransaction(
+        req.params.id
+      );
+      return res.status(200).json(returnTransaction);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getReturnItems(req, res, next) {
+    try {
+      const returnItems = await inventoryService.getReturnItems(req.params.id);
+      return res.status(200).json(returnItems);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = inventoryController;

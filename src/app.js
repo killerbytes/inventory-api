@@ -25,7 +25,6 @@ const zlib = require("zlib");
 const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
 const logger = require("./middlewares/logger");
-const { formatDate } = require("date-fns");
 
 dotenv.config({ path: envPath });
 
@@ -66,10 +65,10 @@ app.use("/api/products", verifyToken, productsRouter);
 app.use("/api/customers", verifyToken, customersRouter);
 app.use("/api/suppliers", verifyToken, suppliersRouter);
 app.use("/api/inventory", verifyToken, inventoryRouter);
-app.use("/api/goodReceipt", verifyToken, goodReceiptRouter);
+app.use("/api/good-receipt", verifyToken, goodReceiptRouter);
 app.use("/api/sales", verifyToken, salesRouter);
-app.use("/api/variantTypes", verifyToken, variantTypesRouter);
-app.use("/api/productCombinations", verifyToken, productCombinationRouter);
+app.use("/api/variant-types", verifyToken, variantTypesRouter);
+app.use("/api/product-combinations", verifyToken, productCombinationRouter);
 app.use("/api/invoices", verifyToken, invoiceRouter);
 app.use("/api/payments", verifyToken, paymentRouter);
 app.post("/api/backup", (req, res) => {

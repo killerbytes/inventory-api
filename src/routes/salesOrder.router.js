@@ -9,5 +9,6 @@ router.post("/", salesOrderController.create);
 router.patch("/:id", salesOrderController.update);
 router.delete("/:id", salesOrderController.delete);
 router.patch("/:id/cancel", salesOrderController.cancelOrder);
+router.post("/:id/return-exchange", salesOrderController.returnExchange);
 
 module.exports = router;

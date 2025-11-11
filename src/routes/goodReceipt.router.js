@@ -7,6 +7,7 @@ router.post(
   goodReceiptController.getByProductCombination
 );
 router.post("/supplier/:id", goodReceiptController.getBySupplierId);
+router.post("/:id/returns", goodReceiptController.supplierReturns);
 router.get("/list", goodReceiptController.list);
 router.get("/:id", goodReceiptController.get);
 router.get("/", goodReceiptController.getPaginated);

@@ -1,5 +1,10 @@
 const { Op } = require("sequelize");
-const { PAGINATION } = require("../definitions");
+const {
+  PAGINATION,
+  INVENTORY_MOVEMENT_TYPE,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE,
+  ORDER_TYPE,
+} = require("../definitions");
 const { sequelize } = require("../models");
 const db = require("../models");
 const { inventorySchema } = require("../schemas");
@@ -16,6 +21,8 @@ const {
   StockAdjustment,
   PriceHistory,
   User,
+  ReturnItem,
+  ReturnTransaction,
 } = db;
 
 module.exports = {
@@ -467,6 +474,177 @@ module.exports = {
     };
 
     return result;
+  },
+
+  async getReturnTransaction(id) {
+    const returnTransaction = await ReturnTransaction.findOne({
+      where: { referenceId: id },
+      raw: true,
+    });
+
+    if (!returnTransaction) {
+      throw new Error("Return Transaction not found");
+    }
+    return returnTransaction;
+  },
+
+  async getReturnItems(id) {
+    const returnItems = await ReturnItem.findAll({
+      where: { returnTransactionId: id },
+      include: [
+        {
+          model: ProductCombination,
+          as: "combination",
+          include: [
+            {
+              model: Product,
+              as: "product",
+              include: [{ model: VariantType, as: "variants" }],
+            },
+            {
+              model: VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!returnItems) {
+      throw new Error("Return Items not found");
+    }
+    return returnItems;
+  },
+
+  async returns(
+    returns,
+    items,
+    sourceType,
+    type,
+    reason,
+    referenceId,
+    transaction
+  ) {
+    let totalReturnAmount = 0;
+
+    const returnTransaction = await ReturnTransaction.create(
+      {
+        referenceId,
+        sourceType,
+        type,
+        totalReturnAmount,
+        paymentDifference: 0,
+      },
+      { transaction }
+    );
+    let itemLine;
+
+    for (const item of returns) {
+      itemLine = items.find((x) => x.combinationId === item.combinationId);
+
+      const returnTransactions = await ReturnTransaction.findAll({
+        where: { referenceId },
+        include: [
+          {
+            model: ReturnItem,
+            as: "returnItems",
+            where: { combinationId: item.combinationId },
+          },
+        ],
+        transaction,
+      });
+      const totalReturnQuantity = returnTransactions.reduce(
+        (acc, cur) => acc + cur.returnItems[0].quantity,
+        0
+      );
+
+      if (totalReturnQuantity + item.quantity > itemLine.quantity) {
+        throw new Error("Return quantity exceeds sold quantity");
+      }
+
+      const returnItem = items.find(
+        (x) => x.combinationId === item.combinationId
+      );
+
+      if (!returnItem) {
+        throw new Error(`Return item ${item.combinationId} not found`);
+      }
+      if (
+        sourceType === ORDER_TYPE.SALE &&
+        item.quantity > Number(returnItem.quantity)
+      ) {
+        throw new Error("Return quantity exceeds sold quantity");
+      }
+      if (
+        sourceType === ORDER_TYPE.PURCHASE &&
+        returnItem.quantity < item.quantity
+      ) {
+        throw new Error("Return quantity exceeds sold quantity");
+      }
+
+      const discountPerItem = returnItem.discount / returnItem.quantity;
+      const unitPrice =
+        sourceType === ORDER_TYPE.SALE
+          ? returnItem.originalPrice - discountPerItem
+          : returnItem.purchasePrice - discountPerItem;
+
+      const returnCost = unitPrice * item.quantity;
+
+      totalReturnAmount += returnCost;
+
+      await ReturnItem.create(
+        {
+          returnTransactionId: returnTransaction.id,
+          combinationId: item.combinationId,
+          quantity: item.quantity,
+          unitPrice,
+          totalAmount: item.quantity * unitPrice,
+          reason,
+        },
+        { transaction }
+      );
+
+      const inventory = await Inventory.findOne({
+        where: { combinationId: item.combinationId },
+        transaction,
+      });
+
+      if (sourceType === ORDER_TYPE.SALE) {
+        // Inventory: add back stock
+
+        await this.inventoryIncrease(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+            averagePrice: unitPrice,
+          },
+          type,
+          referenceId,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
+          transaction
+        );
+      } else if (sourceType === ORDER_TYPE.PURCHASE) {
+        // Inventory: remove stock
+        const averagePrice = //recompute average price
+          (inventory.averagePrice * inventory.quantity + returnCost) /
+          (inventory.quantity + item.quantity);
+
+        await this.inventoryDecrease(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+            averagePrice,
+          },
+          type,
+          referenceId,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
+          transaction
+        );
+      }
+    }
+
+    return { returnTransaction, totalReturnAmount };
   },
 
   async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
