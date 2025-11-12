@@ -540,7 +540,7 @@ module.exports = {
     );
     let itemLine;
 
-    for (const item of returns) {
+    for (const item of returns.filter((i) => i.quantity > 0)) {
       itemLine = items.find((x) => x.combinationId === item.combinationId);
 
       const returnTransactions = await ReturnTransaction.findAll({

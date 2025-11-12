@@ -50,7 +50,7 @@ module.exports = (sequelize) => {
       sequelize,
       modelName: "ReturnTransaction",
       defaultScope: {
-        attributes: { exclude: ["createdAt", "updatedAt", "deletedAt"] },
+        attributes: { exclude: ["createdAt", "deletedAt"] },
       },
       timestamps: true,
     }
