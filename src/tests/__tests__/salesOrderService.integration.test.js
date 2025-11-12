@@ -923,7 +923,7 @@ describe("Sales Order Service (Integration)", () => {
     const returns = [
       {
         combinationId: 1,
-        quantity: 1,
+        quantity: "1",
       },
     ];
 
@@ -935,7 +935,7 @@ describe("Sales Order Service (Integration)", () => {
         [
           {
             combinationId: 1,
-            quantity: 10,
+            quantity: "123",
           },
         ],
         null,
@@ -953,7 +953,7 @@ describe("Sales Order Service (Integration)", () => {
       });
 
       expect(error.name).toBe("Error");
-      expect(error.message).toBe("Return quantity exceeds sold quantity");
+      expect(error.message).toBe("Return quantity exceeds order quantity");
     }
 
     const returnTransaction =

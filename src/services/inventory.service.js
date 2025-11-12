@@ -477,7 +477,7 @@ module.exports = {
   },
 
   async getReturnTransaction(id) {
-    const returnTransaction = await ReturnTransaction.findOne({
+    const returnTransaction = await ReturnTransaction.findAll({
       where: { referenceId: id },
       raw: true,
     });
@@ -554,13 +554,17 @@ module.exports = {
         ],
         transaction,
       });
+
       const totalReturnQuantity = returnTransactions.reduce(
-        (acc, cur) => acc + cur.returnItems[0].quantity,
+        (acc, cur) => acc + Number(cur.returnItems[0].quantity),
         0
       );
 
-      if (totalReturnQuantity + item.quantity > itemLine.quantity) {
-        throw new Error("Return quantity exceeds sold quantity");
+      if (
+        totalReturnQuantity + Number(item.quantity) >
+        Number(itemLine.quantity)
+      ) {
+        throw new Error("Return quantity exceeds order quantity");
       }
 
       const returnItem = items.find(
