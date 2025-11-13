@@ -4,6 +4,7 @@ const {
   INVENTORY_MOVEMENT_TYPE,
   INVENTORY_MOVEMENT_REFERENCE_TYPE,
   ORDER_TYPE,
+  RETURN_TYPE,
 } = require("../definitions");
 const { sequelize } = require("../models");
 const db = require("../models");
@@ -605,6 +606,7 @@ module.exports = {
           unitPrice,
           totalAmount: item.quantity * unitPrice,
           reason,
+          type: RETURN_TYPE.RETURN,
         },
         { transaction }
       );

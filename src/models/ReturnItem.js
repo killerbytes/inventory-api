@@ -1,4 +1,5 @@
 const { Model, DataTypes } = require("sequelize");
+const { RETURN_TYPE } = require("../definitions");
 
 class ReturnItem extends Model {
   static associate(models) {
@@ -50,6 +51,13 @@ module.exports = (sequelize) => {
       reason: {
         type: DataTypes.STRING,
         allowNull: true,
+      },
+      type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          isIn: [Object.values(RETURN_TYPE)],
+        },
       },
     },
     {

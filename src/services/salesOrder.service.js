@@ -475,9 +475,7 @@ module.exports = {
           returns,
           salesOrder.salesOrderItems,
           ORDER_TYPE.SALE,
-          exchanges && exchanges.length > 0
-            ? RETURN_TYPE.EXCHANGE
-            : RETURN_TYPE.RETURN,
+          RETURN_TYPE.RETURN,
           reason,
           referenceId,
           transaction
@@ -507,6 +505,7 @@ module.exports = {
             unitPrice: replaceItem.price,
             totalAmount: item.quantity * replaceItem.price,
             reason: "Replacement",
+            type: RETURN_TYPE.EXCHANGE,
           },
           { transaction }
         );
@@ -516,7 +515,7 @@ module.exports = {
             combinationId: item.combinationId,
             quantity: item.quantity,
           },
-          INVENTORY_MOVEMENT_TYPE.SALE_EXCHANGE,
+          INVENTORY_MOVEMENT_TYPE.EXCHANGE,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
           transaction
