@@ -497,8 +497,6 @@ module.exports = {
     }
     headers = ["ID", "NAME", "QTY", "UNIT", "AVERAGEPRICE", "SRP"];
 
-    console.log(headers);
-
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
       range,

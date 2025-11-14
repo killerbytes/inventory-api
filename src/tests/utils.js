@@ -15,27 +15,27 @@ function getConstraintFields(err) {
   return Array.isArray(err.fields) ? err.fields : Object.keys(err.fields);
 }
 
-function createCategory(index) {
+function createCategory(index = 0) {
   return categoryService.create({ ...categories[index] });
 }
-async function createUser(index) {
+async function createUser(index = 0) {
   await userService.create({ ...users[index] });
   await userService.update(1, { isActive: true });
   return;
 }
-function createCustomer(index) {
+function createCustomer(index = 0) {
   return customerService.create({ ...customers[index] });
 }
 
-function createProduct(index) {
+function createProduct(index = 0) {
   return productService.create({ ...products[index] });
 }
 
-function createVariantType(index) {
+function createVariantType(index = 0) {
   return variantTypeService.create({ ...variantTypes[index] });
 }
 
-function createSupplier(index) {
+function createSupplier(index = 0) {
   return supplierService.create({ ...suppliers[index] });
 }
 
@@ -57,6 +57,34 @@ function createGoodReceipt(index) {
 function updateGoodReceiptStatus(id) {
   return goodReceiptService.update(id, {
     status: "RECEIVED",
+  });
+}
+
+async function createUpdateGoodReceipt(
+  goodReceiptLines = [
+    {
+      combinationId: 1,
+      quantity: 10,
+      purchasePrice: 100,
+    },
+    {
+      combinationId: 2,
+      quantity: 20,
+      discount: 10,
+      purchasePrice: 100,
+    },
+  ]
+) {
+  await goodReceiptService.create({
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "Test Notes",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines,
+  });
+  await goodReceiptService.update(1, {
+    status: "RECEIVED",
+    goodReceiptLines,
   });
 }
 
@@ -239,6 +267,11 @@ const variantTypes = [
     productId: 1,
     values: [{ value: "10A" }, { value: "20A" }],
   },
+  {
+    name: "AMP",
+    productId: 2,
+    values: [{ value: "10A" }, { value: "20A" }],
+  },
 ];
 
 const goodReceipts = [
@@ -331,6 +364,7 @@ module.exports = {
   createCustomer,
   createStockAdjustment,
   createGoodReceipt,
+  createUpdateGoodReceipt,
   createInvoice,
   loginUser,
   getUser,

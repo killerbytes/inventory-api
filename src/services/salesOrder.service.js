@@ -7,6 +7,8 @@ const {
   ORDER_STATUS,
   PAGINATION,
   INVENTORY_MOVEMENT_REFERENCE_TYPE,
+  RETURN_TYPE,
+  ORDER_TYPE,
 } = require("../definitions.js");
 const authService = require("./auth.service");
 const { inventoryDecrease, inventoryIncrease } = require("./inventory.service");
@@ -16,6 +18,7 @@ const { getAmount, getTotalAmount } = require("../utils/compute.js");
 const productCombinationService = require("./productCombination.service.js");
 const redis = require("../utils/redis");
 const moment = require("moment-timezone");
+const inventoryService = require("./inventory.service");
 
 const {
   VariantValue,
@@ -27,6 +30,9 @@ const {
   VariantType,
   Category,
   InventoryMovement,
+  Inventory,
+  ReturnTransaction,
+  ReturnItem,
 } = db;
 
 module.exports = {
@@ -47,6 +53,12 @@ module.exports = {
             as: "salesOrderItems",
             // where: { orderId: id },
             attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+              {
+                model: ProductCombination,
+                as: "combinations",
+              },
+            ],
           },
           {
             model: db.Customer,
@@ -451,6 +463,103 @@ module.exports = {
       transaction.commit();
     } catch (error) {
       transaction.rollback();
+    }
+  },
+
+  async returnExchange(referenceId, returns = [], exchanges = [], reason) {
+    // returns = [{ combinationId, quantity }]
+    // exchanges = [{ combinationId, quantity }]
+    // Both arrays optional — can be return-only, exchange-only, or mixed.
+
+    const salesOrder = await SalesOrder.findByPk(referenceId, {
+      include: [{ model: SalesOrderItem, as: "salesOrderItems" }],
+    });
+
+    if (!salesOrder) throw new Error("Sales order not found");
+
+    const transaction = await sequelize.transaction();
+    let totalReplaceAmount = 0;
+
+    try {
+      const { totalReturnAmount, returnTransaction } =
+        await inventoryService.returns(
+          returns,
+          salesOrder.salesOrderItems,
+          ORDER_TYPE.SALE,
+          RETURN_TYPE.RETURN,
+          reason,
+          referenceId,
+          transaction
+        );
+
+      for (const item of exchanges || []) {
+        const replaceItem = await ProductCombination.findByPk(
+          item.combinationId,
+          {
+            include: [{ model: Inventory, as: "inventory" }],
+          }
+        );
+
+        if (!replaceItem)
+          throw new Error(`Replace item ${item.combinationId} not found`);
+        if (replaceItem.inventory.quantity < item.quantity)
+          throw new Error("Not enough stock for replacement");
+
+        const replaceCost = replaceItem.price * item.quantity;
+        totalReplaceAmount += replaceCost;
+
+        await ReturnItem.create(
+          {
+            returnTransactionId: returnTransaction.id,
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+            unitPrice: replaceItem.price,
+            totalAmount: item.quantity * replaceItem.price,
+            reason: "Replacement",
+            type: RETURN_TYPE.EXCHANGE,
+          },
+          { transaction }
+        );
+
+        await inventoryDecrease(
+          {
+            combinationId: item.combinationId,
+            quantity: item.quantity,
+          },
+          INVENTORY_MOVEMENT_TYPE.EXCHANGE,
+          referenceId,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
+          transaction
+        );
+      }
+
+      const paymentDifference = totalReplaceAmount - totalReturnAmount;
+
+      await returnTransaction.update(
+        {
+          totalReturnAmount,
+          paymentDifference,
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        paymentDifference,
+        message:
+          paymentDifference > 0
+            ? "Customer must pay the difference"
+            : paymentDifference < 0
+            ? "Refund due to customer"
+            : "Even exchange completed",
+      };
+    } catch (error) {
+      console.log(error);
+
+      await transaction.rollback();
+      throw error;
     }
   },
 };

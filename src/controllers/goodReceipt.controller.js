@@ -1,5 +1,6 @@
 const goodReceiptService = require("../services/goodReceipt.service");
 const authService = require("../services/auth.service");
+const { returnSchema } = require("../schemas");
 
 const goodReceiptController = {
   async get(req, res, next) {
@@ -84,6 +85,21 @@ const goodReceiptController = {
   async getByProductCombination(req, res, next) {
     try {
       const result = await goodReceiptService.getByProductCombination(req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async supplierReturns(req, res, next) {
+    const { id } = req.params;
+    const { returns = [], reason } = req.body;
+    try {
+      const result = await goodReceiptService.supplierReturns(
+        id,
+        returns,
+        reason
+      );
       res.status(200).json(result);
     } catch (error) {
       next(error);

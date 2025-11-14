@@ -623,11 +623,9 @@ module.exports = {
     try {
       await productService.flat().then(async (products) => {
         for (const product of products) {
-          console.log(product.sku);
           const res = await this.updateByProductId(product.id, {
             combinations: product.combinations,
           });
-          console.log(res.message);
         }
       });
       transaction.commit();

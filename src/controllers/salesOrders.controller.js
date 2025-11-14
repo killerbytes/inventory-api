@@ -69,6 +69,22 @@ const salesOrderController = {
       next(error);
     }
   },
+
+  async returnExchange(req, res, next) {
+    const { id } = req.params;
+    const { returns, exchanges, reason } = req.body;
+    try {
+      const result = await salesOrderService.returnExchange(
+        id,
+        returns,
+        exchanges,
+        reason
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = salesOrderController;

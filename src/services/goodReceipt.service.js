@@ -1,12 +1,14 @@
 const { Op } = require("sequelize");
 const { sequelize } = require("../models/index.js");
 const db = require("../models/index.js");
-const { goodReceiptSchema } = require("../schemas.js");
+const { goodReceiptSchema, returnSchema } = require("../schemas.js");
 const {
   INVENTORY_MOVEMENT_TYPE,
   ORDER_STATUS,
   PAGINATION,
   INVENTORY_MOVEMENT_REFERENCE_TYPE,
+  ORDER_TYPE,
+  RETURN_TYPE,
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
@@ -28,6 +30,7 @@ const {
   Category,
 } = db;
 const redis = require("../utils/redis");
+const inventoryService = require("./inventory.service.js");
 
 module.exports = {
   async get(id) {
@@ -492,6 +495,69 @@ module.exports = {
       }
       return result;
     } catch (error) {
+      throw error;
+    }
+  },
+
+  async supplierReturns(referenceId, returns, reason) {
+    // returns = [{ combinationId, quantity }]
+
+    const { error } = returnSchema.validate(
+      { referenceId, returns, reason },
+      {
+        abortEarly: false,
+      }
+    );
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+
+    const goodReceipt = await GoodReceipt.findByPk(referenceId, {
+      include: [{ model: GoodReceiptLine, as: "goodReceiptLines" }],
+    });
+
+    if (!goodReceipt) throw new Error("Good Receipt not found");
+
+    const transaction = await sequelize.transaction();
+    let totalReplaceAmount = 0;
+    try {
+      const { totalReturnAmount, returnTransaction } =
+        await inventoryService.returns(
+          returns,
+          goodReceipt.goodReceiptLines,
+          ORDER_TYPE.PURCHASE,
+          RETURN_TYPE.SUPPLIER_RETURN,
+          reason,
+          referenceId,
+          transaction
+        );
+
+      const paymentDifference = totalReplaceAmount - totalReturnAmount;
+
+      await returnTransaction.update(
+        {
+          totalReturnAmount,
+          paymentDifference,
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        paymentDifference,
+        message:
+          paymentDifference > 0
+            ? "Customer must pay the difference"
+            : paymentDifference < 0
+            ? "Refund due to customer"
+            : "Even exchange completed",
+      };
+    } catch (error) {
+      console.log(error);
+      await transaction.rollback();
       throw error;
     }
   },

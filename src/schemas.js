@@ -317,6 +317,18 @@ const paymentSchema = Joi.object({
   applications: Joi.array().items(paymentApplicationSchema).required(),
 });
 
+const returnItemSchema = Joi.object({
+  combinationId: Joi.number().required(),
+  quantity: Joi.number().required(),
+});
+const returnSchema = Joi.object({
+  id: Joi.number().optional(),
+  referenceId: Joi.number().required(),
+  returns: Joi.array().items(returnItemSchema).required(),
+  exchanges: Joi.array().items(returnItemSchema).optional(),
+  reason: Joi.string().required(),
+});
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -347,4 +359,5 @@ module.exports = {
   invoiceSchema,
   invoiceSchemaCreate,
   paymentSchema,
+  returnSchema,
 };
