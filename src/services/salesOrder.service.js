@@ -1,4 +1,5 @@
-const { Op } = require("sequelize");
+const { Op, fn } = require("sequelize");
+const Sequelize = require("sequelize");
 const { sequelize } = require("../models");
 const db = require("../models");
 const { salesOrderSchema, salesOrderFormSchema } = require("../schemas");
@@ -343,6 +344,7 @@ module.exports = {
       sort,
     } = params;
     const where = {};
+    let totalAmount = 0;
 
     // Search by name if query exists
     if (q) {
@@ -375,7 +377,10 @@ module.exports = {
           .utc()
           .toDate();
       }
-      console.log(where);
+
+      totalAmount = await SalesOrder.sum("totalAmount", {
+        where: Object.keys(where).length ? where : undefined,
+      });
     }
 
     const offset = (page - 1) * limit;
@@ -402,7 +407,7 @@ module.exports = {
         limit,
         offset,
         order,
-        where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
+        where: Object.keys(where).length ? where : undefined,
         nest: true,
         distinct: true,
         include: [
@@ -426,10 +431,12 @@ module.exports = {
           },
         ],
       });
+
       const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
+        totalAmount,
         currentPage: page,
       };
       return result;

@@ -310,6 +310,7 @@ module.exports = {
       sort,
     } = params;
     const where = {};
+    let totalAmount = 0;
 
     // Search by name if query exists
     if (q) {
@@ -333,6 +334,10 @@ module.exports = {
         end.setHours(23, 59, 59, 999);
         where.receiptDate[Op.lte] = end;
       }
+
+      totalAmount = await GoodReceipt.sum("totalAmount", {
+        where: Object.keys(where).length ? where : undefined,
+      });
     }
 
     const offset = (page - 1) * limit;
@@ -387,6 +392,7 @@ module.exports = {
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: Number(page),
+        totalAmount,
       };
       return result;
     } catch (error) {

@@ -5,16 +5,16 @@ npx sequelize-cli db:seed:all
 
 npm run backup
 
-cross-env NODE_ENV=production npm run backup
-cross-env NODE_ENV=production npx sequelize db:drop
-cross-env NODE_ENV=production npx sequelize db:create
-cross-env NODE_ENV=production npx sequelize db:migrate
-cross-env NODE_ENV=production npm run restore
+npx cross-env NODE_ENV=production npm run backup
+npx cross-env NODE_ENV=production npx sequelize db:drop
+npx cross-env NODE_ENV=production npx sequelize db:create
+npx cross-env NODE_ENV=production npx sequelize db:migrate
+npx cross-env NODE_ENV=production npm run restore
 
-cross-env NODE_ENV=staging npx sequelize db:drop
-cross-env NODE_ENV=staging npx sequelize db:create
-cross-env NODE_ENV=staging npx sequelize db:migrate
-cross-env NODE_ENV=staging npm run restore
+npx cross-env NODE_ENV=staging npx sequelize db:drop
+npx cross-env NODE_ENV=staging npx sequelize db:create
+npx cross-env NODE_ENV=staging npx sequelize db:migrate
+npx cross-env NODE_ENV=staging npm run restore
 
 npx sequelize migration:generate --name fix-product-name-unique-index
 

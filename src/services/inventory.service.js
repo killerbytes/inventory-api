@@ -212,6 +212,7 @@ module.exports = {
 
     try {
       const where = {};
+      let totalAmount = 0;
       if (type) {
         where.type = type;
       }
@@ -229,6 +230,11 @@ module.exports = {
           end.setHours(23, 59, 59, 999);
           where.updatedAt[Op.lte] = end;
         }
+
+        totalAmount = await InventoryMovement.sum("totalCost", {
+          where: Object.keys(where).length ? where : undefined,
+        });
+        console.log(123, totalAmount);
       }
 
       const offset = (page - 1) * limit;
@@ -271,6 +277,7 @@ module.exports = {
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: page,
+        totalAmount,
       };
     } catch (error) {
       throw error;
