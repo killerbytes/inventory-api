@@ -395,6 +395,10 @@ module.exports = {
           model: Inventory,
           as: "inventory",
         },
+        {
+          model: Product,
+          as: "product",
+        },
       ],
       order: [["name", "ASC"]],
       where: {
