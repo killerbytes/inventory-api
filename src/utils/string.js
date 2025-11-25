@@ -39,7 +39,7 @@ function getSKU(name, category, unit, values) {
     parts.push(shortenNameTo(unit.substring(0, 3)));
   }
   if (values) {
-    parts.push(...values.map((val) => shortenNameTo(val.value)));
+    parts.push(...values.map((val) => shortenNameTo(val.value, 6)));
   }
 
   return parts.join("|");

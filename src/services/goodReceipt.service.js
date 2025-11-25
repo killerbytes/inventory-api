@@ -384,6 +384,7 @@ module.exports = {
           {
             model: db.Supplier,
             as: "supplier",
+            paranoid: false,
           },
         ],
       });
@@ -524,6 +525,14 @@ module.exports = {
     });
 
     if (!goodReceipt) throw new Error("Good Receipt not found");
+    if (
+      goodReceipt.status === ORDER_STATUS.DRAFT ||
+      goodReceipt.status === ORDER_STATUS.VOID
+    ) {
+      throw new Error(
+        `Good Receipt is not in a valid state: ${goodReceipt.status}`
+      );
+    }
 
     const transaction = await sequelize.transaction();
     let totalReplaceAmount = 0;

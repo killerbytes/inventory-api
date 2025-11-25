@@ -9,11 +9,5 @@ router.post("/priceHistory", inventoryController.getPriceHistory);
 router.get("/reorderLevels", inventoryController.getReorderLevels);
 router.get("/:id/return-transaction", inventoryController.getReturnTransaction);
 router.get("/:id/return-items", inventoryController.getReturnItems);
-// router.get("/", inventoryController.getPaginated);
-// router.post("/", inventoryController.create);
-// router.get("/list", inventoryController.list);
-// router.get("/:id", inventoryController.get);
-// router.delete("/:id", inventoryController.delete);
-// router.patch("/:id/price", inventoryController.updatePrice);
 
 module.exports = router;

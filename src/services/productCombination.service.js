@@ -132,6 +132,7 @@ module.exports = {
     const issue = validateCombinations(payload, product);
 
     if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
+      console.log(123, issue.duplicates, issue.conflicts);
       throw ApiError.badRequest("Combinations are invalid");
     }
 
