@@ -234,6 +234,7 @@ module.exports = {
         totalAmount = await InventoryMovement.sum("totalCost", {
           where: Object.keys(where).length ? where : undefined,
         });
+        console.log(123, totalAmount);
       }
 
       const offset = (page - 1) * limit;
