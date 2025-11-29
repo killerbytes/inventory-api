@@ -11,6 +11,10 @@ module.exports = {
     dialect: "postgres",
     port: 5432,
     logging: false,
+    pool: {
+      max: 1, // pool of one connection only
+      idleTimeoutMillis: 10000, // close if unused
+    },
   },
   test: {
     dialect: "sqlite",
@@ -46,10 +50,8 @@ module.exports = {
       },
     },
     pool: {
-      max: 3,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
+      max: 1, // pool of one connection only
+      idleTimeoutMillis: 10000, // close if unused
     },
     logging: false,
   },
