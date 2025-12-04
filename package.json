@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --max-old-space-size=128 src/index.js",
     "dev": "nodemon src/index.js",
     "test": "cross-env NODE_ENV=test jest",
     "preinstall": "node scripts/build.js",

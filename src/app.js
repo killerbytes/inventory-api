@@ -1,5 +1,5 @@
 const express = require("express");
-const bodyParser = require("body-parser");
+// const bodyParser = require("body-parser");
 const pinoHttp = require("pino-http");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -21,7 +21,7 @@ const variantTypesRouter = require("./routes/variantTypes.router");
 const productCombinationRouter = require("./routes/productCombination.router");
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
-const zlib = require("zlib");
+// const zlib = require("zlib");
 const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
 const logger = require("./middlewares/logger");
@@ -29,22 +29,9 @@ const logger = require("./middlewares/logger");
 dotenv.config({ path: envPath });
 
 const app = express();
-app.use(bodyParser.json()); // Middleware to parse JSON bodies
-app.use(bodyParser.urlencoded({ extended: true })); // Middleware to parse URL-encoded bodies
-app.use(
-  compression({
-    filter: compression.filter,
-    threshold: 1024, // Only compress responses larger than 1KB
-    brotli: {
-      enabled: true,
-      zlib: zlib.constants.BROTLI_PARAM_QUALITY,
-    },
-    zlib: {
-      flush: zlib.constants.Z_SYNC_FLUSH,
-      finishFlush: zlib.constants.Z_SYNC_FLUSH,
-    },
-  })
-);
+// app.use(bodyParser.json()); // Middleware to parse JSON bodies
+// app.use(bodyParser.urlencoded({ extended: true })); // Middleware to parse URL-encoded bodies
+app.use(compression());
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Middleware to parse JSON bodies
 
