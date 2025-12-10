@@ -451,6 +451,8 @@ module.exports = {
           {
             model: db.ReturnTransaction,
             as: "returnTransactions",
+            required: false,
+            where: { sourceType: ORDER_TYPE.PURCHASE },
           },
         ],
       });
