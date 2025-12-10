@@ -18,6 +18,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "goodReceiptId",
         as: "goodReceiptStatusHistory",
       });
+      GoodReceipt.hasMany(models.ReturnTransaction, {
+        foreignKey: "referenceId",
+        as: "returnTransactions",
+        sourceKey: "id",
+        onDelete: "CASCADE",
+      });
     }
   }
 
