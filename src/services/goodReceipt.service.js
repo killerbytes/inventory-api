@@ -89,9 +89,70 @@ module.exports = {
       if (!goodReceipt) {
         throw ApiError.notFound("Good Receipt not found");
       }
-      await redis.setEx(cacheKey, 300, JSON.stringify(goodReceipt));
+      const returnTransactions = await db.ReturnTransaction.findAll({
+        where: {
+          referenceId: id,
+          sourceType: "PURCHASE",
+        },
+        include: [
+          {
+            model: db.ReturnItem,
+            as: "returnItems",
+          },
+        ],
+      });
 
-      return goodReceipt;
+      const allReturnItems = returnTransactions.flatMap((rt) =>
+        rt.returnItems.map((ri) => ({
+          returnTransactionId: rt.id,
+          combinationId: ri.combinationId,
+          quantity: ri.quantity,
+          reason: ri.reason,
+          date: rt.createdAt,
+          totalAmount: ri.totalAmount,
+        }))
+      );
+      let returnedTotalAmount = 0;
+      const goodReceiptLines = goodReceipt.goodReceiptLines.map((item) => {
+        const returned = allReturnItems.filter(
+          (ri) => ri.combinationId === item.combinationId
+        );
+
+        const returns = returned.reduce(
+          (acc, x) => {
+            acc.quantity += Number(x.quantity);
+            acc.totalAmount += Number(x.totalAmount);
+            return acc;
+          },
+          {
+            quantity: 0,
+            totalAmount: 0,
+          }
+        );
+        returnedTotalAmount += Number(returns.totalAmount);
+        return {
+          ...item.dataValues,
+          returns: {
+            quantity: returns.quantity,
+            netQuantity: item.quantity - returns.quantity,
+            totalAmount: returns.totalAmount,
+            history: returned.map((r) => ({
+              quantity: r.quantity,
+              reason: r.reason,
+              date: r.date,
+            })),
+          },
+        };
+      });
+
+      const result = {
+        ...goodReceipt.dataValues,
+        returnedTotalAmount,
+        goodReceiptLines,
+      };
+
+      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      return result;
     } catch (error) {
       throw error;
     }
@@ -188,6 +249,7 @@ module.exports = {
   },
 
   async list() {
+    throw new Error("Not implemented");
     const cacheKey = `goodReceipt:list`;
     const cached = await redis.get(cacheKey);
     if (cached) {
@@ -386,8 +448,13 @@ module.exports = {
             as: "supplier",
             paranoid: false,
           },
+          {
+            model: db.ReturnTransaction,
+            as: "returnTransactions",
+          },
         ],
       });
+
       const result = {
         data: rows,
         total: count,
@@ -440,13 +507,17 @@ module.exports = {
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
         include: [
+          // {
+          //   model: db.GoodReceiptLine,
+          //   as: "goodReceiptLines",
+          // },
+          // {
+          //   model: db.Supplier,
+          //   as: "supplier",
+          // },
           {
-            model: db.GoodReceiptLine,
-            as: "goodReceiptLines",
-          },
-          {
-            model: db.Supplier,
-            as: "supplier",
+            model: db.ReturnTransaction,
+            as: "returnTransactions",
           },
         ],
       });
@@ -575,6 +646,76 @@ module.exports = {
       await transaction.rollback();
       throw error;
     }
+  },
+  async getGoodReceiptWithReturns(goodReceiptId) {
+    // 1. Load Good Receipt + Items
+
+    const gr = await GoodReceipt.findByPk(goodReceiptId, {
+      include: [
+        {
+          model: db.GoodReceiptLine,
+          as: "goodReceiptLines",
+        },
+      ],
+    });
+
+    if (!gr) throw new Error("Good Receipt not found");
+
+    // 2. Load ALL returns related to this Good Receipt
+
+    const returnTransactions = await db.ReturnTransaction.findAll({
+      where: {
+        referenceId: goodReceiptId,
+        sourceType: "PURCHASE",
+      },
+      include: [
+        {
+          model: db.ReturnItem,
+          as: "returnItems",
+        },
+      ],
+    });
+
+    // Transform returns into easy-to-query structure
+    const allReturnItems = returnTransactions.flatMap((rt) =>
+      rt.returnItems.map((ri) => ({
+        returnTransactionId: rt.id,
+        combinationId: ri.combinationId,
+        quantity: ri.quantity,
+        reason: ri.reason,
+        date: rt.createdAt,
+      }))
+    );
+    console.log(JSON.stringify(returnTransactions, null, 2));
+
+    // 3. Build final structured output
+    console.log(JSON.stringify(allReturnItems, null, 2));
+
+    const resultItems = gr.goodReceiptLines.map((item) => {
+      const returned = allReturnItems.filter(
+        (ri) => ri.combinationId === item.combinationId
+      );
+
+      const returnedQty = returned.reduce((sum, x) => sum + x.quantity, 0);
+
+      return {
+        id: item.id,
+        combinationId: item.combinationId,
+        receivedQty: item.quantity,
+        returnedQty,
+        netQty: item.quantity - returnedQty,
+        returnHistory: returned.map((r) => ({
+          qty: r.quantity,
+          reason: r.reason,
+          date: r.date,
+        })),
+      };
+    });
+
+    return {
+      goodReceiptId: goodReceiptId,
+      items: resultItems,
+    };
   },
 };
 
