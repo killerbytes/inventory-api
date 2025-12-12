@@ -42,39 +42,7 @@ module.exports = {
       }
 
       const goodReceipt = await GoodReceipt.findByPk(id, {
-        include: [
-          {
-            model: GoodReceiptLine,
-            as: "goodReceiptLines",
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-              {
-                model: ProductCombination,
-                as: "combinations",
-              },
-            ],
-          },
-          {
-            model: db.Supplier,
-            as: "supplier",
-          },
-          {
-            model: db.OrderStatusHistory,
-            as: "goodReceiptStatusHistory",
-            include: [
-              {
-                model: db.User,
-                as: "user",
-              },
-            ],
-          },
-          {
-            model: db.ReturnTransaction,
-            as: "returnTransactions",
-            required: false,
-            where: { sourceType: ORDER_TYPE.PURCHASE },
-          },
-        ],
+        include: [...goodReceiptIncludes],
         nest: true,
         order: [
           [
@@ -95,70 +63,70 @@ module.exports = {
       if (!goodReceipt) {
         throw ApiError.notFound("Good Receipt not found");
       }
-      const returnTransactions = await db.ReturnTransaction.findAll({
-        where: {
-          referenceId: id,
-          sourceType: "PURCHASE",
-        },
-        include: [
-          {
-            model: db.ReturnItem,
-            as: "returnItems",
-          },
-        ],
-      });
+      // const returnTransactions = await db.ReturnTransaction.findAll({
+      //   where: {
+      //     referenceId: id,
+      //     sourceType: "PURCHASE",
+      //   },
+      //   include: [
+      //     {
+      //       model: db.ReturnItem,
+      //       as: "returnItems",
+      //     },
+      //   ],
+      // });
 
-      const allReturnItems = returnTransactions.flatMap((rt) =>
-        rt.returnItems.map((ri) => ({
-          returnTransactionId: rt.id,
-          combinationId: ri.combinationId,
-          quantity: ri.quantity,
-          reason: ri.reason,
-          date: rt.createdAt,
-          totalAmount: ri.totalAmount,
-        }))
-      );
-      let returnedTotalAmount = 0;
-      const goodReceiptLines = goodReceipt.goodReceiptLines.map((item) => {
-        const returned = allReturnItems.filter(
-          (ri) => ri.combinationId === item.combinationId
-        );
+      // const allReturnItems = returnTransactions.flatMap((rt) =>
+      //   rt.returnItems.map((ri) => ({
+      //     returnTransactionId: rt.id,
+      //     combinationId: ri.combinationId,
+      //     quantity: ri.quantity,
+      //     reason: ri.reason,
+      //     date: rt.createdAt,
+      //     totalAmount: ri.totalAmount,
+      //   }))
+      // );
+      // let returnedTotalAmount = 0;
+      // const goodReceiptLines = goodReceipt.goodReceiptLines.map((item) => {
+      //   const returned = allReturnItems.filter(
+      //     (ri) => ri.combinationId === item.combinationId
+      //   );
 
-        const returns = returned.reduce(
-          (acc, x) => {
-            acc.quantity += Number(x.quantity);
-            acc.totalAmount += Number(x.totalAmount);
-            return acc;
-          },
-          {
-            quantity: 0,
-            totalAmount: 0,
-          }
-        );
-        returnedTotalAmount += Number(returns.totalAmount);
-        return {
-          ...item.dataValues,
-          returns: {
-            quantity: returns.quantity,
-            netQuantity: item.quantity - returns.quantity,
-            totalAmount: returns.totalAmount,
-            history: returned.map((r) => ({
-              quantity: r.quantity,
-              reason: r.reason,
-              date: r.date,
-            })),
-          },
-        };
-      });
+      //   const returns = returned.reduce(
+      //     (acc, x) => {
+      //       acc.quantity += Number(x.quantity);
+      //       acc.totalAmount += Number(x.totalAmount);
+      //       return acc;
+      //     },
+      //     {
+      //       quantity: 0,
+      //       totalAmount: 0,
+      //     }
+      //   );
+      //   returnedTotalAmount += Number(returns.totalAmount);
+      //   return {
+      //     ...item.dataValues,
+      //     returns: {
+      //       quantity: returns.quantity,
+      //       netQuantity: item.quantity - returns.quantity,
+      //       totalAmount: returns.totalAmount,
+      //       history: returned.map((r) => ({
+      //         quantity: r.quantity,
+      //         reason: r.reason,
+      //         date: r.date,
+      //       })),
+      //     },
+      //   };
+      // });
 
-      const result = {
-        ...goodReceipt.dataValues,
-        returnedTotalAmount,
-        goodReceiptLines,
-      };
+      // const result = {
+      //   ...goodReceipt.dataValues,
+      //   // returnedTotalAmount,
+      //   // goodReceiptLines,
+      // };
 
-      await redis.setEx(cacheKey, 300, JSON.stringify(result));
-      return result;
+      await redis.setEx(cacheKey, 300, JSON.stringify(goodReceipt));
+      return goodReceipt;
     } catch (error) {
       throw error;
     }
@@ -514,20 +482,7 @@ module.exports = {
         order,
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
-        include: [
-          // {
-          //   model: db.GoodReceiptLine,
-          //   as: "goodReceiptLines",
-          // },
-          // {
-          //   model: db.Supplier,
-          //   as: "supplier",
-          // },
-          {
-            model: db.ReturnTransaction,
-            as: "returnTransactions",
-          },
-        ],
+        include: [...goodReceiptIncludes],
       });
 
       return result;
@@ -998,3 +953,47 @@ const mappedProductCombinationProps = (productCombination) => {
   };
   return props;
 };
+
+const goodReceiptIncludes = [
+  {
+    model: GoodReceiptLine,
+    as: "goodReceiptLines",
+    attributes: { exclude: ["createdAt", "updatedAt"] },
+    include: [
+      {
+        model: ProductCombination,
+        as: "combinations",
+      },
+    ],
+  },
+  {
+    model: db.Supplier,
+    as: "supplier",
+  },
+  {
+    model: db.OrderStatusHistory,
+    as: "goodReceiptStatusHistory",
+    include: [
+      {
+        model: db.User,
+        as: "user",
+      },
+    ],
+  },
+  {
+    model: db.ReturnTransaction,
+    as: "returnTransactions",
+    include: [
+      {
+        model: db.ReturnItem,
+        as: "returnItems",
+        include: [
+          {
+            model: db.ProductCombination,
+            as: "combination",
+          },
+        ],
+      },
+    ],
+  },
+];
