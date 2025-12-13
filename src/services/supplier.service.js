@@ -158,4 +158,37 @@ module.exports = {
       throw error;
     }
   },
+  async getByProductId(productId) {
+    const result = await db.Product.findByPk(productId, {
+      include: [
+        {
+          model: db.ProductCombination,
+          as: "combinations",
+          include: [
+            {
+              model: db.GoodReceiptLine,
+              as: "goodReceiptLines",
+              include: [
+                {
+                  model: db.GoodReceipt,
+                  as: "goodReceipt",
+                  include: [{ model: db.Supplier, as: "supplier" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [
+        [
+          { model: db.ProductCombination, as: "combinations" },
+          { model: db.GoodReceiptLine, as: "goodReceiptLines" },
+          { model: db.GoodReceipt, as: "goodReceipt" },
+          "receiptDate",
+          "DESC",
+        ],
+      ],
+    });
+    return result;
+  },
 };

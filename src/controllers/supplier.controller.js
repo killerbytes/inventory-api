@@ -61,6 +61,15 @@ const supplierController = {
       next(error);
     }
   },
+  async getByProductId(req, res, next) {
+    const { id } = req.params;
+    try {
+      const result = await supplierService.getByProductId(id);
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = supplierController;

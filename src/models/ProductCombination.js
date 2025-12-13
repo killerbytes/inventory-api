@@ -63,6 +63,10 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "combinationId",
       as: "combinations",
     });
+    ProductCombination.hasMany(models.GoodReceiptLine, {
+      foreignKey: "combinationId",
+      as: "goodReceiptLines",
+    });
   };
 
   // models/productcombination.js (add after associate)
