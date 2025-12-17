@@ -414,6 +414,7 @@ module.exports = {
 
   async search(query) {
     const { search, limit = 50 } = query;
+    const tsQuery = buildTsQuery(search);
 
     const cacheKey = `productCombination:search:${search}`;
     const cached = await redis.get(cacheKey);
@@ -422,7 +423,6 @@ module.exports = {
 
       return JSON.parse(cached);
     }
-    const tsquery = buildTsQuery(search);
     const results = await sequelize.query(
       `
 SELECT
@@ -456,14 +456,16 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) inv ON true
 WHERE
-  p.search_text @@ websearch_to_tsquery('english', :search)
+   p.search_text @@ to_tsquery('simple', :tsQuery)
+
+
 GROUP BY p.id, p.name
 ORDER BY p.name
 LIMIT :limit;
 
 `,
       {
-        replacements: { search, limit },
+        replacements: { tsQuery, limit },
         type: sequelize.QueryTypes.SELECT,
       }
     );
@@ -777,12 +779,8 @@ function validateCombinations(payload, product) {
   return { duplicates, conflicts };
 }
 
-function buildTsQuery(input) {
-  return input
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.replace(/[^a-z0-9]/g, "") + ":*")
-    .join(" & ");
+function buildTsQuery(search) {
+  const words = search.trim().toLowerCase().split(/\s+/);
+
+  return words.map((word) => `${word}:*`).join(" & ");
 }
