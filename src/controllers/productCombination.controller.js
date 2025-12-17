@@ -1,28 +1,42 @@
+const { searchSchema } = require("../schemas");
 const productCombinationService = require("../services/productCombination.service");
 
 const productCombinationController = {
   async get(req, res, next) {
     const { id } = req.params;
     try {
-      const user = await productCombinationService.get(id);
-      res.status(200).json(user);
+      const result = await productCombinationService.get(id);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   },
   async list(req, res, next) {
     try {
-      const user = await productCombinationService.list();
-      res.status(200).json(user);
+      const result = await productCombinationService.list();
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   },
+
+  async search(req, res, next) {
+    const { error } = searchSchema.validate(req.query, { abortEarly: false });
+    if (error) throw error;
+
+    try {
+      const result = await productCombinationService.search(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getByProductId(req, res, next) {
     const { id } = req.params;
     try {
-      const user = await productCombinationService.getByProductId(id);
-      res.status(200).json(user);
+      const result = await productCombinationService.getByProductId(id);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
@@ -31,11 +45,11 @@ const productCombinationController = {
   async updateByProductId(req, res, next) {
     const { id } = req.params;
     try {
-      const user = await productCombinationService.updateByProductId(
+      const result = await productCombinationService.updateByProductId(
         id,
         req.body
       );
-      res.status(200).json(user);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

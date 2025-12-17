@@ -5,8 +5,8 @@ const { auth } = require("googleapis/build/src/apis/abusiveexperiencereport");
 
 const router = express.Router();
 
-router.get("/me", verifyToken, authController.me);
+router.get("/me", verifyToken(), authController.me);
 router.post("/login", authController.login);
-router.post("/changePassword", verifyToken, authController.changePassword);
+router.post("/changePassword", verifyToken(), authController.changePassword);
 
 module.exports = router;

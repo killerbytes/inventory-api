@@ -46,18 +46,19 @@ app.use(
 );
 
 app.use("/api/auth", authRouter);
-app.use("/api/users", verifyToken, usersRouter);
+app.use("/api/users", verifyToken(), usersRouter);
 app.use("/api/categories", categoriesRouter);
-app.use("/api/products", verifyToken, productsRouter);
-app.use("/api/customers", verifyToken, customersRouter);
-app.use("/api/suppliers", verifyToken, suppliersRouter);
-app.use("/api/inventory", verifyToken, inventoryRouter);
-app.use("/api/good-receipt", verifyToken, goodReceiptRouter);
-app.use("/api/sales", verifyToken, salesRouter);
-app.use("/api/variant-types", verifyToken, variantTypesRouter);
-app.use("/api/product-combinations", verifyToken, productCombinationRouter);
-app.use("/api/invoices", verifyToken, invoiceRouter);
-app.use("/api/payments", verifyToken, paymentRouter);
+app.use("/api/products", verifyToken(), productsRouter);
+app.use("/api/customers", verifyToken(), customersRouter);
+app.use("/api/suppliers", verifyToken(), suppliersRouter);
+app.use("/api/inventory", verifyToken(), inventoryRouter);
+app.use("/api/good-receipt", verifyToken(), goodReceiptRouter);
+app.use("/api/sales", verifyToken(), salesRouter);
+app.use("/api/variant-types", verifyToken(), variantTypesRouter);
+app.use("/api/product-combinations", verifyToken(), productCombinationRouter);
+app.use("/api/invoices", verifyToken(), invoiceRouter);
+app.use("/api/payments", verifyToken(), paymentRouter);
+app.use("/api/search", verifyToken({ maxAge: "999h" }), paymentRouter);
 app.post("/api/backup", (req, res) => {
   const backup = spawn("node", ["backup.js", "backup"], {
     stdio: "inherit", // pipes logs to server logs

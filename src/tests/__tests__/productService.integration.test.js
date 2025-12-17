@@ -6,6 +6,8 @@ const {
   createCategory,
   products,
   categories,
+  createCombination,
+  createVariantType,
 } = require("../utils");
 
 beforeAll(async () => {
@@ -14,8 +16,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDatabase();
-  createCategory(0);
-  createCategory(1);
+  await createCategory(0);
+  await createCategory(1);
 });
 
 describe("Product Service (Integration)", () => {
@@ -32,6 +34,11 @@ describe("Product Service (Integration)", () => {
   it("should update product", async () => {
     const created = await productService.create(products[0]);
 
+    await createVariantType(0);
+    await createCombination();
+    // const res = await sequelize.models.Product.findAll();
+    // console.log(JSON.stringify(res, null, 2), created.id);
+
     const updated = await productService.update(created.id, {
       name: "Wood Shovel",
       description: "Shovel Updated",
@@ -39,10 +46,22 @@ describe("Product Service (Integration)", () => {
       categoryId: 1,
     });
 
+    const productCombination =
+      await sequelize.models.ProductCombination.findAll({
+        where: {
+          productId: updated.id,
+        },
+      });
+
     expect(updated).not.toBeNull();
     expect(updated.name).toBe("Wood Shovel");
     expect(updated.description).toBe("Shovel Updated");
     expect(updated.baseUnit).toBe("BOX");
+    expect(productCombination.length).toBe(2);
+    expect(productCombination[0].name).toBe("Wood Shovel - Red");
+    expect(productCombination[0].sku).toBe("01|WOO_SHO|BOX|RED");
+    expect(productCombination[1].name).toBe("Wood Shovel - Red");
+    expect(productCombination[1].sku).toBe("01|WOO_SHO|PCS|RED");
   });
 
   it("should list all products", async () => {

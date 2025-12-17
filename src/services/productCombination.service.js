@@ -1,10 +1,12 @@
 const { Sequelize, sequelize } = require("../models");
+const { Op } = require("sequelize");
 const db = require("../models");
 const {
   breakPackSchema,
   productCombinationSchema,
   stockAdjustmentSchema,
   rePackSchema,
+  searchSchema,
 } = require("../schemas");
 const ApiError = require("./ApiError");
 const redis = require("../utils/redis");
@@ -410,6 +412,66 @@ module.exports = {
     return products;
   },
 
+  async search(query) {
+    const { search, limit = 50 } = query;
+
+    const cacheKey = `productCombination:search:${search}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log(cached);
+
+      return JSON.parse(cached);
+    }
+    const tsquery = buildTsQuery(search);
+    const results = await sequelize.query(
+      `
+SELECT
+  p.id,
+  p.name,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', pc.id,
+        'productId', pc."productId",
+        'name', pc.name,
+        'sku', pc.sku,
+        'unit', pc.unit,
+        'price', pc.price,
+        'inventory', inv."Inventory"
+      )
+    ) FILTER (WHERE pc.id IS NOT NULL),
+    '[]'
+  ) AS "productCombinations"
+FROM "Products" p
+LEFT JOIN "ProductCombinations" pc
+  ON pc."productId" = p.id
+LEFT JOIN LATERAL (
+  SELECT
+    jsonb_build_object(
+      'id', i.id,
+      'quantity', i.quantity
+    ) AS "Inventory"
+  FROM "Inventories" i
+  WHERE i."combinationId" = pc.id
+  LIMIT 1
+) inv ON true
+WHERE
+  p.search_text @@ websearch_to_tsquery('english', :search)
+GROUP BY p.id, p.name
+ORDER BY p.name
+LIMIT :limit;
+
+`,
+      {
+        replacements: { search, limit },
+        type: sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    await redis.setEx(cacheKey, 300, JSON.stringify(results));
+    return results;
+  },
+
   async breakPack(payload) {
     const { error } = breakPackSchema.validate(payload, { abortEarly: false });
     if (error) throw error;
@@ -713,4 +775,14 @@ function validateCombinations(payload, product) {
   });
 
   return { duplicates, conflicts };
+}
+
+function buildTsQuery(input) {
+  return input
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/[^a-z0-9]/g, "") + ":*")
+    .join(" & ");
 }

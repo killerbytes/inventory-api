@@ -329,6 +329,12 @@ const returnSchema = Joi.object({
   reason: Joi.string().required(),
 });
 
+const searchSchema = Joi.object({
+  search: Joi.string().required(),
+  limit: Joi.number().optional().allow(null),
+  offset: Joi.number().optional().allow(null),
+});
+
 module.exports = {
   userBaseSchema,
   userSchema,
@@ -360,4 +366,5 @@ module.exports = {
   invoiceSchemaCreate,
   paymentSchema,
   returnSchema,
+  searchSchema,
 };

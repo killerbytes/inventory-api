@@ -2,6 +2,7 @@ const express = require("express");
 const productCombinationController = require("../controllers/productCombination.controller");
 const router = express.Router();
 
+router.get("/search", productCombinationController.search);
 router.post("/updatePrices", productCombinationController.updatePrices);
 router.post("/bulkGet", productCombinationController.bulkGet);
 router.get("/bulkUpdateSKU", productCombinationController.bulkUpdateSKU);

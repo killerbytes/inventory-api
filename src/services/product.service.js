@@ -74,9 +74,7 @@ module.exports = {
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
     });
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const transaction = await sequelize.transaction();
 
@@ -84,18 +82,32 @@ module.exports = {
       const product = await Product.findByPk(id, { transaction });
       if (!product) throw new Error("Product not found");
 
-      // 1. Update base product info
+      const oldName = product.name;
+      const oldCategoryId = product.categoryId;
+
       await product.update(payload, { transaction });
 
-      await transaction.commit();
-      await redis.del("products:paginated");
-      await redis.del("products:list");
-      await redis.del(`products:${id}`);
+      const shouldSyncCombinations =
+        (payload.name !== undefined && payload.name !== oldName) ||
+        (payload.categoryId !== undefined &&
+          payload.categoryId !== oldCategoryId);
 
-      return product; // { message: "Product updated successfully" };
+      if (shouldSyncCombinations) {
+        await this.syncCombinationNames(product.id, transaction);
+        await this.rebuildProductSearchText(product.id, transaction);
+      }
+
+      await transaction.commit();
+
+      await Promise.all([
+        redis.del("products:paginated"),
+        redis.del("products:list"),
+        redis.del(`products:${id}`),
+      ]);
+
+      return product;
     } catch (err) {
       await transaction.rollback();
-
       throw err;
     }
   },
@@ -126,10 +138,17 @@ module.exports = {
         where: { productId: id },
         transaction,
       });
-      await VariantValue.destroy({
-        where: {},
+
+      const variantTypes = await VariantType.findAll({
+        where: { productId: id },
+        attributes: ["id"],
         transaction,
-        include: [{ model: VariantType, where: { productId: id } }],
+      });
+      await VariantValue.destroy({
+        where: {
+          variantTypeId: variantTypes.map((v) => v.id),
+        },
+        transaction,
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
       const deleted = await Product.destroy({ where: { id }, transaction });
@@ -145,7 +164,8 @@ module.exports = {
   },
   async getPaginated(query = {}) {
     const { q, categoryId } = query;
-    const cacheKey = `products:paginated`;
+    const cacheKey = `products:paginated:${q || "all"}:${categoryId || "all"}`;
+
     console.time("Redis Query");
     const cached = await redis.get(cacheKey);
     console.timeEnd("Redis Query");
@@ -302,19 +322,19 @@ module.exports = {
 
         const catId = category.id;
 
-        if (!groupedByCategory[catId]) {
-          groupedByCategory[catId] = {
+        if (!groupedByCategory.has(catId)) {
+          groupedByCategory.set(catId, {
             categoryId: category.id,
             categoryName: category.name,
             categoryOrder: category.order,
             products: [],
-          };
+          });
         }
 
-        groupedByCategory[catId].products.push(product);
+        groupedByCategory.get(catId).products.push(product);
       });
 
-      const result = Object.values(groupedByCategory).sort(
+      const result = Array.from(groupedByCategory.values()).sort(
         (a, b) => a.categoryOrder - b.categoryOrder
       );
       await redis.setEx(cacheKey, 300, JSON.stringify(result));
@@ -519,6 +539,104 @@ module.exports = {
     });
     return result;
   },
+  async syncCombinationNames(productId, transaction) {
+    const product = await Product.findByPk(productId, {
+      include: [...getDefaultIncludes()],
+      transaction,
+    });
+
+    if (!product || !product.combinations?.length) return;
+
+    const updates = product.combinations
+      .map((combo) => {
+        const values = [...combo.values].sort(
+          (a, b) => a.variantTypeId - b.variantTypeId
+        );
+
+        const sku = getSKU(
+          product.name,
+          product.categoryId,
+          combo.unit,
+          values
+        );
+
+        const name = getMappedProductComboName(product, values);
+
+        if (combo.sku !== sku || combo.name !== name) {
+          return { id: combo.id, sku, name };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (!updates.length) return;
+
+    const dialect = transaction.sequelize.getDialect();
+
+    if (dialect === "postgres") {
+      const valuesSql = updates
+        .map(
+          (u) =>
+            `(${u.id}, ${transaction.sequelize.escape(
+              u.sku
+            )}, ${transaction.sequelize.escape(u.name)})`
+        )
+        .join(",");
+
+      await transaction.sequelize.query(
+        `
+      UPDATE "ProductCombinations"
+      SET
+        sku = v.sku,
+        name = v.name
+      FROM (
+        VALUES ${valuesSql}
+      ) AS v(id, sku, name)
+      WHERE "ProductCombinations".id = v.id
+      `,
+        { transaction }
+      );
+    } else {
+      /* -----------------------------------------
+     ✅ SQLITE: safe fallback (tests/dev)
+  ----------------------------------------- */
+      for (const combo of updates) {
+        await ProductCombination.update(
+          { sku: combo.sku, name: combo.name },
+          { where: { id: combo.id }, transaction }
+        );
+      }
+    }
+  },
+
+  async rebuildProductSearchText(productId, transaction) {
+    const dialect = sequelize.getDialect();
+
+    // SQLite: do nothing (or simple fallback)
+    if (dialect === "sqlite") return;
+
+    await transaction.sequelize.query(
+      `
+    UPDATE "Products"
+    SET search_text =
+      to_tsvector(
+        'english',
+        coalesce(name, '') || ' ' ||
+        coalesce(description, '') || ' ' ||
+        coalesce((
+          SELECT string_agg(pc.name, ' ')
+          FROM "ProductCombinations" pc
+          WHERE pc."productId" = "Products".id
+        ), '')
+      )
+    WHERE id = :productId
+    `,
+      {
+        replacements: { productId },
+        transaction,
+      }
+    );
+  },
 };
 
 function getDefaultIncludes() {
@@ -536,7 +654,6 @@ function getDefaultIncludes() {
     {
       model: ProductCombination,
       as: "combinations",
-      order: [["name", "ASC"]],
       include: [
         {
           model: Inventory,
