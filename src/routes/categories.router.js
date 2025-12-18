@@ -7,9 +7,9 @@ const router = express.Router();
 router.get("/list", categoriesController.list);
 router.get("/:id", categoriesController.get);
 router.get("/", categoriesController.list);
-router.post("/", verifyToken, categoriesController.create);
-router.patch("/updateSort", verifyToken, categoriesController.updateSort);
-router.patch("/:id", verifyToken, categoriesController.update);
-router.delete("/:id", verifyToken, categoriesController.delete);
+router.post("/", verifyToken(), categoriesController.create);
+router.patch("/updateSort", verifyToken(), categoriesController.updateSort);
+router.patch("/:id", verifyToken(), categoriesController.update);
+router.delete("/:id", verifyToken(), categoriesController.delete);
 
 module.exports = router;

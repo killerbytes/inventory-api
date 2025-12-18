@@ -84,7 +84,8 @@ module.exports = {
       await Promise.all(
         payload.map(async (id, index) => {
           const category = await Category.findByPk(id);
-          category.update({ order: index });
+          if (!category) return;
+          await category.update({ order: index });
         })
       );
       await redis.del("categories:all");
