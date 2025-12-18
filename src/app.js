@@ -55,10 +55,9 @@ app.use("/api/inventory", verifyToken(), inventoryRouter);
 app.use("/api/good-receipt", verifyToken(), goodReceiptRouter);
 app.use("/api/sales", verifyToken(), salesRouter);
 app.use("/api/variant-types", verifyToken(), variantTypesRouter);
-app.use("/api/product-combinations", verifyToken(), productCombinationRouter);
+app.use("/api/product-combinations", productCombinationRouter);
 app.use("/api/invoices", verifyToken(), invoiceRouter);
 app.use("/api/payments", verifyToken(), paymentRouter);
-app.use("/api/search", verifyToken({ maxAge: "999h" }), paymentRouter);
 app.post("/api/backup", (req, res) => {
   const backup = spawn("node", ["backup.js", "backup"], {
     stdio: "inherit", // pipes logs to server logs

@@ -24,5 +24,7 @@ logs
 .node_repl_history
 
 # Environment variables
+.vscode
 .env*
 src/config/service-account.json
+backups/
