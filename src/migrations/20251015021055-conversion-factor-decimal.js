@@ -3,19 +3,32 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.changeColumn(
-      "ProductCombinations",
-      "conversionFactor",
-      {
-        type: Sequelize.DECIMAL(18, 6),
-        allowNull: true,
-      }
-    );
+    await queryInterface.sequelize.query(`
+    ALTER TABLE "ProductCombinations"
+    ALTER COLUMN "conversionFactor"
+    TYPE NUMERIC(18,6)
+    USING "conversionFactor"::NUMERIC;
+  `);
 
-    await queryInterface.changeColumn("BreakPacks", "conversionFactor", {
-      type: Sequelize.DECIMAL(18, 6),
-      allowNull: true,
-    });
+    await queryInterface.sequelize.query(`
+    ALTER TABLE "BreakPacks"
+    ALTER COLUMN "conversionFactor"
+    TYPE NUMERIC(18,6)
+    USING "conversionFactor"::NUMERIC;
+  `);
+    // await queryInterface.changeColumn(
+    //   "ProductCombinations",
+    //   "conversionFactor",
+    //   {
+    //     type: Sequelize.DECIMAL(18, 6),
+    //     allowNull: true,
+    //   }
+    // );
+
+    // await queryInterface.changeColumn("BreakPacks", "conversionFactor", {
+    //   type: Sequelize.DECIMAL(18, 6),
+    //   allowNull: true,
+    // });
 
     await queryInterface.changeColumn("BreakPacks", "quantity", {
       type: Sequelize.DECIMAL(18, 6),

@@ -44,10 +44,6 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "combinationId",
       as: "combination",
     });
-
-    // InventoryMovement.belongsTo(models.StockAdjustment, {
-    //   foreignKey: "referenceId",
-    // });
   };
 
   return InventoryMovement;
