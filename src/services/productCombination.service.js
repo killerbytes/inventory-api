@@ -463,7 +463,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) inv ON true
 WHERE
-   p.search_text @@ to_tsquery('simple', :tsQuery)
+   p.search_text @@ to_tsquery('english', :tsQuery)
 GROUP BY p.id, p.name
 ORDER BY p.name
 LIMIT :limit;
