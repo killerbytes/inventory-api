@@ -11,6 +11,10 @@ class ReturnTransaction extends Model {
       foreignKey: "referenceId",
       as: "goodReceipt",
     });
+    ReturnTransaction.belongsTo(models.SalesOrder, {
+      foreignKey: "referenceId",
+      as: "salesOrder",
+    });
   }
 }
 

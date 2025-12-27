@@ -19,6 +19,13 @@ class SalesOrder extends Model {
       foreignKey: "salesOrderId",
       as: "salesOrderStatusHistory",
     });
+
+    SalesOrder.hasMany(models.ReturnTransaction, {
+      foreignKey: "referenceId",
+      as: "returnTransactions",
+      sourceKey: "id",
+      onDelete: "CASCADE",
+    });
   }
 }
 

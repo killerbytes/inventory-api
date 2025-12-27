@@ -413,7 +413,7 @@ module.exports = {
   },
 
   async search(query) {
-    const { search, limit = 50 } = query;
+    const { search, noBreakPacks = null, limit = 50 } = query;
     const tsQuery = buildTsQuery(search);
 
     const cacheKey = `productCombination:search:${search}`;
@@ -441,10 +441,15 @@ SELECT
       )
     ) FILTER (WHERE pc.id IS NOT NULL),
     '[]'
-  ) AS "productCombinations"
+  ) AS "combinations"
 FROM "Products" p
 LEFT JOIN "ProductCombinations" pc
   ON pc."productId" = p.id
+  AND (
+      :noBreakPacks IS NULL
+      OR pc."isBreakPack" = false
+ )
+
 LEFT JOIN LATERAL (
   SELECT
     jsonb_build_object(
@@ -457,15 +462,17 @@ LEFT JOIN LATERAL (
 ) inv ON true
 WHERE
    p.search_text @@ to_tsquery('simple', :tsQuery)
-
-
 GROUP BY p.id, p.name
 ORDER BY p.name
 LIMIT :limit;
 
 `,
       {
-        replacements: { tsQuery, limit },
+        replacements: {
+          tsQuery,
+          limit,
+          noBreakPacks,
+        },
         type: sequelize.QueryTypes.SELECT,
       }
     );

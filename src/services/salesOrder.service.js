@@ -45,38 +45,7 @@ module.exports = {
         return JSON.parse(cached);
       }
       const salesOrder = await SalesOrder.findByPk(id, {
-        // attributes: {
-        //   exclude: ["orderBy", "receivedBy", "completedBy", "cancelledBy"],
-        // },
-        include: [
-          {
-            model: SalesOrderItem,
-            as: "salesOrderItems",
-            // where: { orderId: id },
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-              {
-                model: ProductCombination,
-                as: "combinations",
-              },
-            ],
-          },
-          {
-            model: db.Customer,
-            as: "customer",
-          },
-          {
-            model: db.OrderStatusHistory,
-            as: "salesOrderStatusHistory",
-            include: [
-              {
-                model: db.User,
-                as: "user",
-              },
-            ],
-          },
-        ],
-        // raw: true,
+        include: [...salesOrderIncludes],
         nest: true,
         order: [
           [
@@ -235,8 +204,8 @@ module.exports = {
       switch (true) {
         case salesOrder.status === ORDER_STATUS.DRAFT &&
           payload.status === ORDER_STATUS.RECEIVED:
+          payload.totalAmount = getTotalAmount(payload.salesOrderItems);
           await processReceivedOrder(payload, salesOrder, transaction);
-
           break;
         case salesOrder.status === ORDER_STATUS.RECEIVED &&
           payload.status === ORDER_STATUS.COMPLETED:
@@ -244,7 +213,8 @@ module.exports = {
           break;
         case salesOrder.status === ORDER_STATUS.DRAFT &&
           payload.status === ORDER_STATUS.DRAFT:
-          await processUpdateOrder(payload, salesOrder, transaction);
+          payload.totalAmount = getTotalAmount(payload.salesOrderItems);
+          await updateOrder(payload, salesOrder, transaction, true);
           break;
         default:
           throw new Error(
@@ -265,19 +235,7 @@ module.exports = {
     }
 
     const result = await SalesOrder.findAll({
-      include: [
-        {
-          model: SalesOrderItem,
-          as: "salesOrderItems",
-          include: [
-            {
-              model: Product,
-              as: "product",
-            },
-          ],
-        },
-      ],
-      raw: true,
+      include: [...salesOrderIncludes],
       nest: true,
     });
     await redis.setEx(cacheKey, 300, JSON.stringify(result));
@@ -410,26 +368,7 @@ module.exports = {
         where: Object.keys(where).length ? where : undefined,
         nest: true,
         distinct: true,
-        include: [
-          {
-            model: db.SalesOrderItem,
-            as: "salesOrderItems",
-          },
-          {
-            model: db.OrderStatusHistory,
-            as: "salesOrderStatusHistory",
-            include: [
-              {
-                model: db.User,
-                as: "user",
-              },
-            ],
-          },
-          {
-            model: db.Customer,
-            as: "customer",
-          },
-        ],
+        include: [...salesOrderIncludes],
       });
 
       const result = {
@@ -662,14 +601,11 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
 
 const processReceivedOrder = async (payload, salesOrder, transaction) => {
   const user = await authService.getCurrent();
-  const { salesOrderItems, id } = salesOrder;
-
-  const totalAmount = getTotalAmount(payload.salesOrderItems);
+  const { id } = salesOrder;
   await updateOrder(
     {
       ...payload,
       status: ORDER_STATUS.RECEIVED,
-      totalAmount,
     },
     salesOrder,
     transaction,
@@ -732,13 +668,6 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
       transaction,
     }
   );
-};
-const processUpdateOrder = async (payload, salesOrder, transaction) => {
-  try {
-    await updateOrder(payload, salesOrder, transaction, true);
-  } catch (error) {
-    throw new Error("Error in processUpdateOrder");
-  }
 };
 
 const updateOrder = async (
@@ -828,3 +757,47 @@ const updateOrder = async (
     throw new Error("Error in updateOrderItems");
   }
 };
+
+const salesOrderIncludes = [
+  {
+    model: SalesOrderItem,
+    as: "salesOrderItems",
+    attributes: { exclude: ["createdAt", "updatedAt"] },
+    include: [
+      {
+        model: ProductCombination,
+        as: "combinations",
+      },
+    ],
+  },
+  {
+    model: db.Customer,
+    as: "customer",
+  },
+  {
+    model: db.OrderStatusHistory,
+    as: "salesOrderStatusHistory",
+    include: [
+      {
+        model: db.User,
+        as: "user",
+      },
+    ],
+  },
+  {
+    model: db.ReturnTransaction,
+    as: "returnTransactions",
+    include: [
+      {
+        model: db.ReturnItem,
+        as: "returnItems",
+        include: [
+          {
+            model: db.ProductCombination,
+            as: "combination",
+          },
+        ],
+      },
+    ],
+  },
+];
