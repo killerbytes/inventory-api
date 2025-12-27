@@ -152,6 +152,10 @@ const goodReceiptLineSchema = goodReceiptStatusSchema
     variantSnapshot: Joi.object(),
   })
   .required()
+  .options({
+    stripUnknown: true,
+  })
+
   .meta({ className: "goodReceiptLine" });
 
 const goodReceiptSchema = Joi.object({
@@ -333,6 +337,7 @@ const searchSchema = Joi.object({
   search: Joi.string().required(),
   limit: Joi.number().optional().allow(null),
   offset: Joi.number().optional().allow(null),
+  noBreakPacks: Joi.boolean().optional().allow(null),
 });
 
 module.exports = {
