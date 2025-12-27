@@ -321,6 +321,8 @@ module.exports = {
         }
       }
 
+      await productService.syncCombinationNames(productId, transaction);
+      await productService.rebuildProductSearchText(productId, transaction);
       await transaction.commit();
       await redis.del("products:paginated");
       await redis.del("products:list");

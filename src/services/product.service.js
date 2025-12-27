@@ -30,6 +30,8 @@ module.exports = {
     const transaction = await sequelize.transaction();
     try {
       const product = await Product.create(payload, { transaction });
+      await this.syncCombinationNames(product.id, transaction);
+      await this.rebuildProductSearchText(product.id, transaction);
       await transaction.commit();
       await redis.del("products:paginated");
       await redis.del("products:list");
@@ -87,15 +89,15 @@ module.exports = {
 
       await product.update(payload, { transaction });
 
-      const shouldSyncCombinations =
-        (payload.name !== undefined && payload.name !== oldName) ||
-        (payload.categoryId !== undefined &&
-          payload.categoryId !== oldCategoryId);
+      // const shouldSyncCombinations =
+      //   (payload.name !== undefined && payload.name !== oldName) ||
+      //   (payload.categoryId !== undefined &&
+      //     payload.categoryId !== oldCategoryId);
 
-      if (shouldSyncCombinations) {
-        await this.syncCombinationNames(product.id, transaction);
-        await this.rebuildProductSearchText(product.id, transaction);
-      }
+      // if (shouldSyncCombinations) {
+      await this.syncCombinationNames(product.id, transaction);
+      await this.rebuildProductSearchText(product.id, transaction);
+      // }
 
       await transaction.commit();
 
