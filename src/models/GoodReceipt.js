@@ -48,6 +48,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       referenceNo: DataTypes.TEXT,
       internalNotes: DataTypes.TEXT,
+      totalReturnAmount: {
+        type: DataTypes.VIRTUAL,
+        get() {
+          return this.returnTransactions?.reduce(
+            (acc, t) => acc + Number(t.totalReturnAmount),
+            0
+          );
+        },
+      },
     },
     {
       sequelize,

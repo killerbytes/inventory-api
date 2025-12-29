@@ -72,6 +72,24 @@ module.exports = (sequelize) => {
         unique: true,
       },
       dueDate: DataTypes.DATE,
+      totalReturnAmount: {
+        type: DataTypes.VIRTUAL,
+        get() {
+          return this.returnTransactions.reduce(
+            (acc, t) => acc + Number(t.totalReturnAmount),
+            0
+          );
+        },
+      },
+      totalExchangeAmount: {
+        type: DataTypes.VIRTUAL,
+        get() {
+          return this.returnTransactions.reduce(
+            (acc, t) => acc + Number(t.totalExchangeAmount),
+            0
+          );
+        },
+      },
     },
     {
       sequelize,

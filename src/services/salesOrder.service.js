@@ -317,9 +317,6 @@ module.exports = {
       where.orderDate = {};
       const timezone = "Asia/Manila";
       if (startDate) {
-        // const start = new Date(startDate);
-        // start.setHours(0, 0, 0, 0);
-
         where.orderDate[Op.gte] = moment
           .tz(startDate, timezone)
           .startOf("day")
@@ -327,33 +324,21 @@ module.exports = {
           .toDate();
       }
       if (endDate) {
-        // const end = new Date(endDate);
-        // end.setHours(23, 59, 59, 999);
         where.orderDate[Op.lte] = moment
           .tz(endDate, timezone)
           .endOf("day")
           .utc()
           .toDate();
       }
-
-      totalAmount = await SalesOrder.sum("totalAmount", {
-        where: Object.keys(where).length ? where : undefined,
-      });
     }
+    totalAmount = await SalesOrder.sum("totalAmount", {
+      where: Object.keys(where).length ? where : undefined,
+    });
 
     const offset = (page - 1) * limit;
 
     try {
-      const order = [
-        // [
-        //   {
-        //     model: OrderStatusHistory,
-        //     as: "salesOrderStatusHistory",
-        //   },
-        //   "id",
-        //   "ASC",
-        // ],
-      ];
+      const order = [];
 
       if (sort) {
         order.push([sort, params.order || "ASC"]);
@@ -371,6 +356,21 @@ module.exports = {
         include: [...salesOrderIncludes],
       });
 
+      const orderIds = rows.map((r) => r.id);
+      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+
+      const totalReturnAmount = await ReturnTransaction.sum(
+        "totalReturnAmount",
+        { where: returnsWhere }
+      );
+
+      const totalExchangeAmount = await ReturnTransaction.sum(
+        "totalExchangeAmount",
+        { where: returnsWhere }
+      );
+
+      totalAmount =
+        totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
       const result = {
         data: rows,
         total: count,
@@ -424,7 +424,7 @@ module.exports = {
     if (!salesOrder) throw new Error("Sales order not found");
 
     const transaction = await sequelize.transaction();
-    let totalReplaceAmount = 0;
+    let totalExchangeAmount = 0;
 
     try {
       const { totalReturnAmount, returnTransaction } =
@@ -452,7 +452,7 @@ module.exports = {
           throw new Error("Not enough stock for replacement");
 
         const replaceCost = replaceItem.price * item.quantity;
-        totalReplaceAmount += replaceCost;
+        totalExchangeAmount += replaceCost;
 
         await ReturnItem.create(
           {
@@ -479,11 +479,12 @@ module.exports = {
         );
       }
 
-      const paymentDifference = totalReplaceAmount - totalReturnAmount;
+      const paymentDifference = totalExchangeAmount - totalReturnAmount;
 
       await returnTransaction.update(
         {
           totalReturnAmount,
+          totalExchangeAmount,
           paymentDifference,
         },
         { transaction }

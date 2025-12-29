@@ -346,7 +346,9 @@ module.exports = {
       sort,
     } = params;
     const where = {};
+    const returnsWhere = {};
     let totalAmount = 0;
+    let totalReturnAmount = 0;
 
     // Search by name if query exists
     if (q) {
@@ -375,7 +377,6 @@ module.exports = {
         where: Object.keys(where).length ? where : undefined,
       });
     }
-
     const offset = (page - 1) * limit;
     const order = [];
 
@@ -431,12 +432,20 @@ module.exports = {
         ],
       });
 
+      const orderIds = rows.map((r) => r.id);
+      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+
+      const totalReturnAmount = await db.ReturnTransaction.sum(
+        "totalReturnAmount",
+        { where: returnsWhere }
+      );
+
       const result = {
         data: rows,
         total: count,
         totalPages: Math.ceil(count / limit),
         currentPage: Number(page),
-        totalAmount,
+        totalAmount: totalAmount - (totalReturnAmount || 0),
       };
       return result;
     } catch (error) {
