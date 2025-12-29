@@ -75,7 +75,7 @@ module.exports = (sequelize) => {
       totalReturnAmount: {
         type: DataTypes.VIRTUAL,
         get() {
-          return this.returnTransactions.reduce(
+          return this.returnTransactions?.reduce(
             (acc, t) => acc + Number(t.totalReturnAmount),
             0
           );
@@ -84,7 +84,7 @@ module.exports = (sequelize) => {
       totalExchangeAmount: {
         type: DataTypes.VIRTUAL,
         get() {
-          return this.returnTransactions.reduce(
+          return this.returnTransactions?.reduce(
             (acc, t) => acc + Number(t.totalExchangeAmount),
             0
           );

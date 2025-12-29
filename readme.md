@@ -17,6 +17,7 @@ npx cross-env NODE_ENV=staging npx sequelize db:migrate
 npx cross-env NODE_ENV=staging npm run restore
 
 npx cross-env NODE_ENV=beertitos npx sequelize db:create
+npx cross-env NODE_ENV=beertitos npx sequelize db:migrate
 
 npx sequelize migration:generate --name fix-product-name-unique-index
 
