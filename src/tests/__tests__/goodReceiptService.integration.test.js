@@ -547,6 +547,9 @@ describe("Good Receipt Service (Integration)", () => {
     expect(returnItems[1].reason).toBe("reason");
     expect(returnItems[1].combinationId).toBe(1);
     expect(returnItems[1].totalAmount).toBe(100);
+    const inv = await sequelize.models.Inventory.findAll();
+
+    expect(inv[0].quantity).toBe(8);
   });
 
   it("should not allow return to supplier if more than the actual order quantity", async () => {

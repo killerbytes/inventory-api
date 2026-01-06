@@ -662,7 +662,9 @@ module.exports = {
 
   async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
     const user = await authService.getCurrent();
-    const { combinationId, quantity, averagePrice = null } = item;
+    const { combinationId } = item;
+    const quantity = Number(item.quantity);
+    const averagePrice = Number(item.averagePrice);
 
     const inventory = await Inventory.findOne({
       where: { combinationId },
@@ -670,7 +672,6 @@ module.exports = {
     });
 
     if (!inventory) {
-      //Find or create inventory exclude quantity
       Inventory.create(
         {
           combinationId,
@@ -680,12 +681,10 @@ module.exports = {
         { transaction }
       );
     } else {
-      const oldQty = parseFloat(inventory.quantity);
-
+      const oldQty = Number(inventory.quantity);
       const newQty = oldQty + quantity;
 
       await inventory.update(
-        // Update inventory quantity
         {
           ...(averagePrice && { averagePrice }),
           quantity: newQty,
@@ -693,14 +692,14 @@ module.exports = {
         { transaction }
       );
     }
+    const currentPrice = Number(inventory.averagePrice);
 
     await sequelize.models.InventoryMovement.create(
-      // Create inventory movement
       {
         type,
         quantity,
-        costPerUnit: averagePrice || inventory.averagePrice,
-        totalCost: quantity * inventory.averagePrice,
+        costPerUnit: averagePrice || currentPrice,
+        totalCost: quantity * currentPrice,
         referenceType,
         referenceId,
         userId: user.id,
@@ -719,7 +718,8 @@ module.exports = {
     transaction
   ) {
     const user = await authService.getCurrent();
-    const { combinationId, quantity } = item;
+    const { combinationId } = item;
+    const quantity = Number(item.quantity);
 
     const inventory = await Inventory.findOne({
       where: { combinationId },
@@ -730,19 +730,20 @@ module.exports = {
       throw new Error("Inventory not found");
     } else {
       // Check if inventory is enough
-      if (inventory.quantity < quantity) {
+      const currentQuantity = Number(inventory.quantity);
+      const currentPrice = Number(inventory.averagePrice);
+      if (currentQuantity < quantity) {
         throw new Error("Not enough inventory");
       }
 
-      const newQuantity = inventory.quantity - quantity;
+      const newQuantity = currentQuantity - quantity;
 
       await sequelize.models.InventoryMovement.create(
-        // Create inventory movement
         {
           combinationId: combinationId,
           quantity,
-          costPerUnit: inventory.averagePrice,
-          totalCost: quantity * inventory.averagePrice,
+          costPerUnit: currentPrice,
+          totalCost: quantity * currentPrice,
           type,
           userId: user.id,
           referenceId,
@@ -752,7 +753,6 @@ module.exports = {
       );
 
       await inventory.update(
-        // Update inventory quantity
         {
           quantity: newQuantity,
         },

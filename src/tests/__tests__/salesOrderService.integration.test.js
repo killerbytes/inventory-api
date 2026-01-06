@@ -861,6 +861,8 @@ describe("Sales Order Service (Integration)", () => {
   });
 
   it("should allow return item more than once", async () => {
+    const inv = await sequelize.models.Inventory.findAll();
+
     await salesOrderService.create({
       customerId: 1,
       status: "RECEIVED",
@@ -900,6 +902,9 @@ describe("Sales Order Service (Integration)", () => {
 
     expect(returnTransaction.length).toBe(3);
     expect(returnItems.length).toBe(3);
+    const inv2 = await sequelize.models.Inventory.findAll();
+    expect(inv2[0].quantity).toBe(4);
+    expect(inv2[1].quantity).toBe(0);
   });
 
   it("should not allow return if more than the actual order quantity", async () => {
