@@ -26,7 +26,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json(ApiError.validation(errors, 400));
   }
 
-  req.log.error({ err }, "XXX");
+  // req.log.error({ err }, "XXX");
 
   return res
     .status(500)

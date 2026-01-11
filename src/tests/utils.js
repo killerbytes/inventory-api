@@ -117,7 +117,7 @@ async function loginUser() {
     .set("Content-Type", "application/json")
     .send({ username: "alice", password: "123456" });
 
-  const token = res.body.token;
+  const token = res.body.accessToken;
 
   return token;
 }
