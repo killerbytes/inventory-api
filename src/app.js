@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const { randomUUID } = require("crypto");
 const { spawn } = require("child_process");
 const compression = require("compression");
+const cookieParser = require("cookie-parser");
 const usersRouter = require("./routes/users.router");
 const authRouter = require("./routes/auth.router");
 const categoriesRouter = require("./routes/categories.router");
@@ -32,8 +33,16 @@ const app = express();
 // app.use(bodyParser.json()); // Middleware to parse JSON bodies
 // app.use(bodyParser.urlencoded({ extended: true })); // Middleware to parse URL-encoded bodies
 app.use(compression());
-app.use(cors()); // Enable CORS for all routes
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  })
+); // Enable CORS for all routes
+
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(cookieParser());
 
 app.use(passport.initialize());
 app.use(

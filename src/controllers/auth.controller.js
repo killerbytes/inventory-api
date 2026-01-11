@@ -1,6 +1,13 @@
 const authService = require("../services/auth.service");
 const passport = require("passport");
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+};
+
 const authController = {
   login: async (req, res, next) => {
     try {
@@ -9,13 +16,40 @@ const authController = {
         { session: false },
         async (err, user, info) => {
           try {
-            const token = await authService.login(user, err, info);
-            res.status(200).json({ token });
+            const { refreshToken, accessToken } = await authService.login(
+              user,
+              err,
+              info
+            );
+            res.cookie("refreshToken", refreshToken, cookieOptions);
+            res.status(200).json({ accessToken });
           } catch (error) {
             next(error);
           }
         }
       )(req, res, next);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  refreshTokens: async (req, res, next) => {
+    try {
+      const { accessToken, refreshToken } = await authService.refreshAuth(
+        req.cookies.refreshToken
+      );
+      res.cookie("refreshToken", refreshToken, cookieOptions);
+      res.status(200).json({ accessToken });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  logout: async (req, res, next) => {
+    try {
+      const { refreshToken } = req.body;
+      await authService.logout(refreshToken);
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

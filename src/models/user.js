@@ -25,6 +25,7 @@ module.exports = (sequelize) => {
       password: { type: DataTypes.STRING, allowNull: false },
       isActive: { type: DataTypes.BOOLEAN, defaultValue: false },
       isAdmin: { type: DataTypes.BOOLEAN, defaultValue: false },
+      refreshToken: { type: DataTypes.STRING, allowNull: true },
     },
     {
       sequelize,
