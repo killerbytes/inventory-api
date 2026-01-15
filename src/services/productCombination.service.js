@@ -447,10 +447,11 @@ SELECT
 FROM "Products" p
 LEFT JOIN "ProductCombinations" pc
   ON pc."productId" = p.id
+  AND pc."deletedAt" IS NULL
   AND (
-      :noBreakPacks IS NULL
-      OR pc."isBreakPack" = false
- )
+    :noBreakPacks IS NULL
+    OR pc."isBreakPack" = false
+  )
 
 LEFT JOIN LATERAL (
   SELECT
@@ -460,13 +461,18 @@ LEFT JOIN LATERAL (
     ) AS "Inventory"
   FROM "Inventories" i
   WHERE i."combinationId" = pc.id
+    AND i."deletedAt" IS NULL
   LIMIT 1
 ) inv ON true
+
 WHERE
-   p.search_text @@ to_tsquery('english', :tsQuery)
+  p."deletedAt" IS NULL
+  AND p.search_text @@ to_tsquery('english', :tsQuery)
+
 GROUP BY p.id, p.name
 ORDER BY p.name
 LIMIT :limit;
+
 
 `,
       {
