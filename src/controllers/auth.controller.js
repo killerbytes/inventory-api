@@ -4,7 +4,7 @@ const passport = require("passport");
 const cookieOptions = {
   httpOnly: true,
   secure: true,
-  sameSite: "none",
+  sameSite: "None",
   path: "/",
 };
 
