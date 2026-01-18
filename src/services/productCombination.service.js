@@ -1,12 +1,9 @@
-const { Sequelize, sequelize } = require("../models");
-const { Op } = require("sequelize");
+const { sequelize } = require("../models");
 const db = require("../models");
 const {
   breakPackSchema,
   productCombinationSchema,
-  stockAdjustmentSchema,
-  rePackSchema,
-  searchSchema,
+  stockAdjustmentSchema
 } = require("../schemas");
 const ApiError = require("./ApiError");
 const redis = require("../utils/redis");
@@ -15,7 +12,7 @@ const { getSKU, toMoney } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
 const {
   INVENTORY_MOVEMENT_TYPE,
-  INVENTORY_MOVEMENT_REFERENCE_TYPE,
+  INVENTORY_MOVEMENT_REFERENCE_TYPE
 } = require("../definitions");
 const authService = require("./auth.service");
 const productService = require("./product.service");
@@ -28,8 +25,7 @@ const {
   Inventory,
   ProductCombination,
   CombinationValue,
-  BreakPack,
-  StockAdjustment,
+  StockAdjustment
 } = db;
 
 module.exports = {
@@ -39,26 +35,26 @@ module.exports = {
         {
           model: VariantValue,
           as: "values",
-          through: { attributes: [] },
+          through: { attributes: [] }
         },
         {
           model: Product,
           as: "product",
-          include: [{ model: VariantType, as: "variants" }],
+          include: [{ model: VariantType, as: "variants" }]
         },
         {
           model: Inventory,
-          as: "inventory",
-        },
+          as: "inventory"
+        }
       ],
       order: [
         [
           { model: Product, as: "product" },
           { model: VariantType, as: "variants" },
           "name",
-          "ASC",
-        ],
-      ],
+          "ASC"
+        ]
+      ]
     });
 
     if (!productCombination) throw new Error("Product not found");
@@ -73,15 +69,15 @@ module.exports = {
         {
           model: VariantValue,
           as: "values",
-          through: { attributes: [] },
+          through: { attributes: [] }
         },
         {
           model: Inventory,
-          as: "inventory",
-        },
+          as: "inventory"
+        }
       ],
       // order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
-      order: [["name", "ASC"]],
+      order: [["name", "ASC"]]
     });
 
     if (!combinations) throw new Error("Combination not found");
@@ -90,27 +86,27 @@ module.exports = {
       where: { productId: id },
       order: [
         ["name", "ASC"],
-        [{ model: VariantValue, as: "values" }, "value", "ASC"],
+        [{ model: VariantValue, as: "values" }, "value", "ASC"]
       ],
       include: [
         {
           model: VariantValue,
-          as: "values",
-        },
-      ],
+          as: "values"
+        }
+      ]
     });
     const result = {
       combinations,
-      variants,
+      variants
     };
 
     return result;
   },
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
-      combinations: Joi.array().items(productCombinationSchema),
+      combinations: Joi.array().items(productCombinationSchema)
     }).validate(payload, {
-      abortEarly: true,
+      abortEarly: true
     });
 
     if (error) {
@@ -123,10 +119,10 @@ module.exports = {
         {
           model: VariantType,
           as: "variants",
-          include: [{ model: VariantValue, as: "values" }],
-        },
+          include: [{ model: VariantValue, as: "values" }]
+        }
       ],
-      order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
+      order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]]
     });
 
     if (!product) throw new Error("Product not found");
@@ -149,16 +145,16 @@ module.exports = {
         include: [
           {
             model: VariantValue,
-            as: "values",
-          },
-        ],
+            as: "values"
+          }
+        ]
       });
 
       for (const variant of variants) {
         const [variantType] = await VariantType.findOrCreate({
           where: { name: variant.name, productId },
           defaults: { name: variant.name, productId },
-          transaction,
+          transaction
         });
 
         variantTypeMap[variant.name] = variantType;
@@ -167,13 +163,13 @@ module.exports = {
           const [variantValue] = await VariantValue.findOrCreate({
             where: {
               value: valueName.value,
-              variantTypeId: variantType.id,
+              variantTypeId: variantType.id
             },
             defaults: {
               value: valueName.value,
-              variantTypeId: variantType.id,
+              variantTypeId: variantType.id
             },
-            transaction,
+            transaction
           });
           variantValueMap[`${variant.id}:${valueName.value}`] = variantValue;
         }
@@ -184,15 +180,15 @@ module.exports = {
         include: [
           {
             model: Inventory,
-            as: "inventory",
+            as: "inventory"
           },
           {
             model: VariantValue,
             as: "values",
-            through: { attributes: [] },
-          },
+            through: { attributes: [] }
+          }
         ],
-        transaction,
+        transaction
       });
 
       const incomingIds = combinations.map((i) => i.id);
@@ -221,7 +217,7 @@ module.exports = {
 
       await ProductCombination.destroy({
         where: { id: deletableIds },
-        transaction,
+        transaction
       });
 
       // 4. Upsert Combinations and Inventory
@@ -241,7 +237,7 @@ module.exports = {
           // Update existing combination by ID
           combination = await ProductCombination.findOne({
             where: { id: combo.id, productId },
-            transaction,
+            transaction
           });
 
           if (!combination) {
@@ -257,7 +253,7 @@ module.exports = {
                 fromPrice: combination.price,
                 toPrice: toMoney(combo.price),
                 changedBy: (await authService.getCurrent()).id,
-                changedAt: new Date(),
+                changedAt: new Date()
               },
               { transaction }
             );
@@ -272,7 +268,7 @@ module.exports = {
                 product.categoryId,
                 combo.unit,
                 combo.values
-              ),
+              )
             },
             { transaction }
           );
@@ -290,7 +286,7 @@ module.exports = {
                 product.categoryId,
                 combo.unit,
                 combo.values
-              ),
+              )
             },
             { transaction }
           );
@@ -302,9 +298,9 @@ module.exports = {
           where: { combinationId: combination.id },
           defaults: {
             combinationId: combination.id,
-            quantity: 0,
+            quantity: 0
           },
-          transaction,
+          transaction
         });
 
         // Update inventory price/qty if different
@@ -348,28 +344,28 @@ module.exports = {
 
       const combinations = await ProductCombination.findAll({
         where: { productId: id },
-        transaction,
+        transaction
       });
 
       for (const combo of combinations) {
         await Inventory.destroy({
           where: { combinationId: combo.id },
-          transaction,
+          transaction
         });
         await CombinationValue.destroy({
           where: { combinationId: combo.id },
-          transaction,
+          transaction
         });
       }
 
       await ProductCombination.destroy({
         where: { productId: id },
-        transaction,
+        transaction
       });
       await VariantValue.destroy({
         where: {},
         transaction,
-        include: [{ model: VariantType, where: { productId: id } }],
+        include: [{ model: VariantType, where: { productId: id } }]
       });
       await VariantType.destroy({ where: { productId: id }, transaction });
       await product.destroy({ transaction });
@@ -394,21 +390,21 @@ module.exports = {
         {
           model: VariantValue,
           as: "values",
-          through: { attributes: [] },
+          through: { attributes: [] }
         },
         {
           model: Inventory,
-          as: "inventory",
+          as: "inventory"
         },
         {
           model: Product,
-          as: "product",
-        },
+          as: "product"
+        }
       ],
       order: [["name", "ASC"]],
       where: {
-        isActive: true,
-      },
+        isActive: true
+      }
     });
     await redis.setEx(cacheKey, 300, JSON.stringify(products));
     return products;
@@ -457,7 +453,8 @@ LEFT JOIN LATERAL (
   SELECT
     jsonb_build_object(
       'id', i.id,
-      'quantity', i.quantity
+      'quantity', i.quantity,
+      'averagePrice', i."averagePrice"
     ) AS "Inventory"
   FROM "Inventories" i
   WHERE i."combinationId" = pc.id
@@ -479,9 +476,9 @@ LIMIT :limit;
         replacements: {
           tsQuery,
           limit,
-          noBreakPacks,
+          noBreakPacks
         },
-        type: sequelize.QueryTypes.SELECT,
+        type: sequelize.QueryTypes.SELECT
       }
     );
 
@@ -502,15 +499,15 @@ LIMIT :limit;
         {
           include: [
             { model: Inventory, as: "inventory" },
-            { model: Product, as: "product" },
+            { model: Product, as: "product" }
           ],
-          transaction,
+          transaction
         }
       );
 
       const toInventory = await ProductCombination.findByPk(toCombinationId, {
         include: { model: Inventory, as: "inventory" },
-        transaction,
+        transaction
       });
 
       if (!fromInventory || !toInventory)
@@ -521,8 +518,8 @@ LIMIT :limit;
           [
             {
               path: ["toCombinationId"],
-              message: "Cannot convert between different products",
-            },
+              message: "Cannot convert between different products"
+            }
           ],
           400,
           "Cannot convert between different products"
@@ -538,8 +535,8 @@ LIMIT :limit;
           [
             {
               path: ["toCombinationId"],
-              message: "Invalid break pack path. Not directly related.",
-            },
+              message: "Invalid break pack path. Not directly related."
+            }
           ],
           400,
           "Invalid break pack relationship"
@@ -571,8 +568,8 @@ LIMIT :limit;
           [
             {
               path: ["quantity"],
-              message: "Not enough inventory to perform operation",
-            },
+              message: "Not enough inventory to perform operation"
+            }
           ],
           400,
           "Not enough inventory"
@@ -582,7 +579,7 @@ LIMIT :limit;
       await inventoryDecrease(
         {
           combinationId: fromCombinationId,
-          quantity,
+          quantity
         },
         INVENTORY_MOVEMENT_TYPE[type],
         fromInventory.id,
@@ -595,7 +592,7 @@ LIMIT :limit;
         {
           combinationId: toCombinationId,
           quantity: totalQuantity,
-          averagePrice,
+          averagePrice
         },
         INVENTORY_MOVEMENT_TYPE[type],
         toInventory.id,
@@ -615,10 +612,10 @@ LIMIT :limit;
       combinationId: stockAdjustmentSchema.extract("combinationId"),
       newQuantity: stockAdjustmentSchema.extract("newQuantity"),
       reason: stockAdjustmentSchema.extract("reason"),
-      notes: stockAdjustmentSchema.extract("notes"),
+      notes: stockAdjustmentSchema.extract("notes")
     });
     const { error } = partialSchema.validate(payload, {
-      abortEarly: false,
+      abortEarly: false
     });
     if (error) {
       throw error;
@@ -629,7 +626,7 @@ LIMIT :limit;
       const { combinationId, newQuantity, reason, notes } = payload;
       const inventory = await Inventory.findOne({
         where: { combinationId },
-        transaction,
+        transaction
       });
 
       if (!inventory) throw new Error("Combination not found");
@@ -645,7 +642,7 @@ LIMIT :limit;
           reason,
           notes,
           createdAt: new Date(),
-          createdBy: user.id,
+          createdBy: user.id
         },
         { transaction }
       );
@@ -670,10 +667,10 @@ LIMIT :limit;
           await inventory.update(
             {
               quantity: newQuantity,
-              averagePrice: inventory.averagePrice,
+              averagePrice: inventory.averagePrice
             },
             {
-              transaction,
+              transaction
             }
           );
           await InventoryMovement.create(
@@ -685,7 +682,7 @@ LIMIT :limit;
               totalCost: newQuantity * inventory.averagePrice,
               referenceId: adjustment.id,
               referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-              userId: user.id,
+              userId: user.id
             },
             { transaction }
           );
@@ -708,7 +705,7 @@ LIMIT :limit;
       await productService.flat().then(async (products) => {
         for (const product of products) {
           const res = await this.updateByProductId(product.id, {
-            combinations: product.combinations,
+            combinations: product.combinations
           });
         }
       });
@@ -742,10 +739,10 @@ LIMIT :limit;
         }
         await combo.update(
           {
-            price: parseFloat(i.price),
+            price: parseFloat(i.price)
           },
           {
-            transaction,
+            transaction
           }
         );
       }
@@ -755,7 +752,7 @@ LIMIT :limit;
       transaction.rollback();
       throw error;
     }
-  },
+  }
 };
 
 function validateCombinations(payload, product) {
