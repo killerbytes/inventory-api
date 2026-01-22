@@ -24,7 +24,9 @@ describe("Auth Service (Integration)", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("accessToken");
-    expect(res.body).toHaveProperty("refreshToken");
+    expect(res.body).not.toHaveProperty("refreshToken"); // Refresh token should be in cookie
+    expect(res.headers["set-cookie"]).toBeDefined();
+    expect(res.headers["set-cookie"][0]).toMatch(/refreshToken=.+/);
   });
 
   it("should refresh access token", async () => {
@@ -33,22 +35,25 @@ describe("Auth Service (Integration)", () => {
       .post("/api/auth/login")
       .send({ username: "alice", password: "123456" });
 
-    const { refreshToken } = loginRes.body;
+    const cookies = loginRes.headers["set-cookie"];
 
     // Refresh token
     const res = await request(app)
       .post("/api/auth/refresh-token")
-      .send({ refreshToken });
+      .set("Cookie", cookies)
+      .send();
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("accessToken");
-    expect(res.body).toHaveProperty("refreshToken");
+    // Expect new refresh token cookie
+    expect(res.headers["set-cookie"]).toBeDefined();
   });
 
   it("should fail validation with invalid refresh token", async () => {
     const res = await request(app)
       .post("/api/auth/refresh-token")
-      .send({ refreshToken: "invalid-token" });
+      .set("Cookie", ["refreshToken=invalid-token"])
+      .send();
 
     expect(res.status).not.toBe(200);
   });
@@ -59,11 +64,17 @@ describe("Auth Service (Integration)", () => {
       .post("/api/auth/login")
       .send({ username: "alice", password: "123456" });
 
-    const { refreshToken } = loginRes.body;
+    const cookies = loginRes.headers["set-cookie"];
+    // Extract refresh token value for body (since controller currently expects it in body for logout)
+    const refreshTokenCookie = cookies.find((c) =>
+      c.startsWith("refreshToken=")
+    );
+    const refreshToken = refreshTokenCookie.split(";")[0].split("=")[1];
 
     // Logout
     const res = await request(app)
       .post("/api/auth/logout")
+      .set("Cookie", cookies)
       .send({ refreshToken });
 
     expect(res.status).toBe(204);
@@ -71,7 +82,8 @@ describe("Auth Service (Integration)", () => {
     // Try to refresh with invalidated token
     const refreshRes = await request(app)
       .post("/api/auth/refresh-token")
-      .send({ refreshToken });
+      .set("Cookie", cookies)
+      .send();
 
     expect(refreshRes.status).not.toBe(200);
   });

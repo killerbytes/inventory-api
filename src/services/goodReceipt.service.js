@@ -12,13 +12,12 @@ const {
 } = require("../definitions.js");
 const authService = require("./auth.service.js");
 const { getMappedVariantValues } = require("../utils/mapped.js");
-const { toMoney } = require("../utils/string.js");
 const ApiError = require("./ApiError.js");
 const {
   inventoryIncrease,
   inventoryDecrease,
 } = require("./inventory.service.js");
-const { getTotalAmount, getAmount } = require("../utils/compute.js");
+const { getTotalAmount, getAmount, normalize } = require("../utils/compute.js");
 const {
   VariantValue,
   GoodReceipt,
@@ -610,8 +609,8 @@ module.exports = {
           paymentDifference > 0
             ? "Customer must pay the difference"
             : paymentDifference < 0
-            ? "Refund due to customer"
-            : "Even exchange completed",
+              ? "Refund due to customer"
+              : "Even exchange completed",
       };
     } catch (error) {
       console.log(error);
@@ -821,7 +820,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
           {
             combinationId,
             quantity,
-            averagePrice: toMoney(averagePrice),
+            averagePrice: normalize(averagePrice),
           },
           INVENTORY_MOVEMENT_TYPE.IN,
           id,

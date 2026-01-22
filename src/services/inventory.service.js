@@ -1,15 +1,17 @@
-const { Op } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const {
   PAGINATION,
   INVENTORY_MOVEMENT_TYPE,
   INVENTORY_MOVEMENT_REFERENCE_TYPE,
   ORDER_TYPE,
   RETURN_TYPE,
+  ORDER_STATUS,
 } = require("../definitions");
 const { sequelize } = require("../models");
 const db = require("../models");
 const { inventorySchema } = require("../schemas");
 const authService = require("./auth.service");
+const { normalize, truncateQty } = require("../utils/compute");
 const {
   Inventory,
   Product,
@@ -439,49 +441,75 @@ module.exports = {
     const {
       limit = PAGINATION.LIMIT,
       page = PAGINATION.PAGE,
-      q = null,
-      productId,
-      sort = "quantity",
+      sort = "lastSoldAt",
+      order: sortOrder = "DESC",
     } = params;
+
     const offset = (page - 1) * limit;
 
-    const order = [];
-    order.push([sort, params.order || "DESC"]);
-
-    const where = {
-      quantity: { [Op.lt]: sequelize.col("combinations.reorderLevel") },
+    const orderByMap = {
+      lastSoldAt: fn("MAX", col("combinations->salesOrderItems.updatedAt")),
+      quantity: col("Inventory.quantity"),
     };
+    // sequelize.options.logging = console.log;
 
-    if (q) {
-      where[Op.or] = [{ "$combinations.name$": { [Op.iLike]: `%${q}%` } }];
-    }
+    const orderBy = orderByMap[sort] || orderByMap.lastSoldAt;
 
     const { count, rows } = await Inventory.findAndCountAll({
-      limit,
-      offset,
-      distinct: true,
-      nest: true,
-      order,
-      where,
+      subQuery: false,
+
+      attributes: [
+        "id",
+        "quantity",
+        "combinationId",
+        [
+          fn("MAX", col("combinations->salesOrderItems.updatedAt")),
+          "lastSoldAt",
+        ],
+      ],
+
       include: [
         {
           model: ProductCombination,
           as: "combinations",
-          // where: {
-          //   isActive: true,
-          // },
+          required: true,
+          where: sequelize.literal(
+            `"Inventory"."quantity" < "combinations"."reorderLevel"`
+          ),
+          include: [
+            {
+              model: db.SalesOrderItem,
+              as: "salesOrderItems",
+              required: true,
+              attributes: [],
+              include: [
+                {
+                  model: db.SalesOrder,
+                  as: "salesOrder",
+                  required: true,
+                  where: { status: "RECEIVED" },
+                  attributes: [],
+                },
+              ],
+            },
+          ],
         },
       ],
+
+      group: ["Inventory.id", "combinations.id"],
+      order: [[orderBy, sortOrder]],
+      limit,
+      offset,
     });
 
-    const result = {
+    const total = Array.isArray(count) ? count.length : count;
+
+    return {
       data: rows,
-      total: count,
-      totalPages: Math.ceil(count / limit),
+      total,
+      totalPages: Math.ceil(total / limit),
       currentPage: Number(page),
     };
-
-    return result;
   },
 
   async getReturnTransaction(id) {
@@ -663,47 +691,54 @@ module.exports = {
   async inventoryIncrease(item, type, referenceId, referenceType, transaction) {
     const user = await authService.getCurrent();
     const { combinationId } = item;
-    const quantity = Number(item.quantity);
-    const averagePrice = Number(item.averagePrice);
 
-    const inventory = await Inventory.findOne({
+    const quantity = truncateQty(item.quantity);
+    const averagePrice =
+      item.averagePrice !== undefined
+        ? truncateQty(item.averagePrice)
+        : undefined;
+
+    let inventory = await Inventory.findOne({
       where: { combinationId },
       transaction,
     });
 
     if (!inventory) {
-      Inventory.create(
+      inventory = await Inventory.create(
         {
           combinationId,
           quantity,
-          averagePrice,
+          averagePrice: averagePrice ?? 0,
         },
         { transaction }
       );
     } else {
-      const oldQty = Number(inventory.quantity);
-      const newQty = oldQty + quantity;
+      const newQty = truncateQty(Number(inventory.quantity) + quantity);
 
       await inventory.update(
         {
-          ...(averagePrice && { averagePrice }),
           quantity: newQty,
+          ...(averagePrice !== undefined && { averagePrice }),
         },
         { transaction }
       );
     }
-    const currentPrice = Number(inventory.averagePrice);
 
-    await sequelize.models.InventoryMovement.create(
+    const costPerUnit =
+      averagePrice !== undefined
+        ? averagePrice
+        : Number(inventory.averagePrice);
+
+    await InventoryMovement.create(
       {
         type,
         quantity,
-        costPerUnit: averagePrice || currentPrice,
-        totalCost: quantity * currentPrice,
+        costPerUnit,
+        totalCost: truncateQty(quantity * costPerUnit),
         referenceType,
         referenceId,
         userId: user.id,
-        combinationId: item.combinationId,
+        combinationId,
       },
       { transaction }
     );
@@ -719,7 +754,8 @@ module.exports = {
   ) {
     const user = await authService.getCurrent();
     const { combinationId } = item;
-    const quantity = Number(item.quantity);
+
+    const quantity = truncateQty(item.quantity);
 
     const inventory = await Inventory.findOne({
       where: { combinationId },
@@ -728,37 +764,32 @@ module.exports = {
 
     if (!inventory) {
       throw new Error("Inventory not found");
-    } else {
-      // Check if inventory is enough
-      const currentQuantity = Number(inventory.quantity);
-      const currentPrice = Number(inventory.averagePrice);
-      if (currentQuantity < quantity) {
-        throw new Error("Not enough inventory");
-      }
-
-      const newQuantity = currentQuantity - quantity;
-
-      await sequelize.models.InventoryMovement.create(
-        {
-          combinationId: combinationId,
-          quantity,
-          costPerUnit: currentPrice,
-          totalCost: quantity * currentPrice,
-          type,
-          userId: user.id,
-          referenceId,
-          referenceType,
-        },
-        { transaction }
-      );
-
-      await inventory.update(
-        {
-          quantity: newQuantity,
-        },
-        { transaction }
-      );
     }
+
+    const currentQty = truncateQty(inventory.quantity);
+    const currentPrice = truncateQty(inventory.averagePrice);
+
+    if (currentQty < quantity) {
+      throw new Error("Not enough inventory");
+    }
+
+    const newQuantity = truncateQty(currentQty - quantity);
+
+    await InventoryMovement.create(
+      {
+        combinationId,
+        quantity,
+        costPerUnit: currentPrice,
+        totalCost: truncateQty(quantity * currentPrice),
+        type,
+        userId: user.id,
+        referenceId,
+        referenceType,
+      },
+      { transaction }
+    );
+
+    await inventory.update({ quantity: newQuantity }, { transaction });
 
     return inventory;
   },

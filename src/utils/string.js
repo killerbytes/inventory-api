@@ -45,13 +45,8 @@ function getSKU(name, category, unit, values) {
   return parts.join("|");
 }
 
-function toMoney(value) {
-  return Number(Number(value).toFixed(2));
-}
-
 module.exports = {
   shortenNameTo,
   shortenTitleTo,
   getSKU,
-  toMoney,
 };
