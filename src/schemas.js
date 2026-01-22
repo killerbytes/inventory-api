@@ -261,7 +261,12 @@ const inventoryPriceAdjustmentSchema = Joi.object({
 
 const breakPackSchema = Joi.object({
   fromCombinationId: Joi.number().required(),
-  quantity: Joi.number().required(),
+  quantity: Joi.number().integer().strict().required().messages({
+    "number.base": "Quantity must be a number",
+    "number.integer": "Quantity must be a whole number",
+    "number.strict": "Quantity must be a whole number",
+    "any.required": "Quantity is required",
+  }),
   toCombinationId: Joi.number().required(),
 }).meta({ className: "breakPack" });
 

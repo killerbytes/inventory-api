@@ -19,9 +19,13 @@ function createCategory(index = 0) {
   return categoryService.create({ ...categories[index] });
 }
 async function createUser(index = 0) {
-  await userService.create({ ...users[index] });
-  await userService.update(1, { isActive: true });
-  return;
+  const payload = { ...users[index] };
+  await userService.create(payload);
+  const user = await require("../models").User.findOne({
+    where: { username: payload.username },
+  });
+  await user.update({ isActive: true });
+  return user;
 }
 function createCustomer(index = 0) {
   return customerService.create({ ...customers[index] });
@@ -39,8 +43,8 @@ function createSupplier(index = 0) {
   return supplierService.create({ ...suppliers[index] });
 }
 
-function createCombination(payload = combinations) {
-  return productCombinationService.updateByProductId(1, {
+function createCombination(payload = combinations, productId = 1) {
+  return productCombinationService.updateByProductId(productId, {
     combinations: payload,
   });
 }

@@ -1,10 +1,12 @@
 const authService = require("../services/auth.service");
 const passport = require("passport");
 
+const env = process.env.NODE_ENV || "development";
+
 const cookieOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: "None",
+  secure: env !== "development",
+  sameSite: env !== "development" ? "None" : "lax",
   path: "/",
 };
 

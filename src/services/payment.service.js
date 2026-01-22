@@ -4,7 +4,7 @@ const { paymentSchema } = require("../schemas.js");
 const ApiError = require("./ApiError.js");
 const authService = require("./auth.service.js");
 const { sequelize, Payment, PaymentApplication, Invoice } = db;
-const { toMoney } = require("../utils/string");
+const { normalize } = require("../utils/compute");
 
 module.exports = {
   async get(id) {
@@ -44,7 +44,7 @@ module.exports = {
         { ...payload, changedBy: user.id },
         {
           transaction,
-        }
+        },
       );
 
       let totalApplied = 0;
@@ -61,13 +61,13 @@ module.exports = {
           transaction,
         });
         const alreadyPaid = invoicePaid || 0;
-        const remaining = toMoney(invoice.totalAmount - alreadyPaid);
+        const remaining = normalize(invoice.totalAmount - alreadyPaid);
 
         if (app.amountApplied > remaining) {
           throw new Error(
-            `Cannot apply ₱${app.amountApplied} — only ₱${toMoney(
-              remaining
-            )} remaining on invoice ${invoice.id}`
+            `Cannot apply ₱${app.amountApplied} — only ₱${normalize(
+              remaining,
+            )} remaining on invoice ${invoice.id}`,
           );
         }
 
@@ -78,26 +78,26 @@ module.exports = {
             amountApplied: app.amountApplied,
             amountRemaining: remaining - app.amountApplied,
           },
-          { transaction }
+          { transaction },
         );
         totalApplied += app.amountApplied;
 
         if (app.amountApplied === remaining) {
           await invoice.update(
             { status: INVOICE_STATUS.PAID },
-            { transaction }
+            { transaction },
           );
         } else {
           await invoice.update(
             { status: INVOICE_STATUS.PARTIALLY_PAID },
-            { transaction }
+            { transaction },
           );
         }
       }
 
       if (totalApplied > payload.amount) {
         throw new Error(
-          `Total applied ₱${totalApplied} exceeds payment amount ₱${payload.amount}`
+          `Total applied ₱${totalApplied} exceeds payment amount ₱${payload.amount}`,
         );
       }
 
@@ -141,7 +141,7 @@ module.exports = {
           break;
         default:
           throw new Error(
-            `Invalid status change from ${invoice.status} to ${payload.status}`
+            `Invalid status change from ${invoice.status} to ${payload.status}`,
           );
       }
 

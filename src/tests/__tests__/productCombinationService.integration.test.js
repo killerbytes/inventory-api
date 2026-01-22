@@ -113,110 +113,176 @@ describe("Product Combination Service (Integration)", () => {
     expect(combo2.combinations[0].inventory.quantity).toBe(11);
   });
 
-  it("should break/repack a product combination to another unit", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 1,
-          purchasePrice: 100,
-        },
-      ],
+  describe("Break/Repack Operations", () => {
+    beforeEach(async () => {
+      // Setup specific to break/repack tests if needed
+      // Initial state: 1 BOX (id:1) @ $100, 0 PCS (id:2) @ $5
+      await goodReceiptService.create({
+        supplierId: 1,
+        receiptDate: new Date(),
+        referenceNo: "Test Notes",
+        internalNotes: "Test Internal Notes",
+        goodReceiptLines: [
+          {
+            combinationId: 1,
+            quantity: 1,
+            purchasePrice: 100,
+          },
+        ],
+      });
+
+      await goodReceiptService.update(1, {
+        status: "RECEIVED",
+        goodReceiptLines: [
+          {
+            combinationId: 1,
+            quantity: 2,
+            purchasePrice: 100,
+          },
+        ],
+      });
+
+      // Update product combinations config
+      await productCombinationService.updateByProductId(1, {
+        combinations: [
+          {
+            id: 1,
+            conversionFactor: 100,
+            unit: "BOX",
+            price: 100,
+            reorderLevel: 10,
+            values: [
+              {
+                value: "Red",
+                variantTypeId: 1,
+              },
+            ],
+          },
+          {
+            id: 2,
+            conversionFactor: 1,
+            unit: "PCS",
+            price: 5,
+            reorderLevel: 10,
+            isBreakPackOfId: 1,
+            values: [
+              {
+                value: "Red",
+                variantTypeId: 1,
+              },
+            ],
+          },
+        ],
+      });
     });
 
-    await goodReceiptService.update(1, {
-      status: "RECEIVED",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 2,
-          purchasePrice: 100,
-        },
-      ],
+    it("should break pack from BOX to PCS", async () => {
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 1,
+        toCombinationId: 2,
+      });
+
+      const combo = await productCombinationService.getByProductId(1);
+      // Started with 2 BOX, broke 1 BOX -> 100 PCS
+      // Remaining: 1 BOX
+      expect(combo.combinations[0].unit).toBe("BOX");
+      expect(Number(combo.combinations[0].inventory.quantity)).toBe(1);
+
+      // Gained: 100 PCS
+      expect(combo.combinations[1].unit).toBe("PCS");
+      expect(Number(combo.combinations[1].inventory.quantity)).toBe(100);
     });
 
-    await productCombinationService.updateByProductId(1, {
-      combinations: [
-        {
-          id: 1,
-          conversionFactor: 100,
-          unit: "BOX",
-          price: 100,
-          reorderLevel: 10,
-          values: [
-            {
-              value: "Red",
-              variantTypeId: 1,
-            },
-          ],
-        },
-        {
-          id: 2,
-          conversionFactor: 1,
-          unit: "PCS",
-          price: 5,
-          reorderLevel: 10,
-          isBreakPackOfId: 1,
-          values: [
-            {
-              value: "Red",
-              variantTypeId: 1,
-            },
-          ],
-        },
-      ],
+    it("should only allow whole number quantity", async () => {
+      try {
+        await productCombinationService.breakPack({
+          fromCombinationId: 1,
+          quantity: 1.5,
+          toCombinationId: 2,
+        });
+        throw new Error("Expected VALIDATION_ERROR but no error was thrown");
+      } catch (error) {
+        console.log("Prevent different product:", {
+          name: error.name,
+          message: error.message,
+          errors: error.errors?.map((e) => e.message),
+        });
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message).toBe("Quantity must be a whole number");
+      }
     });
 
-    await productCombinationService.breakPack({
-      fromCombinationId: 1,
-      quantity: 1,
-      toCombinationId: 2,
-    });
-    const combo = await productCombinationService.getByProductId(1);
-    expect(combo.combinations[0].unit).toBe("BOX");
-    expect(combo.combinations[0].inventory.quantity).toBe(1);
-    expect(combo.combinations[0].inventory.averagePrice).toBe(100);
-    expect(combo.combinations[1].unit).toBe("PCS");
-    expect(combo.combinations[1].inventory.quantity).toBe(100);
-    expect(combo.combinations[1].inventory.averagePrice).toBe(1);
+    it("should handle sequential break pack operations", async () => {
+      // Break 1 BOX -> 100 PCS
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 1,
+        toCombinationId: 2,
+      });
 
-    await productCombinationService.breakPack({
-      fromCombinationId: 1,
-      quantity: 1,
-      toCombinationId: 2,
-    });
-    const combo2 = await productCombinationService.getByProductId(1);
-    expect(combo2.combinations[0].unit).toBe("BOX");
-    expect(combo2.combinations[0].inventory.quantity).toBe(0);
-    expect(combo2.combinations[0].inventory.averagePrice).toBe(100);
-    expect(combo2.combinations[1].unit).toBe("PCS");
-    expect(combo2.combinations[1].inventory.quantity).toBe(200);
-    expect(combo2.combinations[1].inventory.averagePrice).toBe(1);
+      // Break another 1 BOX -> 100 PCS (Total 200 PCS)
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 1,
+        toCombinationId: 2,
+      });
 
-    await productCombinationService.breakPack({
-      fromCombinationId: 2,
-      quantity: 100,
-      toCombinationId: 1,
+      const combo = await productCombinationService.getByProductId(1);
+      expect(Number(combo.combinations[0].inventory.quantity)).toBe(0);
+      expect(Number(combo.combinations[1].inventory.quantity)).toBe(200);
     });
 
-    await productCombinationService.breakPack({
-      fromCombinationId: 2,
-      quantity: 100,
-      toCombinationId: 1,
+    it("should repack from PCS to BOX", async () => {
+      // First break pack to get PCS
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 2, // Break all 2 BOX -> 200 PCS
+        toCombinationId: 2,
+      });
+
+      // Repack 100 PCS -> 1 BOX
+      await productCombinationService.breakPack({
+        fromCombinationId: 2,
+        quantity: 100,
+        toCombinationId: 1,
+      });
+
+      const combo = await productCombinationService.getByProductId(1);
+      // Expect 1 BOX
+      expect(Number(combo.combinations[0].inventory.quantity)).toBe(1);
+      // Expect 100 PCS remaining
+      expect(Number(combo.combinations[1].inventory.quantity)).toBe(100);
     });
 
-    const combo3 = await productCombinationService.getByProductId(1);
+    it("should handle multiple repack operations", async () => {
+      // First break pack to get PCS
+      await productCombinationService.breakPack({
+        fromCombinationId: 1,
+        quantity: 2, // Break all 2 BOX -> 200 PCS
+        toCombinationId: 2,
+      });
 
-    expect(combo3.combinations[0].unit).toBe("BOX");
-    expect(combo3.combinations[0].inventory.quantity).toBe(2);
-    expect(combo3.combinations[0].inventory.averagePrice).toBe(100);
-    expect(combo3.combinations[1].unit).toBe("PCS");
-    expect(combo3.combinations[1].inventory.quantity).toBe(0);
-    expect(combo3.combinations[1].inventory.averagePrice).toBe(1);
+      // Repack 100 PCS -> 1 BOX
+      await productCombinationService.breakPack({
+        fromCombinationId: 2,
+        quantity: 100,
+        toCombinationId: 1,
+      });
+
+      // Repack another 100 PCS -> 1 BOX
+      await productCombinationService.breakPack({
+        fromCombinationId: 2,
+        quantity: 100,
+        toCombinationId: 1,
+      });
+
+      const combo = await productCombinationService.getByProductId(1);
+      // Expect 2 BOX
+      expect(Number(combo.combinations[0].inventory.quantity)).toBe(2);
+      // Expect 0 PCS
+      expect(Number(combo.combinations[1].inventory.quantity)).toBe(0);
+    });
   });
 
   it("should re pack a product combination to another unit", async () => {

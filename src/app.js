@@ -20,6 +20,7 @@ const goodReceiptRouter = require("./routes/goodReceipt.router");
 const salesRouter = require("./routes/salesOrder.router");
 const variantTypesRouter = require("./routes/variantTypes.router");
 const productCombinationRouter = require("./routes/productCombination.router");
+const reportsRouter = require("./routes/reports.router");
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
 // const zlib = require("zlib");
@@ -36,7 +37,11 @@ app.use(compression());
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: [
+      process.env.CLIENT_URL,
+      "http://192.168.0.69:5173",
+      "http://localhost:5173",
+    ],
     credentials: true,
   })
 ); // Enable CORS for all routes
@@ -67,6 +72,7 @@ app.use("/api/variant-types", verifyToken(), variantTypesRouter);
 app.use("/api/product-combinations", productCombinationRouter);
 app.use("/api/invoices", verifyToken(), invoiceRouter);
 app.use("/api/payments", verifyToken(), paymentRouter);
+app.use("/api/reports", verifyToken(), reportsRouter);
 app.post("/api/backup", (req, res) => {
   const backup = spawn("node", ["backup.js", "backup"], {
     stdio: "inherit", // pipes logs to server logs
@@ -86,6 +92,13 @@ app.post("/api/backup", (req, res) => {
 });
 
 app.get("/api", (req, res) => {
+  const { BUILD_TIME } = require("../dist/build-info");
+  res.json({
+    env: env,
+    buildTime: BUILD_TIME,
+  });
+});
+app.get("/", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
   res.json({
     env: env,

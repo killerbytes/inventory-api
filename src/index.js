@@ -4,6 +4,6 @@ const errorHandler = require("./middlewares/errorHandler");
 
 app.use(errorHandler);
 
-app.listen(3000, () => {
-  logger.info("Server started on port 3000");
+app.listen(process.env.PORT || 8080, () => {
+  logger.info(`Server started on port ${process.env.PORT || 8080}`);
 });

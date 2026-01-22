@@ -67,6 +67,10 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "combinationId",
       as: "goodReceiptLines",
     });
+    ProductCombination.hasMany(models.SalesOrderItem, {
+      foreignKey: "combinationId",
+      as: "salesOrderItems",
+    });
   };
 
   // models/productcombination.js (add after associate)
