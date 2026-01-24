@@ -1,6 +1,5 @@
 const { sequelize, setupDatabase, resetDatabase } = require("../setup");
 const goodReceiptService = require("../../services/goodReceipt.service");
-const productService = require("../../services/product.service");
 const {
   createCategory,
   createVariantType,
@@ -253,9 +252,9 @@ describe("Good Receipt Service (Integration)", () => {
     });
 
     expect(goodReceipts.data.length).toBe(2);
-    expect(goodReceipts.total).toBe(2);
-    expect(goodReceipts.totalPages).toBe(1);
-    expect(goodReceipts.currentPage).toBe(1);
+    expect(goodReceipts.meta.total).toBe(2);
+    expect(goodReceipts.meta.totalPages).toBe(1);
+    expect(goodReceipts.meta.currentPage).toBe(1);
   });
   it("should get a list of good receipts by supplier", async () => {
     await createSupplier(1);
@@ -268,15 +267,15 @@ describe("Good Receipt Service (Integration)", () => {
       status: "DRAFT",
     });
 
-    expect(goodReceipts.length).toBe(3);
+    expect(goodReceipts.data.length).toBe(3);
     const goodReceipts2 = await goodReceiptService.getBySupplierId(2, {
       status: "DRAFT",
     });
-    expect(goodReceipts2.length).toBe(1);
+    expect(goodReceipts2.data.length).toBe(1);
     const goodReceipts3 = await goodReceiptService.getBySupplierId(2, {
       status: "POSTED",
     });
-    expect(goodReceipts3.length).toBe(0);
+    expect(goodReceipts3.data.length).toBe(0);
   });
 
   it("should not allow return if status is DRAFT", async () => {

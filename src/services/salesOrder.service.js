@@ -299,7 +299,8 @@ module.exports = {
       startDate,
       endDate,
       status,
-      sort,
+      sort = "id",
+      order: sortOrder = "DESC",
     } = params;
     const where = {};
     let totalAmount = 0;
@@ -337,26 +338,31 @@ module.exports = {
 
     const offset = (page - 1) * limit;
 
-    try {
-      const order = [];
+    const orderByMap = {
+      "customer.name": [{ model: db.Customer, as: "customer" }, "name"],
+    };
 
-      if (sort) {
-        order.push([sort, params.order || "ASC"]);
-      } else {
-        order.push(["id", "ASC"]); // Default sort
-      }
+    try {
+      const orderBy = orderByMap[sort]
+        ? [...orderByMap[sort], sortOrder]
+        : [sort, sortOrder];
 
       const { count, rows } = await SalesOrder.findAndCountAll({
         limit,
         offset,
-        order,
+        order: [orderBy],
         where: Object.keys(where).length ? where : undefined,
         nest: true,
         distinct: true,
         include: [...salesOrderIncludes],
       });
 
-      const orderIds = rows.map((r) => r.id);
+      const orderIds = await SalesOrder.findAll({
+        attributes: ["id"],
+        where: Object.keys(where).length ? where : undefined,
+        raw: true,
+      }).then((r) => r.map((o) => o.id));
+
       let returnsWhere = { referenceId: { [Op.in]: orderIds } };
 
       const totalReturnAmount = await ReturnTransaction.sum(
@@ -371,16 +377,24 @@ module.exports = {
 
       totalAmount =
         totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
+
       const result = {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        totalAmount,
-        currentPage: page,
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: Number(page),
+        },
+        summary: {
+          totalAmount,
+          totalReturnAmount,
+          totalExchangeAmount,
+        },
       };
+
       return result;
     } catch (error) {
-      console.log(error);
+      console.log(1, error);
       throw error;
     }
   },
@@ -499,8 +513,8 @@ module.exports = {
           paymentDifference > 0
             ? "Customer must pay the difference"
             : paymentDifference < 0
-            ? "Refund due to customer"
-            : "Even exchange completed",
+              ? "Refund due to customer"
+              : "Even exchange completed",
       };
     } catch (error) {
       console.log(error);

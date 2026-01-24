@@ -236,7 +236,6 @@ module.exports = {
         totalAmount = await InventoryMovement.sum("totalCost", {
           where: Object.keys(where).length ? where : undefined,
         });
-        console.log(123, totalAmount);
       }
 
       const offset = (page - 1) * limit;
@@ -276,10 +275,14 @@ module.exports = {
       });
       return {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-        totalAmount,
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: page,
+        },
+        summary: {
+          totalAmount,
+        },
       };
     } catch (error) {
       throw error;
@@ -345,9 +348,34 @@ module.exports = {
     }
   },
 
-  async getStockAdjustments() {
+  async getStockAdjustments(params = {}) {
+    const {
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION.PAGE,
+      q = null,
+      sort = "id",
+      order: sortOrder = "DESC",
+    } = params;
+    const offset = (page - 1) * limit;
+    const orderByMap = {
+      "combination.product.name": [
+        { model: ProductCombination, as: "combination" },
+        "name",
+      ],
+    };
     try {
-      const stockAdjustments = await StockAdjustment.findAll({
+      const order = [];
+      const orderBy = orderByMap[sort]
+        ? [...orderByMap[sort], sortOrder]
+        : [sort, sortOrder];
+
+      if (sort) {
+        order.push([sort, params.order || "ASC"]);
+      }
+
+      const { rows, count } = await StockAdjustment.findAndCountAll({
+        limit,
+        offset,
         nest: true,
         include: [
           {
@@ -357,6 +385,7 @@ module.exports = {
           {
             model: ProductCombination,
             as: "combination",
+            where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
             include: [
               {
                 model: Product,
@@ -371,45 +400,56 @@ module.exports = {
             ],
           },
         ],
-        order: [["createdAt", "DESC"]],
+        order: [orderBy],
+        distinct: true,
       });
 
       return {
-        data: stockAdjustments,
+        data: rows,
+        meta: {
+          total: count,
+          limit,
+          page,
+          totalPages: Math.ceil(count / limit),
+        },
       };
     } catch (error) {
       console.log(1, error);
     }
   },
-  async getPriceHistory(params) {
+  async getPriceHistory(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
       page = PAGINATION.PAGE,
       q = null,
-      startDate,
-      endDate,
-      status,
-      productId,
       sort = "id",
+      order: sortOrder = "DESC",
     } = params;
     try {
+      const where = {};
       const order = [];
       const offset = (page - 1) * limit;
-      const where = productId
-        ? {
-            [Op.or]: [{ productId }],
-          }
-        : null;
 
+      const orderByMap = {
+        "combinations.name": [
+          { model: ProductCombination, as: "combinations" },
+          "name",
+        ],
+      };
+
+      const orderBy = orderByMap[sort]
+        ? [...orderByMap[sort], sortOrder]
+        : [sort, sortOrder];
       if (sort) {
         order.push([sort, params.order || "ASC"]);
       }
+
       const { count, rows } = await PriceHistory.findAndCountAll({
         limit,
         offset,
         distinct: true,
         nest: true,
-        order,
+        order: [orderBy],
         where,
         include: [
           {
@@ -423,15 +463,14 @@ module.exports = {
           },
         ],
       });
-
-      const result = {
+      return {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: Number(page),
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: Number(page),
+        },
       };
-
-      return result;
     } catch (error) {
       console.log(1, error);
     }
@@ -450,6 +489,8 @@ module.exports = {
     const orderByMap = {
       lastSoldAt: fn("MAX", col("combinations->salesOrderItems.updatedAt")),
       quantity: col("Inventory.quantity"),
+      reorderLevel: col("combinations.reorderLevel"),
+      name: col("combinations.name"),
     };
     // sequelize.options.logging = console.log;
 
@@ -504,12 +545,15 @@ module.exports = {
 
     const total = Array.isArray(count) ? count.length : count;
 
-    return {
+    const result = {
       data: rows,
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: Number(page),
+      meta: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: Number(page),
+      },
     };
+    return result;
   },
 
   async getReturnTransaction(id) {

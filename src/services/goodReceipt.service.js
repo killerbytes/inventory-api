@@ -30,6 +30,7 @@ const {
 } = db;
 const redis = require("../utils/redis");
 const inventoryService = require("./inventory.service.js");
+const { required } = require("joi");
 
 module.exports = {
   async get(id) {
@@ -343,11 +344,9 @@ module.exports = {
       endDate,
       status,
       sort,
+      order: sortOrder = "DESC",
     } = params;
     const where = {};
-    const returnsWhere = {};
-    let totalAmount = 0;
-    let totalReturnAmount = 0;
 
     // Search by name if query exists
     if (q) {
@@ -377,28 +376,25 @@ module.exports = {
       });
     }
     const offset = (page - 1) * limit;
-    const order = [];
+
+    const orderByMap = {
+      "supplier.name": [{ model: db.Supplier, as: "supplier" }, "name"],
+    };
 
     try {
-      if (sort) {
-        order.push([sort, params.order || "ASC"]);
-      } else {
-        order.push(["id", "ASC"]); // Default sort
-      }
+      const orderBy = orderByMap[sort]
+        ? [...orderByMap[sort], sortOrder]
+        : [sort || "id", sortOrder];
 
-      order.push([
-        {
-          model: OrderStatusHistory,
-          as: "goodReceiptStatusHistory",
-        },
-        "id",
-        "ASC",
-      ]);
+      let totalAmount = await GoodReceipt.sum("totalAmount", {
+        where: Object.keys(where).length ? where : undefined,
+      });
 
       const { count, rows } = await GoodReceipt.findAndCountAll({
+        subQuery: false,
         limit,
         offset,
-        order,
+        order: [orderBy],
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
         distinct: true,
@@ -406,10 +402,13 @@ module.exports = {
           {
             model: db.GoodReceiptLine,
             as: "goodReceiptLines",
+            separate: true,
           },
           {
             model: db.OrderStatusHistory,
             as: "goodReceiptStatusHistory",
+            separate: true,
+
             include: [
               {
                 model: db.User,
@@ -421,17 +420,25 @@ module.exports = {
             model: db.Supplier,
             as: "supplier",
             paranoid: false,
+            required: false,
           },
           {
             model: db.ReturnTransaction,
             as: "returnTransactions",
             required: false,
+            separate: true,
+
             where: { sourceType: ORDER_TYPE.PURCHASE },
           },
         ],
       });
 
-      const orderIds = rows.map((r) => r.id);
+      const orderIds = await GoodReceipt.findAll({
+        attributes: ["id"],
+        where: Object.keys(where).length ? where : undefined,
+        raw: true,
+      }).then((r) => r.map((o) => o.id));
+
       let returnsWhere = { referenceId: { [Op.in]: orderIds } };
 
       const totalReturnAmount = await db.ReturnTransaction.sum(
@@ -439,13 +446,28 @@ module.exports = {
         { where: returnsWhere }
       );
 
+      const totalExchangeAmount = await db.ReturnTransaction.sum(
+        "totalExchangeAmount",
+        { where: returnsWhere }
+      );
+
+      totalAmount =
+        totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
+
       const result = {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: Number(page),
-        totalAmount: totalAmount - (totalReturnAmount || 0),
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: Number(page),
+        },
+        summary: {
+          totalAmount,
+          totalReturnAmount,
+          totalExchangeAmount,
+        },
       };
+
       return result;
     } catch (error) {
       console.log(error);
@@ -453,11 +475,23 @@ module.exports = {
     }
   },
   async getBySupplierId(id, params) {
-    const { startDate, endDate, status, sort } = params;
+    const {
+      startDate,
+      endDate,
+      status,
+      sort,
+      q,
+
+      limit = PAGINATION.LIMIT,
+      page = PAGINATION.PAGE,
+    } = params;
     const where = {
       supplierId: id,
     };
 
+    if (q) {
+      where.referenceNo = { [Op.iLike]: `%${q}%` };
+    }
     if (status) {
       where.status = status;
     }
@@ -476,6 +510,7 @@ module.exports = {
         where.createdAt[Op.lte] = end;
       }
     }
+    const offset = (page - 1) * limit;
 
     const order = [];
 
@@ -486,12 +521,47 @@ module.exports = {
         order.push(["id", "ASC"]); // Default sort
       }
 
-      const result = await GoodReceipt.findAll({
+      const { count, rows } = await GoodReceipt.findAndCountAll({
         order,
         where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
         nest: true,
         include: [...goodReceiptIncludes],
+        limit,
+        offset,
+        distinct: true,
       });
+      const orderIds = rows.map((r) => r.id);
+      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+      let totalAmount = await GoodReceipt.sum("totalAmount", {
+        where: Object.keys(where).length ? where : undefined,
+      });
+
+      const totalReturnAmount = await db.ReturnTransaction.sum(
+        "totalReturnAmount",
+        { where: returnsWhere }
+      );
+
+      const totalExchangeAmount = await db.ReturnTransaction.sum(
+        "totalExchangeAmount",
+        { where: returnsWhere }
+      );
+
+      totalAmount =
+        totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
+
+      const result = {
+        data: rows,
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: Number(page),
+        },
+        summary: {
+          totalAmount,
+          totalReturnAmount,
+          totalExchangeAmount,
+        },
+      };
 
       return result;
     } catch (error) {

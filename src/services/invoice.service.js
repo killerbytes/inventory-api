@@ -200,28 +200,19 @@ module.exports = {
   async getPaginated(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q = null,
       startDate,
       endDate,
       status,
       sort = "id",
+      order: sortOrder = "DESC",
     } = params;
-    // const where = {};
 
-    const where = q
-      ? {
-          [Op.or]: [
-            { invoiceNumber: { [Op.like]: `%${q}%` } },
-            { "$supplier.name$": { [Op.iLike]: `%${q}%` } }, // case-insensitive on Combination
-
-            // { email: { [Op.like]: `%${q}%` } },
-            // { name: { [Op.like]: `%${q}%` } },
-            // { phone: { [Op.like]: `%${q}%` } },
-            // { notes: { [Op.like]: `%${q}%` } },
-          ],
-        }
-      : null;
+    const where = {};
+    if (q) {
+      where.invoiceNumber = { [Op.like]: `%${q}%` };
+    }
 
     if (status) {
       where.status = status;
@@ -243,20 +234,24 @@ module.exports = {
     }
 
     const offset = (page - 1) * limit;
+    const orderByMap = {
+      "supplier.name": [{ model: db.Supplier, as: "supplier" }, "name"],
+    };
 
     try {
       const order = [];
-
+      const orderBy = orderByMap[sort]
+        ? [...orderByMap[sort], sortOrder]
+        : [sort, sortOrder];
       if (sort) {
         order.push([sort, params.order || "ASC"]);
       }
+
       const { count, rows } = await Invoice.findAndCountAll({
-        // limit,
-        // offset,
-        order,
+        limit,
+        offset,
+        order: [orderBy],
         where,
-        // where: Object.keys(where).length ? where : undefined, // Only include where if it has conditions
-        // nest: true,
         distinct: true,
         include: [
           {
@@ -272,9 +267,11 @@ module.exports = {
 
       return {
         data: rows,
-        // total: count,
-        // totalPages: Math.ceil(count / limit),
-        // currentPage: page,np
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: page,
+        },
       };
     } catch (error) {
       console.log(error);

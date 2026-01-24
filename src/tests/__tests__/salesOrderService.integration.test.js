@@ -370,9 +370,9 @@ describe("Sales Order Service (Integration)", () => {
       limit: 2,
     });
     expect(salesOrders.data.length).toBe(2);
-    expect(salesOrders.total).toBe(2);
-    expect(salesOrders.totalPages).toBe(1);
-    expect(salesOrders.currentPage).toBe(1);
+    expect(salesOrders.meta.total).toBe(2);
+    expect(salesOrders.meta.totalPages).toBe(1);
+    expect(salesOrders.meta.currentPage).toBe(1);
   });
   it("should not allow quantity to be negative", async () => {
     await productCombinationService.stockAdjustment({
