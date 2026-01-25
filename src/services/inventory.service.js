@@ -423,10 +423,11 @@ module.exports = {
       page = PAGINATION.PAGE,
       q = null,
       sort = "id",
+      productId,
       order: sortOrder = "DESC",
     } = params;
     try {
-      const where = {};
+      const where = productId ? { [Op.or]: [{ productId }] } : null;
       const order = [];
       const offset = (page - 1) * limit;
 
