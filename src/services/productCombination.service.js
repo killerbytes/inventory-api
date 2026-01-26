@@ -547,19 +547,6 @@ LIMIT :limit;
 
       const fromFactor = parseFloat(fromInventory.conversionFactor);
       const toFactor = parseFloat(toInventory.conversionFactor);
-      if (quantity % toFactor !== 0) {
-        throw ApiError.validation(
-          [
-            {
-              path: ["quantity"],
-              message:
-                "Quantity must be a multiple of the break pack conversion factor",
-            },
-          ],
-          400,
-          "Quantity must be a multiple of the break pack conversion factor"
-        );
-      }
 
       let totalQuantity;
       let type;
@@ -573,6 +560,19 @@ LIMIT :limit;
       } else if (fromInventory.isBreakPackOfId === toInventory.id) {
         type = "RE_PACK";
         totalQuantity = truncateQty(quantity / toFactor);
+        if (quantity % toFactor !== 0) {
+          throw ApiError.validation(
+            [
+              {
+                path: ["quantity"],
+                message:
+                  "Quantity must be a multiple of the break pack conversion factor",
+              },
+            ],
+            400,
+            "Quantity must be a multiple of the break pack conversion factor"
+          );
+        }
       }
 
       totalQuantity = truncateQty(totalQuantity);
