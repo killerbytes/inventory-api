@@ -427,6 +427,8 @@ module.exports = {
 SELECT
   p.id,
   p.name,
+  p.description,
+  
   COALESCE(
     json_agg(
       DISTINCT jsonb_build_object(

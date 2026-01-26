@@ -530,7 +530,13 @@ module.exports = {
         offset,
         distinct: true,
       });
-      const orderIds = rows.map((r) => r.id);
+
+      const orderIds = await GoodReceipt.findAll({
+        attributes: ["id"],
+        where: Object.keys(where).length ? where : undefined,
+        raw: true,
+      }).then((r) => r.map((o) => o.id));
+
       let returnsWhere = { referenceId: { [Op.in]: orderIds } };
       let totalAmount = await GoodReceipt.sum("totalAmount", {
         where: Object.keys(where).length ? where : undefined,
