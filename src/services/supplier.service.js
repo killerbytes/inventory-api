@@ -159,34 +159,46 @@ module.exports = {
     }
   },
   async getByProductId(productId) {
-    const result = await db.Product.findByPk(productId, {
+    const result = await db.GoodReceiptLine.findAll({
+      attributes: [
+        "id",
+        "quantity",
+        "purchasePrice",
+        "totalAmount",
+        "unit",
+        "nameSnapshot",
+      ],
       include: [
         {
-          model: db.ProductCombination,
-          as: "combinations",
+          model: db.GoodReceipt,
+          as: "goodReceipt",
+          attributes: [
+            "id",
+            "status",
+            "totalAmount",
+            "referenceNo",
+            "receiptDate",
+            "supplierId",
+          ],
           include: [
             {
-              model: db.GoodReceiptLine,
-              as: "goodReceiptLines",
-              include: [
-                {
-                  model: db.GoodReceipt,
-                  as: "goodReceipt",
-                  include: [{ model: db.Supplier, as: "supplier" }],
-                },
-              ],
+              model: db.Supplier,
+              as: "supplier",
             },
           ],
         },
-      ],
-      order: [
-        [
-          { model: db.ProductCombination, as: "combinations" },
-          { model: db.GoodReceiptLine, as: "goodReceiptLines" },
-          { model: db.GoodReceipt, as: "goodReceipt" },
-          "receiptDate",
-          "DESC",
-        ],
+        {
+          model: db.ProductCombination,
+          as: "combinations",
+          where: { productId },
+          include: [
+            {
+              model: db.VariantValue,
+              as: "values",
+              through: { attributes: [] },
+            },
+          ],
+        },
       ],
     });
     return result;

@@ -461,6 +461,13 @@ module.exports = {
             model: ProductCombination,
             as: "combinations",
             where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
+            include: [
+              {
+                model: VariantValue,
+                as: "values",
+                through: { attributes: [] },
+              },
+            ],
           },
         ],
       });
