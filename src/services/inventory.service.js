@@ -232,11 +232,10 @@ module.exports = {
           end.setHours(23, 59, 59, 999);
           where.updatedAt[Op.lte] = end;
         }
-
-        totalAmount = await InventoryMovement.sum("totalCost", {
-          where: Object.keys(where).length ? where : undefined,
-        });
       }
+      totalAmount = await InventoryMovement.sum("totalCost", {
+        where: Object.keys(where).length ? where : undefined,
+      });
 
       const offset = (page - 1) * limit;
       const order = [];

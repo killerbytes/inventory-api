@@ -537,7 +537,10 @@ module.exports = {
         raw: true,
       }).then((r) => r.map((o) => o.id));
 
-      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+      let returnsWhere = {
+        referenceId: { [Op.in]: orderIds },
+        sourceType: ORDER_TYPE.PURCHASE,
+      };
       let totalAmount = await GoodReceipt.sum("totalAmount", {
         where: Object.keys(where).length ? where : undefined,
       });

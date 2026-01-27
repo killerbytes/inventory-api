@@ -44,7 +44,7 @@ module.exports = {
       if (cached) {
         return JSON.parse(cached);
       }
-      const salesOrder = await SalesOrder.findByPk(id, {
+      const salesOrder = await db.SalesOrder.findByPk(id, {
         include: [...salesOrderIncludes],
         nest: true,
         order: [
@@ -296,8 +296,8 @@ module.exports = {
       limit = PAGINATION.LIMIT,
       page = PAGINATION.PAGE,
       q,
-      startDate,
-      endDate,
+      startDate = null,
+      endDate = null,
       status,
       sort = "id",
       order: sortOrder = "DESC",
@@ -363,7 +363,10 @@ module.exports = {
         raw: true,
       }).then((r) => r.map((o) => o.id));
 
-      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+      let returnsWhere = {
+        referenceId: { [Op.in]: orderIds },
+        sourceType: ORDER_TYPE.SALE,
+      };
 
       const totalReturnAmount = await ReturnTransaction.sum(
         "totalReturnAmount",
@@ -378,6 +381,28 @@ module.exports = {
       totalAmount =
         totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
 
+      const im = await sequelize.query(
+        `
+SELECT
+  SUM(im."totalCost") AS "totalCost"
+FROM "InventoryMovements" im
+JOIN "SalesOrders" so
+  ON so."id" = im."referenceId"
+WHERE
+  im.type = 'OUT'
+AND so."status" NOT IN ('VOID', 'CANCELLED')
+AND (:startDate IS NULL OR so."orderDate" >= :startDate)
+AND (:endDate IS NULL OR so."orderDate" <= :endDate)
+`,
+        {
+          replacements: {
+            startDate,
+            endDate,
+          },
+          type: sequelize.QueryTypes.SELECT,
+        }
+      );
+
       const result = {
         data: rows,
         meta: {
@@ -389,6 +414,7 @@ module.exports = {
           totalAmount,
           totalReturnAmount,
           totalExchangeAmount,
+          totalCost: Number(im[0].totalCost),
         },
       };
 
@@ -802,6 +828,10 @@ const salesOrderIncludes = [
   {
     model: db.ReturnTransaction,
     as: "returnTransactions",
+    where: {
+      sourceType: ORDER_TYPE.SALE,
+    },
+    required: false,
     include: [
       {
         model: db.ReturnItem,
