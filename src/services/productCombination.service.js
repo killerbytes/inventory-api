@@ -291,6 +291,7 @@ module.exports = {
             },
             { transaction }
           );
+
           await combination.addValues(variantValueIds, { transaction });
         }
 
