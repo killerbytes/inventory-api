@@ -479,7 +479,8 @@ module.exports = {
         },
       };
     } catch (error) {
-      console.log(1, error);
+      console.log(error);
+      throw error;
     }
   },
 
