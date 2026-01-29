@@ -333,7 +333,7 @@ module.exports = {
       }
     }
     totalAmount = await SalesOrder.sum("totalAmount", {
-      where: Object.keys(where).length ? where : undefined,
+      where: { ...where, ...{ status: { [Op.eq]: ORDER_STATUS.RECEIVED } } },
     });
 
     const offset = (page - 1) * limit;
