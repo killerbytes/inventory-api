@@ -468,7 +468,7 @@ LEFT JOIN LATERAL (
 
 WHERE
   p."deletedAt" IS NULL
-  AND p.search_text @@ to_tsquery('english', :tsQuery)
+  AND p.search_text @@ to_tsquery('simple', :tsQuery)
 
 GROUP BY p.id, p.name
 ORDER BY p.name

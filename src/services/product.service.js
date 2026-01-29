@@ -622,7 +622,7 @@ module.exports = {
     UPDATE "Products"
     SET search_text =
       to_tsvector(
-        'english',
+        'simple',
         coalesce(name, '') || ' ' ||
         coalesce(description, '') || ' ' ||
         coalesce((
