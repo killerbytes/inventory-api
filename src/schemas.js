@@ -99,7 +99,7 @@ const productCombinationSchema = Joi.object({
 
 const productSchema = Joi.object({
   name: Joi.string().required(),
-  description: Joi.string().optional().allow(null),
+  description: Joi.string().optional().allow(null, ""),
   baseUnit: Joi.string().required(),
   categoryId: Joi.number().required(),
   variants: Joi.array().items(variantTypesSchema).optional(),
@@ -113,7 +113,7 @@ const productSchema = Joi.object({
 
 const categorySchema = Joi.object({
   name: Joi.string().required(),
-  description: Joi.string().optional().allow(null).allow(""),
+  description: Joi.string().optional().allow(null, ""),
   parentId: Joi.number().optional(),
 })
   .required()
