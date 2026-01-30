@@ -2,11 +2,12 @@ const { createClient } = require("redis");
 
 let client;
 
-if (
+const isMockEnv =
   process.env.NODE_ENV === "test" ||
-  process.env.NODE_ENV === undefined ||
-  process.env.NODE_ENV === "staging"
-) {
+  process.env.NODE_ENV === "staging" ||
+  process.env.NODE_ENV === undefined;
+
+if (isMockEnv) {
   client = {
     get: async () => null,
     setEx: async () => {},
@@ -14,8 +15,10 @@ if (
     publish: async () => {},
     subscribe: async () => {},
     quit: async () => {},
+    scan: async () => ["0", []], // ✅ important
   };
-  console.log("Redis skipped in test environment");
+
+  console.log("Redis skipped in test/staging environment");
 } else {
   client = createClient({
     url: process.env.REDIS_URL || "redis://localhost:6500",
@@ -29,12 +32,43 @@ if (
     .catch((err) => console.error("Redis connection error", err));
 }
 
+/* ================= HELPERS ================= */
+
 const getCachedId = async (cacheKey) => {
   const cached = await client.get(cacheKey);
-  if (cached) {
+  if (!cached) return null;
+
+  try {
     return JSON.parse(cached);
+  } catch {
+    return null;
   }
 };
 
-module.exports = client;
-module.exports.getCachedId = getCachedId;
+const deleteByPattern = async (pattern) => {
+  let cursor = "0";
+
+  do {
+    const [nextCursor, keys] = await client.scan(
+      cursor,
+      "MATCH",
+      pattern,
+      "COUNT",
+      100
+    );
+
+    cursor = nextCursor;
+
+    if (keys.length) {
+      await client.del(...keys);
+    }
+  } while (cursor !== "0");
+};
+
+/* ================= EXPORT ================= */
+
+module.exports = {
+  redis: client,
+  getCachedId,
+  deleteByPattern,
+};

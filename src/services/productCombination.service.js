@@ -6,7 +6,7 @@ const {
   stockAdjustmentSchema,
 } = require("../schemas");
 const ApiError = require("./ApiError");
-const redis = require("../utils/redis");
+const { redis, deleteByPattern } = require("../utils/redis");
 const Joi = require("joi");
 const { getSKU } = require("../utils/string");
 const { normalize, truncateQty } = require("../utils/compute");
@@ -326,7 +326,7 @@ module.exports = {
       await redis.del("products:list");
       await redis.del("productCombination:list");
       await redis.del(`products:${productId}`);
-      await redis.del("productCombination:search");
+      await deleteByPattern("productCombination:search*");
 
       return { message: "Product updated successfully" };
     } catch (err) {

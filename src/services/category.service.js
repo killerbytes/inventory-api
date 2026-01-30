@@ -1,7 +1,7 @@
 const db = require("../models");
 const { categorySchema } = require("../schemas");
 const { Category } = db;
-const redis = require("../utils/redis");
+const { redis } = require("../utils/redis");
 
 module.exports = {
   get: async (id) => {

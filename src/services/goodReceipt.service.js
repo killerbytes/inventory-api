@@ -28,9 +28,8 @@ const {
   VariantType,
   Category,
 } = db;
-const redis = require("../utils/redis");
+const { redis } = require("../utils/redis");
 const inventoryService = require("./inventory.service.js");
-const { required } = require("joi");
 
 module.exports = {
   async get(id) {

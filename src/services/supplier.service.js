@@ -3,7 +3,7 @@ const { Op } = require("sequelize");
 const db = require("../models");
 const { supplierSchema } = require("../schemas");
 const { Supplier } = db;
-const redis = require("../utils/redis");
+const { redis } = require("../utils/redis");
 module.exports = {
   async get(id) {
     try {

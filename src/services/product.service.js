@@ -7,7 +7,7 @@ const { productSchema } = require("../schemas");
 const ApiError = require("./ApiError");
 const { getSKU } = require("../utils/string");
 const { getMappedProductComboName } = require("../utils/mapped");
-const redis = require("../utils/redis");
+const { redis } = require("../utils/redis");
 
 const {
   Product,

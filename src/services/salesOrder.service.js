@@ -17,7 +17,7 @@ const { getMappedVariantValues } = require("../utils/mapped");
 const ApiError = require("./ApiError");
 const { getAmount, getTotalAmount } = require("../utils/compute.js");
 const productCombinationService = require("./productCombination.service.js");
-const redis = require("../utils/redis");
+const { redis } = require("../utils/redis");
 const moment = require("moment-timezone");
 const inventoryService = require("./inventory.service");
 
@@ -303,9 +303,7 @@ module.exports = {
       order: sortOrder = "DESC",
     } = params;
     const where = {};
-    let totalAmount = 0;
 
-    // Search by name if query exists
     if (q) {
       where.name = { [Op.like]: `%${q}%` };
     }
@@ -313,7 +311,6 @@ module.exports = {
       where.status = status;
     }
 
-    // Add date filtering if dates are provided
     if (startDate || endDate) {
       where.orderDate = {};
       const timezone = "Asia/Manila";
@@ -332,9 +329,6 @@ module.exports = {
           .toDate();
       }
     }
-    totalAmount = await SalesOrder.sum("totalAmount", {
-      where: { ...where, ...{ status: { [Op.eq]: ORDER_STATUS.RECEIVED } } },
-    });
 
     const offset = (page - 1) * limit;
 
@@ -357,52 +351,6 @@ module.exports = {
         include: [...salesOrderIncludes],
       });
 
-      const orderIds = await SalesOrder.findAll({
-        attributes: ["id"],
-        where: Object.keys(where).length ? where : undefined,
-        raw: true,
-      }).then((r) => r.map((o) => o.id));
-
-      let returnsWhere = {
-        referenceId: { [Op.in]: orderIds },
-        sourceType: ORDER_TYPE.SALE,
-      };
-
-      const totalReturnAmount = await ReturnTransaction.sum(
-        "totalReturnAmount",
-        { where: returnsWhere }
-      );
-
-      const totalExchangeAmount = await ReturnTransaction.sum(
-        "totalExchangeAmount",
-        { where: returnsWhere }
-      );
-
-      totalAmount =
-        totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
-
-      const im = await sequelize.query(
-        `
-SELECT
-  SUM(im."totalCost") AS "totalCost"
-FROM "InventoryMovements" im
-JOIN "SalesOrders" so
-  ON so."id" = im."referenceId"
-WHERE
-  im.type = 'OUT'
-AND so."status" NOT IN ('VOID', 'CANCELLED')
-AND (:startDate IS NULL OR so."orderDate" >= :startDate)
-AND (:endDate IS NULL OR so."orderDate" <= :endDate)
-`,
-        {
-          replacements: {
-            startDate,
-            endDate,
-          },
-          type: sequelize.QueryTypes.SELECT,
-        }
-      );
-
       const result = {
         data: rows,
         meta: {
@@ -410,12 +358,7 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
           totalPages: Math.ceil(count / limit),
           currentPage: Number(page),
         },
-        summary: {
-          totalAmount,
-          totalReturnAmount,
-          totalExchangeAmount,
-          totalCost: Number(im[0].totalCost),
-        },
+        summary: await getSummary(where),
       };
 
       return result;
@@ -549,6 +492,65 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
       throw error;
     }
   },
+};
+
+const getSummary = async (where) => {
+  const totalAmount = await SalesOrder.sum("totalAmount", {
+    where: { ...where, ...{ status: { [Op.eq]: ORDER_STATUS.RECEIVED } } },
+  });
+
+  const orderIds = await db.SalesOrder.findAll({
+    attributes: ["id"],
+    where: Object.keys(where).length ? where : undefined,
+    raw: true,
+  }).then((r) => r.map((o) => o.id));
+
+  let returnsWhere = {
+    referenceId: { [Op.in]: orderIds },
+    sourceType: ORDER_TYPE.SALE,
+  };
+
+  const totalReturnAmount = await ReturnTransaction.sum("totalReturnAmount", {
+    where: returnsWhere,
+  });
+
+  const totalExchangeAmount = await ReturnTransaction.sum(
+    "totalExchangeAmount",
+    { where: returnsWhere }
+  );
+
+  const startDate = where?.orderDate?.[Op.gte] ?? null;
+  const endDate = where?.orderDate?.[Op.lte] ?? null;
+
+  const [{ totalCost }] = await sequelize.query(
+    `
+SELECT
+  SUM(im."totalCost") AS "totalCost"
+FROM "InventoryMovements" im
+JOIN "SalesOrders" so
+  ON so."id" = im."referenceId"
+WHERE
+  im.type = 'OUT'
+AND so."status" NOT IN ('VOID', 'CANCELLED')
+AND (:startDate IS NULL OR so."orderDate" >= :startDate)
+AND (:endDate IS NULL OR so."orderDate" <= :endDate)
+`,
+    {
+      replacements: {
+        startDate,
+        endDate,
+      },
+      type: sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  return {
+    totalAmount:
+      totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
+    totalReturnAmount,
+    totalExchangeAmount,
+    totalCost: Number(totalCost),
+  };
 };
 
 const processCompletedOrder = async (payload, salesOrder, transaction) => {
