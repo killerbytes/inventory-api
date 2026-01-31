@@ -49,18 +49,16 @@ const deleteByPattern = async (pattern) => {
   let cursor = "0";
 
   do {
-    const [nextCursor, keys] = await client.scan(
-      cursor,
-      "MATCH",
-      pattern,
-      "COUNT",
-      100
-    );
+    const result = await client.scan(cursor, {
+      MATCH: pattern,
+      COUNT: 100,
+    });
+    console.log(result);
 
-    cursor = nextCursor;
+    cursor = result.cursor;
 
-    if (keys.length) {
-      await client.del(...keys);
+    if (result.keys.length) {
+      await client.del(result.keys);
     }
   } while (cursor !== "0");
 };

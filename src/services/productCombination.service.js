@@ -326,7 +326,7 @@ module.exports = {
       await redis.del("products:list");
       await redis.del("productCombination:list");
       await redis.del(`products:${productId}`);
-      // await deleteByPattern("productCombination:search*");
+      await deleteByPattern("productCombination:search*");
 
       return { message: "Product updated successfully" };
     } catch (err) {
