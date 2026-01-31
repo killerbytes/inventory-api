@@ -198,6 +198,10 @@ module.exports = {
               through: { attributes: [] },
             },
           ],
+          attributes: {
+            include: ["deletedAt"],
+          },
+          paranoid: false,
         },
       ],
     });

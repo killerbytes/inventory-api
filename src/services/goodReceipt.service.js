@@ -347,7 +347,6 @@ module.exports = {
     } = params;
     const where = {};
 
-    // Search by name if query exists
     if (q) {
       where.referenceNo = { [Op.like]: `%${q}%` };
     }
@@ -355,7 +354,6 @@ module.exports = {
       where.status = status;
     }
 
-    // Add date filtering if dates are provided
     if (startDate || endDate) {
       where.receiptDate = {};
 
@@ -384,10 +382,6 @@ module.exports = {
       const orderBy = orderByMap[sort]
         ? [...orderByMap[sort], sortOrder]
         : [sort || "id", sortOrder];
-
-      let totalAmount = await GoodReceipt.sum("totalAmount", {
-        where: Object.keys(where).length ? where : undefined,
-      });
 
       const { count, rows } = await GoodReceipt.findAndCountAll({
         subQuery: false,
@@ -432,27 +426,6 @@ module.exports = {
         ],
       });
 
-      const orderIds = await GoodReceipt.findAll({
-        attributes: ["id"],
-        where: Object.keys(where).length ? where : undefined,
-        raw: true,
-      }).then((r) => r.map((o) => o.id));
-
-      let returnsWhere = { referenceId: { [Op.in]: orderIds } };
-
-      const totalReturnAmount = await db.ReturnTransaction.sum(
-        "totalReturnAmount",
-        { where: returnsWhere }
-      );
-
-      const totalExchangeAmount = await db.ReturnTransaction.sum(
-        "totalExchangeAmount",
-        { where: returnsWhere }
-      );
-
-      totalAmount =
-        totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0);
-
       const result = {
         data: rows,
         meta: {
@@ -460,11 +433,7 @@ module.exports = {
           totalPages: Math.ceil(count / limit),
           currentPage: Number(page),
         },
-        summary: {
-          totalAmount,
-          totalReturnAmount,
-          totalExchangeAmount,
-        },
+        summary: await getSummary(where),
       };
 
       return result;
@@ -564,11 +533,20 @@ module.exports = {
           totalPages: Math.ceil(count / limit),
           currentPage: Number(page),
         },
-        summary: {
-          totalAmount,
-          totalReturnAmount,
-          totalExchangeAmount,
-        },
+        summary: [
+          {
+            label: "Amount",
+            value: totalAmount,
+          },
+          {
+            label: "Returns",
+            value: totalReturnAmount,
+          },
+          {
+            label: "Exchanges",
+            value: totalExchangeAmount,
+          },
+        ],
       };
 
       return result;
@@ -768,6 +746,49 @@ module.exports = {
   },
 };
 
+const getSummary = async (where) => {
+  let totalAmount = await GoodReceipt.sum("totalAmount", {
+    where: {
+      status: { [Op.ne]: ORDER_STATUS.DRAFT },
+      ...where,
+    },
+  });
+
+  let totalPaid = await GoodReceipt.sum("totalAmount", {
+    where: {
+      status: ORDER_STATUS.COMPLETED,
+      ...where,
+    },
+  });
+
+  const orderIds = await GoodReceipt.findAll({
+    attributes: ["id"],
+    where: Object.keys(where).length ? where : undefined,
+    raw: true,
+  }).then((r) => r.map((o) => o.id));
+
+  let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+
+  const totalReturnAmount = await db.ReturnTransaction.sum(
+    "totalReturnAmount",
+    { where: returnsWhere }
+  );
+
+  return [
+    {
+      label: "Amount",
+      value: totalAmount - (totalReturnAmount || 0),
+    },
+    {
+      label: "Unpaid",
+      value: totalAmount - totalPaid,
+    },
+    {
+      label: "Returns",
+      value: totalReturnAmount,
+    },
+  ];
+};
 const processCompletedOrder = async (payload, goodReceipt) => {
   const user = await authService.getCurrent();
   const transaction = await db.sequelize.transaction();

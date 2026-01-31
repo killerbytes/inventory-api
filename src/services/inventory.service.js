@@ -257,6 +257,10 @@ module.exports = {
             model: ProductCombination,
             as: "combination",
             where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
+            attributes: {
+              include: ["deletedAt"],
+            },
+            paranoid: false,
             include: [
               {
                 model: Product,
@@ -279,9 +283,12 @@ module.exports = {
           totalPages: Math.ceil(count / limit),
           currentPage: page,
         },
-        summary: {
-          totalAmount,
-        },
+        summary: [
+          {
+            label: "Total Amount",
+            value: totalAmount,
+          },
+        ],
       };
     } catch (error) {
       throw error;
@@ -467,6 +474,10 @@ module.exports = {
                 through: { attributes: [] },
               },
             ],
+            attributes: {
+              include: ["deletedAt"],
+            },
+            paranoid: false,
           },
         ],
       });

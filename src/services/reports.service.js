@@ -121,6 +121,8 @@ module.exports = {
       const rows = await db.SalesOrderItem.findAll({
         attributes: [
           "combinationId",
+          "nameSnapshot",
+          "unit",
           [
             sequelize.literal(`
               SUM("SalesOrderItem"."quantity" )`),
@@ -161,6 +163,8 @@ module.exports = {
           },
         ],
         group: [
+          "SalesOrderItem.nameSnapshot",
+          "SalesOrderItem.unit",
           "salesOrder.id",
           "SalesOrderItem.combinationId",
           "combinations.id",
