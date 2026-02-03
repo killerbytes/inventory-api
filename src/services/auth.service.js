@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const db = require("../models");
 const { AsyncLocalStorage } = require("async_hooks");
 const ApiError = require("./ApiError");
+const logger = require("../middlewares/logger");
 
 const { User } = db;
 
@@ -58,7 +59,9 @@ module.exports = {
 
       return tokens;
     } catch (error) {
-      logger.error("auth.service.refreshAuth error", error);
+      logger.error("auth.service.refreshAuth error", JSON.stringify(error));
+      console.log(123, error);
+
       throw error;
     }
   },
