@@ -21,7 +21,7 @@ if (isMockEnv) {
   console.log("Redis skipped in test/staging environment");
 } else {
   client = createClient({
-    url: process.env.REDIS_URL || "redis://localhost:6500",
+    url: process.env.REDIS_URL || "redis://localhost:6379",
   });
 
   client.on("error", (err) => console.error("Redis Client Error", err));

@@ -58,6 +58,7 @@ module.exports = {
 
       return tokens;
     } catch (error) {
+      logger.error("auth.service.refreshAuth error", error);
       throw error;
     }
   },

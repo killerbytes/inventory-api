@@ -420,8 +420,6 @@ module.exports = {
     const cacheKey = `productCombination:search:${search}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
-      console.log(cached);
-
       return JSON.parse(cached);
     }
     const results = await sequelize.query(
