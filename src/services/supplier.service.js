@@ -148,9 +148,11 @@ module.exports = {
       });
       const result = {
         data: rows,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
+        meta: {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: page,
+        },
       };
       await redis.setEx(cacheKey, 300, JSON.stringify(result));
       return result;

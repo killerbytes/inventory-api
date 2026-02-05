@@ -111,8 +111,6 @@ module.exports = {
     });
 
     if (error) {
-      console.log(33, error);
-
       throw error;
     }
     const product = await Product.findByPk(productId, {

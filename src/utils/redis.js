@@ -49,16 +49,30 @@ const deleteByPattern = async (pattern) => {
   let cursor = "0";
 
   do {
-    const result = await client.scan(cursor, {
-      MATCH: pattern,
-      COUNT: 100,
-    });
-    console.log(result);
+    const res = await client.scan(
+      cursor,
+      // legacy clients ignore the object form, v4 ignores the string form
+      ...(typeof client.scan === "function" && client.scan.length === 2
+        ? [{ MATCH: pattern, COUNT: 100 }]
+        : ["MATCH", pattern, "COUNT", 100])
+    );
 
-    cursor = result.cursor;
+    let nextCursor;
+    let keys;
 
-    if (result.keys.length) {
-      await client.del(result.keys);
+    // node-redis v4 → { cursor, keys }
+    if (res && typeof res === "object" && !Array.isArray(res)) {
+      ({ cursor: nextCursor, keys } = res);
+    }
+    // legacy / ioredis → [cursor, keys]
+    else {
+      [nextCursor, keys] = res;
+    }
+
+    cursor = nextCursor;
+
+    if (keys?.length) {
+      await client.unlink(...keys); // non-blocking, safe for prod
     }
   } while (cursor !== "0");
 };
