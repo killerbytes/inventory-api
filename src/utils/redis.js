@@ -15,7 +15,7 @@ if (isMockEnv) {
     publish: async () => {},
     subscribe: async () => {},
     quit: async () => {},
-    scan: async () => ["0", []], // ✅ important
+    scan: async () => ["0", []],
   };
 
   console.log("Redis skipped in test/staging environment");
@@ -32,8 +32,6 @@ if (isMockEnv) {
     .catch((err) => console.error("Redis connection error", err));
 }
 
-/* ================= HELPERS ================= */
-
 const getCachedId = async (cacheKey) => {
   const cached = await client.get(cacheKey);
   if (!cached) return null;
@@ -47,37 +45,46 @@ const getCachedId = async (cacheKey) => {
 
 const deleteByPattern = async (pattern) => {
   let cursor = "0";
+  const keysToDelete = new Set();
 
   do {
     const res = await client.scan(
       cursor,
-      // legacy clients ignore the object form, v4 ignores the string form
-      ...(typeof client.scan === "function" && client.scan.length === 2
-        ? [{ MATCH: pattern, COUNT: 100 }]
-        : ["MATCH", pattern, "COUNT", 100])
+      ...(client.scan.length === 2
+        ? [{ MATCH: pattern, COUNT: 1000 }]
+        : ["MATCH", pattern, "COUNT", 1000])
     );
 
     let nextCursor;
     let keys;
 
-    // node-redis v4 → { cursor, keys }
     if (res && typeof res === "object" && !Array.isArray(res)) {
-      ({ cursor: nextCursor, keys } = res);
-    }
-    // legacy / ioredis → [cursor, keys]
-    else {
-      [nextCursor, keys] = res;
+      nextCursor = res.cursor;
+      keys = res.keys;
+    } else {
+      nextCursor = res[0];
+      keys = res[1];
     }
 
-    cursor = nextCursor;
+    cursor = String(nextCursor);
 
-    if (keys?.length) {
-      await client.unlink(...keys); // non-blocking, safe for prod
+    if (Array.isArray(keys)) {
+      for (const key of keys) {
+        keysToDelete.add(key);
+      }
     }
   } while (cursor !== "0");
-};
 
-/* ================= EXPORT ================= */
+  const allKeys = [...keysToDelete];
+
+  for (let i = 0; i < allKeys.length; i += 500) {
+    const chunk = allKeys.slice(i, i + 500);
+
+    const pipeline = client.multi();
+    chunk.forEach((key) => pipeline.unlink(key));
+    await pipeline.exec();
+  }
+};
 
 module.exports = {
   redis: client,
