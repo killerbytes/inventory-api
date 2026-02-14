@@ -95,9 +95,9 @@ describe("Customer Service (Integration)", () => {
       limit: 1,
     });
     expect(customers.data.length).toBe(1);
-    expect(customers.total).toBe(2);
-    expect(customers.totalPages).toBe(2);
-    expect(customers.currentPage).toBe(1);
+    expect(customers.meta.total).toBe(2);
+    expect(customers.meta.totalPages).toBe(2);
+    expect(customers.meta.currentPage).toBe(1);
   });
 
   it("should update a customer's sort order", async () => {

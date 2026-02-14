@@ -93,9 +93,9 @@ describe("User Service (Integration)", () => {
       limit: 1,
     });
     expect(users.data.length).toBe(1);
-    expect(users.total).toBe(2);
-    expect(users.totalPages).toBe(2);
-    expect(users.currentPage).toBe(1);
+    expect(users.meta.total).toBe(2);
+    expect(users.meta.totalPages).toBe(2);
+    expect(users.meta.currentPage).toBe(1);
   });
 
   it("should update a user's sort order", async () => {

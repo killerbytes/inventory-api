@@ -98,9 +98,9 @@ describe("Customer Service (Integration)", () => {
       limit: 1,
     });
     expect(suppliers.data.length).toBe(1);
-    expect(suppliers.total).toBe(2);
-    expect(suppliers.totalPages).toBe(2);
-    expect(suppliers.currentPage).toBe(1);
+    expect(suppliers.meta.total).toBe(2);
+    expect(suppliers.meta.totalPages).toBe(2);
+    expect(suppliers.meta.currentPage).toBe(1);
   });
 
   it("should update a supplier's sort order", async () => {
