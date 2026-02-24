@@ -700,6 +700,105 @@ describe("Sales Order Service (Integration)", () => {
     expect(returnItems[1].totalAmount).toBe(2000);
   });
 
+  it("should not allow cancel when having returns", async () => {
+    await salesOrderService.create({
+      customerId: 1,
+      status: "RECEIVED",
+      orderDate: new Date(),
+      notes: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      salesOrderItems: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          originalPrice: 100,
+          purchasePrice: 100,
+          discount: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          originalPrice: 100,
+          purchasePrice: 100,
+        },
+      ],
+      modeOfPayment: "CASH",
+    });
+    const returns = [
+      {
+        combinationId: 1,
+        quantity: 10,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+      },
+    ];
+    await salesOrderService.returnExchange(1, returns, undefined, "reason");
+    try {
+      await salesOrderService.cancelOrder(1, { reason: "reason" });
+      throw new Error("Should not have cancelled");
+    } catch (error) {
+      console.log("Validation error:", {
+        name: error.name,
+        message: error.message,
+        fields: error.fields,
+        errors: error.errors?.map((e) => e.message),
+      });
+      expect(error.message).toBe("SalesOrder is not in a valid state");
+    }
+  });
+
+  it("should not allow returns when cancelled", async () => {
+    await salesOrderService.create({
+      customerId: 1,
+      status: "RECEIVED",
+      orderDate: new Date(),
+      notes: "Test Notes",
+      internalNotes: "Test Internal Notes",
+      salesOrderItems: [
+        {
+          combinationId: 1,
+          quantity: 10,
+          originalPrice: 100,
+          purchasePrice: 100,
+          discount: 100,
+        },
+        {
+          combinationId: 2,
+          quantity: 20,
+          originalPrice: 100,
+          purchasePrice: 100,
+        },
+      ],
+      modeOfPayment: "CASH",
+    });
+    await salesOrderService.cancelOrder(1, { reason: "reason" });
+
+    const returns = [
+      {
+        combinationId: 1,
+        quantity: 10,
+      },
+      {
+        combinationId: 2,
+        quantity: 20,
+      },
+    ];
+    try {
+      await salesOrderService.returnExchange(1, returns, undefined, "reason");
+      throw new Error("Should not have cancelled");
+    } catch (error) {
+      console.log("Validation error:", {
+        name: error.name,
+        message: error.message,
+        fields: error.fields,
+        errors: error.errors?.map((e) => e.message),
+      });
+      expect(error.message).toBe("SalesOrder is not in a valid state");
+    }
+  });
+
   it("should return and exchange item", async () => {
     await createVariantType(3);
     await productCombinationService.updateByProductId(2, {

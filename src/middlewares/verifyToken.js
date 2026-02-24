@@ -21,6 +21,10 @@ const verifyToken = (options = {}) => {
           return res.status(403).json({ message: "Invalid token scope" });
         }
 
+        if (options.adminOnly && !decoded.isAdmin) {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
         req.userId = decoded.id;
 
         authStorage.run({ userId: decoded.id }, () => {

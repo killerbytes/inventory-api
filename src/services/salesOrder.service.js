@@ -72,7 +72,9 @@ module.exports = {
       throw error;
     }
     const user = await authService.getCurrent();
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+      type: Sequelize.Transaction.TYPES.IMMEDIATE,
+    });
     try {
       const totalAmount = getTotalAmount(payload.salesOrderItems);
       for (const [index, item] of payload.salesOrderItems.entries()) {
@@ -170,7 +172,7 @@ module.exports = {
         await processReceivedOrder(payload, result, transaction);
       }
 
-      transaction.commit();
+      await transaction.commit();
       await redis.del("salesOrder:list");
       await redis.del("salesOrder:paginated");
 
@@ -178,7 +180,7 @@ module.exports = {
     } catch (error) {
       console.log(error);
 
-      transaction.rollback();
+      await transaction.rollback();
       throw error;
     }
   },
@@ -197,9 +199,9 @@ module.exports = {
     }
     await redis.del("salesOrder:list");
     await redis.del("salesOrder:paginated");
-    await redis.del(`salesOrder:${id}`);
-
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+      type: Sequelize.Transaction.TYPES.IMMEDIATE,
+    });
     try {
       switch (true) {
         case salesOrder.status === ORDER_STATUS.DRAFT &&
@@ -221,9 +223,9 @@ module.exports = {
             `Invalid status change from ${salesOrder.status} to ${payload.status}`
           );
       }
-      transaction.commit();
+      await transaction.commit();
     } catch (error) {
-      transaction.rollback();
+      await transaction.rollback();
       throw error;
     }
   },
@@ -243,7 +245,9 @@ module.exports = {
   },
 
   async delete(id) {
-    const transaction = await db.sequelize.transaction();
+    const transaction = await db.sequelize.transaction({
+      type: Sequelize.Transaction.TYPES.IMMEDIATE,
+    });
     try {
       const salesOrder = await SalesOrder.findByPk(id, {
         transaction,
@@ -369,7 +373,9 @@ module.exports = {
   },
 
   async cancelOrder(id, payload) {
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+      type: Sequelize.Transaction.TYPES.IMMEDIATE,
+    });
 
     try {
       const salesOrder = await SalesOrder.findByPk(id, {
@@ -378,20 +384,35 @@ module.exports = {
             model: SalesOrderItem,
             as: "salesOrderItems",
           },
+          {
+            model: db.ReturnTransaction,
+            as: "returnTransactions",
+            where: {
+              sourceType: ORDER_TYPE.SALE,
+            },
+            required: false,
+          },
         ],
         transaction,
       });
       if (!salesOrder) {
         throw new Error("SalesOrder not found");
       }
+
+      if (salesOrder.returnTransactions.length > 0) {
+        throw new Error("SalesOrder is not in a valid state");
+      }
+
       await redis.del("salesOrder:list");
       await redis.del("salesOrder:paginated");
       await redis.del(`salesOrder:${id}`);
 
       await processCancelledOrder(salesOrder, payload, transaction);
-      transaction.commit();
+      await transaction.commit();
     } catch (error) {
-      transaction.rollback();
+      console.log(error);
+      await transaction.rollback();
+      throw error;
     }
   },
 
@@ -405,8 +426,16 @@ module.exports = {
     });
 
     if (!salesOrder) throw new Error("Sales order not found");
+    if (
+      salesOrder.status !== ORDER_STATUS.COMPLETED &&
+      salesOrder.status !== ORDER_STATUS.RECEIVED
+    ) {
+      throw new Error("SalesOrder is not in a valid state");
+    }
 
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+      type: Sequelize.Transaction.TYPES.IMMEDIATE,
+    });
     let totalExchangeAmount = 0;
 
     try {

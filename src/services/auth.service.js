@@ -13,9 +13,13 @@ module.exports = {
   authStorage,
 
   generateAuthTokens: async (user) => {
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRATION || "15m",
-    });
+    const accessToken = jwt.sign(
+      { id: user.id, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRATION || "15m",
+      }
+    );
 
     const refreshToken = jwt.sign(
       { id: user.id, type: "refresh" },
@@ -77,11 +81,14 @@ module.exports = {
 
   async getCurrent() {
     try {
-      const env = process.env.NODE_ENV || "development";
-      if (env === "test") return await User.findOne({ where: { id: 1 } });
-
       const store = authStorage.getStore();
-      if (!store) throw ApiError.forbidden("No auth context");
+      if (!store) {
+        const env = process.env.NODE_ENV || "development";
+        if (env === "test") {
+          return await User.findOne({ where: { id: 1 }, raw: true });
+        }
+        throw ApiError.forbidden("No auth context");
+      }
 
       const { userId } = store;
       const user = await User.findOne({
