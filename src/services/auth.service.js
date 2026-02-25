@@ -64,8 +64,6 @@ module.exports = {
       return tokens;
     } catch (error) {
       logger.error("auth.service.refreshAuth error", JSON.stringify(error));
-      console.log(123, error);
-
       throw error;
     }
   },
@@ -99,10 +97,9 @@ module.exports = {
       if (!user) {
         throw ApiError.forbidden("User not found");
       }
-
       return user;
     } catch (error) {
-      console.log("auth.service.getCurrent error", error);
+      logger.error("auth.service.getCurrent error", JSON.stringify(error));
       throw error;
     }
   },

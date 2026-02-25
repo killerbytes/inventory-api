@@ -1,7 +1,17 @@
 const pino = require("pino");
 const env = process.env.NODE_ENV || "development";
 
+function logMethod(args, method) {
+  if (args.length === 2) {
+    args[0] = `${args[0]} %j`;
+  }
+  method.apply(this, args);
+}
+
 const logger = pino({
+  hooks: {
+    logMethod,
+  },
   level: process.env.LOG_LEVEL || "error",
   timestamp: pino.stdTimeFunctions.isoTime, // [2025-09-07T10:34:11.531Z]
   formatters: {
