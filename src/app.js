@@ -91,6 +91,10 @@ app.post("/api/backup", verifyToken({ adminOnly: true }), (req, res) => {
   });
 });
 
+app.use("/api/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
+
 app.get("/api", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
   res.json({
