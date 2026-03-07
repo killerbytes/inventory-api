@@ -415,11 +415,6 @@ module.exports = {
     const { search, noBreakPacks = null, limit = 50 } = query;
     const tsQuery = buildTsQuery(search);
 
-    const cacheKey = `productCombination:search:${search}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
     const results = await sequelize.query(
       `
 SELECT
@@ -483,7 +478,6 @@ LIMIT :limit;
       }
     );
 
-    await redis.setEx(cacheKey, 300, JSON.stringify(results));
     return results;
   },
 
