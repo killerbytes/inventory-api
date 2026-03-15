@@ -208,10 +208,16 @@ module.exports = {
     }
   },
   async getMovements(payload = {}) {
-    const { q = null, type = null, sort = "id", startDate, endDate } = payload;
+    const {
+      ids = [],
+      q = null,
+      type = null,
+      sort = "id",
+      startDate,
+      endDate,
+    } = payload;
     const limit = parseInt(payload.limit) || PAGINATION.LIMIT;
     const page = parseInt(payload.page) || PAGINATION.PAGE;
-
     try {
       const where = {};
       let totalAmount = 0;
@@ -256,7 +262,11 @@ module.exports = {
           {
             model: ProductCombination,
             as: "combination",
-            where: q ? { name: { [Op.iLike]: `%${q}%` } } : undefined,
+            where: q
+              ? { name: { [Op.iLike]: `%${q}%` } }
+              : ids.length
+                ? { id: ids }
+                : undefined,
             attributes: {
               include: ["deletedAt"],
             },

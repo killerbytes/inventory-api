@@ -7,7 +7,9 @@ const app = require("./app");
 const logger = require("./middlewares/logger");
 const errorHandler = require("./middlewares/errorHandler");
 
-Sentry.setupExpressErrorHandler(app);
+if (process.env.NODE_ENV === "production") {
+  Sentry.setupExpressErrorHandler(app);
+}
 app.use(errorHandler);
 
 app.listen(process.env.PORT || 8080, () => {
