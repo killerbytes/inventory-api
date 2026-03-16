@@ -32,12 +32,21 @@ module.exports = (sequelize) => {
       modelName: "User",
       defaultScope: {
         attributes: {
-          exclude: ["password", "createdAt", "updatedAt", "deletedAt"],
+          exclude: [
+            "password",
+            "refreshToken",
+            "createdAt",
+            "updatedAt",
+            "deletedAt",
+          ],
         }, // Exclude password by default
       },
       scopes: {
         withPassword: {
           attributes: { include: ["password"] }, // Include when specifically needed
+        },
+        withRefreshToken: {
+          attributes: { include: ["refreshToken"] }, // Include when specifically needed
         },
       },
       paranoid: true, // Enable soft deletes

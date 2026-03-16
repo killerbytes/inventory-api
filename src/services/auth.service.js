@@ -4,6 +4,7 @@ const db = require("../models");
 const { AsyncLocalStorage } = require("async_hooks");
 const ApiError = require("./ApiError");
 const logger = require("../middlewares/logger");
+const { redis } = require("../utils/redis");
 
 const { User } = db;
 
@@ -37,7 +38,7 @@ module.exports = {
       throw new Error("Invalid username or password");
     }
     const tokens = await module.exports.generateAuthTokens(user);
-    const userModel = await User.findByPk(user.id);
+    const userModel = await User.scope("withRefreshToken").findByPk(user.id);
     userModel.refreshToken = tokens.refreshToken;
     await userModel.save();
 
@@ -51,7 +52,7 @@ module.exports = {
         throw new Error("Invalid token type");
       }
 
-      const user = await User.findByPk(decoded.id);
+      const user = await User.scope("withRefreshToken").findByPk(decoded.id);
       if (!user || user.refreshToken !== refreshToken) {
         throw new Error("Invalid refresh token");
       }
@@ -70,14 +71,16 @@ module.exports = {
 
   logout: async (refreshToken) => {
     if (!refreshToken) return;
-    const user = await User.findOne({ where: { refreshToken } });
+    const user = await User.scope("withRefreshToken").findOne({
+      where: { refreshToken },
+    });
     if (user) {
       user.refreshToken = null;
       await user.save();
     }
   },
 
-  async getCurrent() {
+  getCurrent: async () => {
     try {
       const store = authStorage.getStore();
       if (!store) {
@@ -89,6 +92,9 @@ module.exports = {
       }
 
       const { userId } = store;
+      const cacheKey = `user:${userId}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) return JSON.parse(cached);
       const user = await User.findOne({
         where: { id: userId, isActive: true },
         raw: true,
@@ -97,6 +103,7 @@ module.exports = {
       if (!user) {
         throw ApiError.forbidden("User not found");
       }
+      await redis.setEx(cacheKey, 300, JSON.stringify(user));
       return user;
     } catch (error) {
       logger.error("auth.service.getCurrent error", JSON.stringify(error));

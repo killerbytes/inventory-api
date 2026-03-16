@@ -21,6 +21,7 @@ const productController = {
 
   async list(req, res, next) {
     try {
+      throw new Error("Not implemented");
       const result = await productService.list();
       return res.status(200).json(result);
     } catch (error) {
