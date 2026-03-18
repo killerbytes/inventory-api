@@ -27,6 +27,7 @@ const envPath = `.env.${env}`;
 const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
 const logger = require("./middlewares/logger");
+const ApiError = require("./services/ApiError");
 
 dotenv.config({ path: envPath });
 
@@ -104,6 +105,11 @@ app.get("/", (req, res) => {
     env: env,
     buildTime: BUILD_TIME,
   });
+});
+
+// 404 handler
+app.use((req, res, next) => {
+  next(ApiError.notFound(`Route ${req.method} ${req.originalUrl} not found`));
 });
 
 module.exports = app;

@@ -78,7 +78,10 @@ module.exports = {
         },
       ],
       // order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
-      order: [["name", "ASC"]],
+      order: [
+        ["name", "ASC"],
+        ["isBreakPackOfId", "DESC"],
+      ],
     });
 
     if (!combinations) throw new Error("Combination not found");

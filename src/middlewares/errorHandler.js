@@ -26,11 +26,33 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json(ApiError.validation(errors, 400));
   }
 
-  // req.log.error({ err }, "XXX");
+  if (err instanceof ApiError) {
+    return res
+      .status(err.statusCode)
+      .json(
+        ApiError.notFound(
+          err.message,
+          err.statusCode,
+          [],
+          null,
+          err.stack,
+          req.id
+        )
+      );
+  }
 
   return res
-    .status(500)
-    .json(ApiError.internal(err.message, 500, [], null, err.stack, req.id));
+    .status(err.statusCode || 500)
+    .json(
+      ApiError.internal(
+        err.message,
+        err.statusCode || 500,
+        [],
+        null,
+        err.stack,
+        req.id
+      )
+    );
 };
 
 module.exports = errorHandler;

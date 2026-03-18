@@ -105,11 +105,11 @@ module.exports = {
     const { q = null, sort } = query;
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
-    const cacheKey = `customer:paginated`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // const cacheKey = `customer:paginated`;
+    // const cached = await redis.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     try {
       const where = q
@@ -151,7 +151,7 @@ module.exports = {
           currentPage: page,
         },
       };
-      await redis.setEx(cacheKey, 300, JSON.stringify(result));
+      // await redis.setEx(cacheKey, 300, JSON.stringify(result));
 
       return result;
     } catch (error) {
