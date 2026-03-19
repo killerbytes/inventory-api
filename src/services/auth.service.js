@@ -1,4 +1,3 @@
-// services/auth.service.js
 const jwt = require("jsonwebtoken");
 const db = require("../models");
 const { AsyncLocalStorage } = require("async_hooks");
@@ -24,7 +23,7 @@ module.exports = {
 
     const refreshToken = jwt.sign(
       { id: user.id, type: "refresh" },
-      process.env.JWT_SECRET,
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
       {
         expiresIn: "7d",
       }
@@ -47,14 +46,28 @@ module.exports = {
 
   refreshAuth: async (refreshToken) => {
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+      );
+
       if (decoded.type !== "refresh") {
-        throw new Error("Invalid token type");
+        throw ApiError.unauthorized("Invalid token type");
       }
 
       const user = await User.scope("withRefreshToken").findByPk(decoded.id);
+
       if (!user || user.refreshToken !== refreshToken) {
-        throw new Error("Invalid refresh token");
+        if (user) {
+          logger.warn(
+            `Refresh token reuse detected for user ${user.id}. Revoking current token.`
+          );
+          user.refreshToken = null;
+          await user.save();
+        }
+        throw ApiError.unauthorized(
+          "Refresh token is invalid or has been reused"
+        );
       }
 
       const tokens = await module.exports.generateAuthTokens(user);
@@ -64,8 +77,10 @@ module.exports = {
 
       return tokens;
     } catch (error) {
-      logger.error("auth.service.refreshAuth error", JSON.stringify(error));
-      throw error;
+      if (error instanceof ApiError) throw error;
+
+      logger.error("auth.service.refreshAuth error", error.message);
+      throw ApiError.unauthorized("Token validation failed");
     }
   },
 
