@@ -62,69 +62,8 @@ module.exports = {
       if (!goodReceipt) {
         throw ApiError.notFound("Good Receipt not found");
       }
-      // const returnTransactions = await db.ReturnTransaction.findAll({
-      //   where: {
-      //     referenceId: id,
-      //     sourceType: "PURCHASE",
-      //   },
-      //   include: [
-      //     {
-      //       model: db.ReturnItem,
-      //       as: "returnItems",
-      //     },
-      //   ],
-      // });
 
-      // const allReturnItems = returnTransactions.flatMap((rt) =>
-      //   rt.returnItems.map((ri) => ({
-      //     returnTransactionId: rt.id,
-      //     combinationId: ri.combinationId,
-      //     quantity: ri.quantity,
-      //     reason: ri.reason,
-      //     date: rt.createdAt,
-      //     totalAmount: ri.totalAmount,
-      //   }))
-      // );
-      // let returnedTotalAmount = 0;
-      // const goodReceiptLines = goodReceipt.goodReceiptLines.map((item) => {
-      //   const returned = allReturnItems.filter(
-      //     (ri) => ri.combinationId === item.combinationId
-      //   );
-
-      //   const returns = returned.reduce(
-      //     (acc, x) => {
-      //       acc.quantity += Number(x.quantity);
-      //       acc.totalAmount += Number(x.totalAmount);
-      //       return acc;
-      //     },
-      //     {
-      //       quantity: 0,
-      //       totalAmount: 0,
-      //     }
-      //   );
-      //   returnedTotalAmount += Number(returns.totalAmount);
-      //   return {
-      //     ...item.dataValues,
-      //     returns: {
-      //       quantity: returns.quantity,
-      //       netQuantity: item.quantity - returns.quantity,
-      //       totalAmount: returns.totalAmount,
-      //       history: returned.map((r) => ({
-      //         quantity: r.quantity,
-      //         reason: r.reason,
-      //         date: r.date,
-      //       })),
-      //     },
-      //   };
-      // });
-
-      // const result = {
-      //   ...goodReceipt.dataValues,
-      //   // returnedTotalAmount,
-      //   // goodReceiptLines,
-      // };
-
-      await redis.setEx(cacheKey, 300, JSON.stringify(goodReceipt));
+      // await redis.setEx(cacheKey, 300, JSON.stringify(goodReceipt));
       return goodReceipt;
     } catch (error) {
       throw error;
