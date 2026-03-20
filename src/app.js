@@ -38,11 +38,7 @@ app.use(compression());
 
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL,
-      "http://192.168.0.69:5173",
-      "http://localhost:5173",
-    ],
+    origin: [process.env.CLIENT_URL],
     credentials: true,
   })
 ); // Enable CORS for all routes

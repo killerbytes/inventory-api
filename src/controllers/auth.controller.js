@@ -6,7 +6,7 @@ const env = process.env.NODE_ENV || "development";
 const cookieOptions = {
   httpOnly: true,
   secure: env !== "development",
-  sameSite: env !== "development" ? "None" : "lax",
+  sameSite: env !== "development" ? "none" : "lax",
   path: "/",
 };
 
@@ -40,6 +40,7 @@ const authController = {
       const { accessToken, refreshToken } = await authService.refreshAuth(
         req.cookies.refreshToken
       );
+
       res.cookie("refreshToken", refreshToken, cookieOptions);
       res.status(200).json({ accessToken });
     } catch (error) {
@@ -49,8 +50,8 @@ const authController = {
 
   logout: async (req, res, next) => {
     try {
-      const { refreshToken } = req.body;
-      await authService.logout(refreshToken);
+      await authService.logout(req.cookies.refreshToken);
+      res.clearCookie("refreshToken", cookieOptions);
       res.status(204).send();
     } catch (error) {
       next(error);

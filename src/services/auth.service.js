@@ -90,6 +90,8 @@ module.exports = {
       where: { refreshToken },
     });
     if (user) {
+      const cacheKey = `user:${user.id}`;
+      await redis.del(cacheKey);
       user.refreshToken = null;
       await user.save();
     }
