@@ -27,18 +27,10 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err instanceof ApiError) {
+    err.reqId = req.id;
     return res
       .status(err.statusCode)
-      .json(
-        ApiError.notFound(
-          err.message,
-          err.statusCode,
-          [],
-          null,
-          err.stack,
-          req.id
-        )
-      );
+      .json(err);
   }
 
   return res
