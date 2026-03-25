@@ -63,6 +63,144 @@ module.exports = {
     return productCombination;
   },
 
+  async create(payload) {
+    const { error } = productCombinationSchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw error;
+    }
+    const product = await getProduct(payload.productId);
+
+    validateCombinations([payload], product);
+
+    await validateVariants(payload, product);
+
+    const transaction = await sequelize.transaction();
+    try {
+      const variantValueIds = await getVariantValueIds(
+        product.id,
+        payload.values,
+        transaction
+      );
+
+      const combination = await ProductCombination.create(
+        {
+          ...payload,
+          name: getMappedProductComboName(product, payload.values),
+          sku: getSKU(
+            product.name,
+            product.categoryId,
+            payload.unit,
+            payload.values
+          ),
+        },
+        { transaction }
+      );
+      await combination.setValues(variantValueIds, { transaction });
+
+      await Inventory.findOrCreate({
+        where: { combinationId: combination.id },
+        defaults: {
+          combinationId: combination.id,
+          quantity: 0,
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      return combination;
+    } catch (error) {
+      console.log(error);
+
+      await transaction.rollback();
+      throw error;
+    }
+  },
+
+  async update(payload) {
+    const { error } = productCombinationSchema.validate(payload, {
+      abortEarly: false,
+    });
+    if (error) {
+      throw error;
+    }
+
+    const product = await getProduct(payload.productId);
+    // const seen = new Map();
+
+    // for (const combo of product.combinations.filter(
+    //   (i) => i.id !== payload.id
+    // )) {
+    //   const key = getSKU(
+    //     product.name,
+    //     product.categoryId,
+    //     combo.unit,
+    //     combo.values
+    //   );
+    //   seen.set(key, combo);
+    // }
+
+    validateCombinations([payload], product);
+
+    const transaction = await sequelize.transaction();
+    try {
+      const combination = await ProductCombination.findOne({
+        where: { id: payload.id, productId: payload.productId },
+        transaction,
+      });
+
+      if (!combination) {
+        throw new Error(`Combination with ID ${payload.id} not found`);
+      }
+
+      if (normalize(payload.price) !== normalize(combination.price)) {
+        // Price changed, log price history
+        await db.PriceHistory.create(
+          {
+            productId: payload.productId,
+            combinationId: combination.id,
+            fromPrice: combination.price,
+            toPrice: normalize(payload.price),
+            changedBy: (await authService.getCurrent()).id,
+            changedAt: new Date(),
+          },
+          { transaction }
+        );
+      }
+
+      await combination.update(
+        {
+          ...payload,
+          name: getMappedProductComboName(product, payload.values),
+          sku: getSKU(
+            product.name,
+            product.categoryId,
+            payload.unit,
+            payload.values
+          ),
+        },
+        { transaction }
+      );
+
+      const variantValueIds = await getVariantValueIds(
+        product.id,
+        payload.values,
+        transaction
+      );
+
+      await combination.setValues(variantValueIds, { transaction });
+
+      await transaction.commit();
+      return combination;
+    } catch (error) {
+      console.log(error);
+
+      await transaction.rollback();
+      throw error;
+    }
+  },
+
   async getByProductId(id) {
     const combinations = await ProductCombination.findAll({
       where: { productId: id },
@@ -80,7 +218,7 @@ module.exports = {
       // order: [[{ model: VariantValue, as: "values" }, "id", "ASC"]],
       order: [
         ["name", "ASC"],
-        ["isBreakPackOfId", "DESC"],
+        ["isBreakPackOfId", "ASC NULLS FIRST"],
       ],
     });
 
@@ -129,12 +267,7 @@ module.exports = {
 
     if (!product) throw new Error("Product not found");
 
-    const issue = validateCombinations(payload, product);
-
-    if (issue.duplicates.length > 0 || issue.conflicts.length > 0) {
-      console.log(123, issue.duplicates, issue.conflicts);
-      throw ApiError.badRequest("Combinations are invalid");
-    }
+    validateCombinations(payload.combinations, product);
 
     const transaction = await sequelize.transaction();
     const { combinations } = payload;
@@ -339,42 +472,59 @@ module.exports = {
     }
   },
   async delete(id) {
-    throw new Error("Method not implemented.");
     const transaction = await sequelize.transaction();
 
     try {
-      const product = await Product.findByPk(id, { transaction });
-      if (!product) throw new Error("Product not found");
-
-      const combinations = await ProductCombination.findAll({
-        where: { productId: id },
-        transaction,
+      const combinations = await ProductCombination.findByPk(id, {
+        include: [
+          {
+            model: Inventory,
+            as: "inventory",
+          },
+        ],
       });
-
-      for (const combo of combinations) {
-        await Inventory.destroy({
-          where: { combinationId: combo.id },
-          transaction,
-        });
-        await CombinationValue.destroy({
-          where: { combinationId: combo.id },
-          transaction,
-        });
+      if (combinations.inventory.quantity > 0) {
+        throw new Error("Combination has inventory");
       }
 
-      await ProductCombination.destroy({
-        where: { productId: id },
-        transaction,
+      const breakPack = await ProductCombination.findAll({
+        where: {
+          isBreakPackOfId: id,
+        },
       });
-      await VariantValue.destroy({
-        where: {},
-        transaction,
-        include: [{ model: VariantType, where: { productId: id } }],
-      });
-      await VariantType.destroy({ where: { productId: id }, transaction });
-      await product.destroy({ transaction });
 
+      if (breakPack.length > 0) {
+        throw new Error(
+          "Combination has break pack. Please remove break pack before deleting this combination"
+        );
+      }
+
+      await combinations.destroy({ transaction });
       await transaction.commit();
+      // for (const combo of combinations) {
+      //   await Inventory.destroy({
+      //     where: { combinationId: combo.id },
+      //     transaction,
+      //   });
+      //   await CombinationValue.destroy({
+      //     where: { combinationId: combo.id },
+      //     transaction,
+      //   });
+      // }
+
+      // await ProductCombination.destroy({
+      //   where: { productId: id },
+      //   transaction,
+      // });
+      // await VariantValue.destroy({
+      //   where: {},
+      //   transaction,
+      //   include: [{ model: VariantType, where: { productId: id } }],
+      // });
+      // await VariantType.destroy({ where: { productId: id }, transaction });
+      // await product.destroy({ transaction });
+
+      // await transaction.commit();
       return true;
     } catch (err) {
       await transaction.rollback();
@@ -768,44 +918,178 @@ LIMIT :limit;
   },
 };
 
-function validateCombinations(payload, product) {
+function validateCombinations(combinations, product) {
   const seen = new Map();
-  const duplicates = [];
-  const conflicts = [];
+  const incomingIds = new Set(combinations.map((c) => c.id).filter(Boolean));
 
-  payload.combinations.forEach((combo) => {
-    // const key = combo.values
-    //   .map((val) => `${val.variantTypeId}:${val.value}`)
-    //   .sort()
-    //   .join("|");
-    const key = getSKU(
+  if (Array.isArray(product?.combinations)) {
+    for (const combo of product.combinations) {
+      if (!incomingIds.has(combo.id)) {
+        const computedSKU = getSKU(
+          product.name,
+          product.categoryId,
+          combo.unit,
+          combo.values
+        );
+        seen.set(computedSKU, combo);
+      }
+    }
+  }
+
+  for (const combo of combinations) {
+    const computedSKU = getSKU(
       product.name,
       product.categoryId,
       combo.unit,
       combo.values
     );
 
-    if (seen.has(key)) {
-      const existing = seen.get(key);
-      // Check if SKU is different → conflict
-      if (
-        existing.sku !==
-        getSKU(product.name, product.categoryId, combo.unit, combo.values)
-      ) {
-        conflicts.push({ key, sku1: existing.sku, sku2: combo.sku });
-      } else {
-        duplicates.push({ key, sku: combo.sku });
-      }
-    } else {
-      seen.set(key, combo);
-    }
-  });
+    if (seen.has(computedSKU)) {
+      const existing = seen.get(computedSKU);
 
-  return { duplicates, conflicts };
+      if (existing.sku && existing.sku !== computedSKU) {
+        throw ApiError.badRequest(`Conflict SKU ${computedSKU}`);
+      } else {
+        throw ApiError.badRequest(`Duplicate SKU ${computedSKU}`);
+      }
+    }
+
+    seen.set(computedSKU, { ...combo, sku: computedSKU });
+  }
 }
 
 function buildTsQuery(search) {
   const words = search.trim().toLowerCase().split(/\s+/);
 
   return words.map((word) => `${word}:*`).join(" & ");
+}
+
+async function getVariantValueIds(productId, values, transaction) {
+  const variantValueMap = {};
+  const variants = await VariantType.findAll({
+    where: { productId },
+    include: [
+      {
+        model: VariantValue,
+        as: "values",
+      },
+    ],
+  });
+
+  for (const variant of variants) {
+    const [variantType] = await VariantType.findOrCreate({
+      where: { name: variant.name, productId },
+      defaults: { name: variant.name, productId },
+      transaction,
+    });
+
+    for (const valueName of variant.values) {
+      const [variantValue] = await VariantValue.findOrCreate({
+        where: {
+          value: valueName.value,
+          variantTypeId: variantType.id,
+        },
+        defaults: {
+          value: valueName.value,
+          variantTypeId: variantType.id,
+        },
+        transaction,
+      });
+
+      variantValueMap[`${variant.id}:${valueName.value}`] = variantValue;
+    }
+  }
+
+  const variantValueIds = values
+    .map(({ variantTypeId, value }) => {
+      return variantValueMap[`${variantTypeId}:${value}`]?.id;
+    })
+    .filter(Boolean);
+
+  if (variantValueIds.length !== Object.entries(values).length) {
+    throw new Error("Some variant values are invalid or missing");
+  }
+
+  return variantValueIds;
+}
+
+function getProduct(productId) {
+  const product = Product.findByPk(productId, {
+    include: [
+      {
+        model: ProductCombination,
+        as: "combinations",
+        include: [
+          {
+            model: VariantValue,
+            as: "values",
+            through: { attributes: [] },
+          },
+        ],
+      },
+      {
+        model: VariantType,
+        as: "variants",
+        include: [{ model: VariantValue, as: "values" }],
+      },
+    ],
+    order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
+  });
+
+  if (!product) throw new Error("Product not found");
+  return product;
+}
+
+async function validateVariants(payload, product) {
+  if (payload.isBreakPackOfId) {
+    const parentCombination = await ProductCombination.findByPk(
+      payload.isBreakPackOfId,
+      {
+        include: [
+          {
+            model: VariantValue,
+            as: "values",
+            through: { attributes: [] },
+          },
+        ],
+      }
+    );
+    if (!parentCombination) {
+      throw new Error("Parent combination not found");
+    }
+    if (parentCombination.productId !== product.id) {
+      throw new Error("Parent combination is not of the same product");
+    }
+
+    if (product.variants.length > 1) {
+      const isPrimary = await product.variants.find((v) => v.isBreakpackFilter);
+      if (!isPrimary) {
+        throw new Error("Product must have a primary variant");
+      }
+      const primaryofParent = parentCombination.values.find(
+        (v) => v.variantTypeId === isPrimary.id
+      );
+      const primaryofChild = payload.values.find(
+        (v) => v.variantTypeId === isPrimary.id
+      );
+      if (primaryofParent.id !== primaryofChild.id) {
+        throw new Error(
+          "Parent combination values are not the same as child combination values"
+        );
+      }
+      const parentValue = parentCombination.values.map((v) => v.id);
+      const childValue = payload.values.map((v) => v.id);
+      if (parentValue.sort().join(",") === childValue.sort().join(",")) {
+        throw new Error(
+          "Parent combination values are the same as child combination values"
+        );
+      }
+    } else {
+      if (parentCombination.values[0].id !== payload.values[0].id) {
+        throw new Error(
+          "Parent combination values are not the same as child combination values"
+        );
+      }
+    }
+  }
 }

@@ -12,6 +12,8 @@ router.get("/list", combinationController.list);
 router.get("/:id", combinationController.get);
 router.get("/product/:id", combinationController.getByProductId);
 router.patch("/product/:id", combinationController.updateByProductId);
+router.patch("/", combinationController.update);
+router.post("/", combinationController.create);
 router.delete("/:id", combinationController.delete);
 
 module.exports = router;
