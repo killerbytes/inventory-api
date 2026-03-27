@@ -38,7 +38,7 @@ app.use(compression());
 
 app.use(
   cors({
-    origin: [process.env.CLIENT_URL],
+    origin: env === "development" ? true : [process.env.CLIENT_URL],
     credentials: true,
   })
 ); // Enable CORS for all routes

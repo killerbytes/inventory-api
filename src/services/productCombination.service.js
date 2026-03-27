@@ -74,7 +74,9 @@ module.exports = {
 
     validateCombinations([payload], product);
 
-    await validateVariants(payload, product);
+    if (payload.isBreakPackOfId) {
+      await validateVariants(payload, product);
+    }
 
     const transaction = await sequelize.transaction();
     try {
@@ -127,19 +129,6 @@ module.exports = {
     }
 
     const product = await getProduct(payload.productId);
-    // const seen = new Map();
-
-    // for (const combo of product.combinations.filter(
-    //   (i) => i.id !== payload.id
-    // )) {
-    //   const key = getSKU(
-    //     product.name,
-    //     product.categoryId,
-    //     combo.unit,
-    //     combo.values
-    //   );
-    //   seen.set(key, combo);
-    // }
 
     validateCombinations([payload], product);
 
@@ -1074,20 +1063,25 @@ async function validateVariants(payload, product) {
       );
       if (primaryofParent.id !== primaryofChild.id) {
         throw new Error(
-          "Parent combination values are not the same as child combination values"
+          "Parent combination values are not the same as break pack values"
         );
       }
       const parentValue = parentCombination.values.map((v) => v.id);
       const childValue = payload.values.map((v) => v.id);
       if (parentValue.sort().join(",") === childValue.sort().join(",")) {
         throw new Error(
-          "Parent combination values are the same as child combination values"
+          "Parent combination values are not the same as break pack values"
         );
       }
     } else {
-      if (parentCombination.values[0].id !== payload.values[0].id) {
+      const hasValues =
+        parentCombination.values.length > 1 && payload.values.length > 1;
+      if (
+        hasValues &&
+        parentCombination.values[0].id !== payload.values[0].id
+      ) {
         throw new Error(
-          "Parent combination values are not the same as child combination values"
+          "Parent combination values are not the same as break pack values"
         );
       }
     }
