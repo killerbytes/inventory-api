@@ -11,6 +11,23 @@ const productCombinationController = {
       next(error);
     }
   },
+  async create(req, res, next) {
+    try {
+      const result = await productCombinationService.create(req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async update(req, res, next) {
+    try {
+      const result = await productCombinationService.update(req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
   async list(req, res, next) {
     try {
       const result = await productCombinationService.list();

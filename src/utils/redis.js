@@ -4,7 +4,7 @@ let client;
 
 const isMockEnv =
   process.env.NODE_ENV === "test" ||
-  process.env.NODE_ENV === "staging" ||
+  process.env.NODE_ENV === "development" ||
   process.env.NODE_ENV === undefined;
 
 if (isMockEnv) {

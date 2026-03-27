@@ -676,12 +676,12 @@ function getDefaultIncludes() {
 function getDefaultOrder() {
   return [
     ["name", "ASC"],
-    [{ model: VariantType, as: "variants" }, "name", "ASC"],
+    [{ model: VariantType, as: "variants" }, "id", "ASC"],
     [{ model: ProductCombination, as: "combinations" }, "name", "ASC"],
     [
       { model: ProductCombination, as: "combinations" },
       { model: VariantValue, as: "values" },
-      "id",
+      "variantTypeId",
       "ASC",
     ],
   ];
