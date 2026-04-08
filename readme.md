@@ -28,3 +28,7 @@ psql -U postgres -h localhost -d inventory_db
 ALTER TABLE "InventoryMovements" DROP CONSTRAINT "InventoryMovements_referenceId_fkey";
 
 docker-compose up -d
+
+npx sequelize-cli db:drop && npx sequelize-cli db:create && npm run restore
+
+ngrok http --domain=realizable-pennie-wired.ngrok-free.dev 8080

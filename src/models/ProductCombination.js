@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
       productId: { type: DataTypes.INTEGER, allowNull: false },
       name: { type: DataTypes.STRING, allowNull: false },
       sku: { type: DataTypes.STRING }, // no unique here anymore
+      barcode: { type: DataTypes.STRING },
       unit: { type: DataTypes.STRING, allowNull: false },
       conversionFactor: DataTypes.DECIMAL(18, 6),
       price: DataTypes.DECIMAL(18, 6),
@@ -25,6 +26,15 @@ module.exports = (sequelize, DataTypes) => {
           fields: ["sku"],
           where: {
             deletedAt: null, // enforce uniqueness only for active rows
+          },
+        },
+        {
+          name: "unique_active_barcode",
+          unique: true,
+          fields: ["barcode"],
+          where: {
+            deletedAt: null, // Only enforce uniqueness for non-deleted records
+            barcode: { [sequelize.Sequid ? "$ne" : "Op.ne"]: null }, // Ignore nulls if your DB allows multiple nulls
           },
         },
       ],
@@ -73,6 +83,17 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
+  ProductCombination.addHook("afterCreate", async (combo, options) => {
+    const { getBarcode } = require("../utils/string");
+    const generatedBarcode = getBarcode(combo.id);
+    await combo.update(
+      { barcode: generatedBarcode },
+      {
+        transaction: options.transaction,
+        hooks: false,
+      }
+    );
+  });
   // models/productcombination.js (add after associate)
   ProductCombination.addHook("beforeDestroy", async (combo, options) => {
     const sequelize = combo.sequelize || require("../models").sequelize;

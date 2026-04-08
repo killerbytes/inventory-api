@@ -10,6 +10,15 @@ const productController = {
       next(error);
     }
   },
+  async getProductsByCategoryId(req, res, next) {
+    const { id } = req.params;
+    try {
+      const products = await productService.getProductsByCategoryId(id);
+      return res.status(200).json(products);
+    } catch (error) {
+      next(error);
+    }
+  },
   async create(req, res, next) {
     try {
       const result = await productService.create(req.body);

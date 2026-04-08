@@ -59,6 +59,26 @@ const productCombinationController = {
     }
   },
 
+  async getByCategoryId(req, res, next) {
+    const { categoryId } = req.params;
+    try {
+      const result =
+        await productCombinationService.getByCategoryId(categoryId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+  async getByBarcode(req, res, next) {
+    const { barcode } = req.params;
+    try {
+      const result = await productCombinationService.getByBarcode(barcode);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async updateByProductId(req, res, next) {
     const { id } = req.params;
     try {

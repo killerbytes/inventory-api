@@ -7,6 +7,7 @@ router.post("/:id/convertToUnit", productsController.cloneToUnit);
 router.get("/all", productsController.getAllProducts);
 router.get("/list", productsController.list);
 router.get("/sku/:sku", productsController.getAllBySku);
+router.get("/category/:id", productsController.getProductsByCategoryId);
 router.get("/:id", productsController.get);
 router.get("/", productsController.getPaginated);
 router.post("/", productsController.create);
