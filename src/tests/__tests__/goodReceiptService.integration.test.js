@@ -121,7 +121,7 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt2.goodReceiptLines[0].variantSnapshot).toMatchObject({
       Colors: "Red",
     });
-    expect(goodReceipt2.goodReceiptLines[0].skuSnapshot).toBe("01|SHO|BOX|RED");
+    expect(goodReceipt2.goodReceiptLines[0].skuSnapshot).toBe("01-SHO-BOX-RED");
 
     expect(goodReceipt2.goodReceiptStatusHistory.length).toBe(2);
     expect(goodReceipt2.goodReceiptStatusHistory[0].status).toBe("RECEIVED");

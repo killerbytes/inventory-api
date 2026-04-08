@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
           fields: ["barcode"],
           where: {
             deletedAt: null, // Only enforce uniqueness for non-deleted records
-            barcode: { [sequelize.Sequid ? "$ne" : "Op.ne"]: null }, // Ignore nulls if your DB allows multiple nulls
+            barcode: { [require("sequelize").Op.ne]: null }, // Ignore nulls if your DB allows multiple nulls
           },
         },
       ],
