@@ -10,13 +10,12 @@ const {
   loginUser,
   createGoodReceipt,
 } = require("../utils");
-const { getTotalAmount } = require("../../utils/compute");
 const {
   stockAdjustment,
 } = require("../../services/productCombination.service");
 
 beforeAll(async () => {
-  await setupDatabase(); // run migrations / sync once
+  await setupDatabase();
 });
 
 beforeEach(async () => {
@@ -32,27 +31,41 @@ beforeEach(async () => {
   await loginUser();
 });
 
+const defaultReceiptLines = () => [
+  { combinationId: 1, quantity: 10, purchasePrice: 100 },
+  { combinationId: 2, quantity: 20, discount: 10, purchasePrice: 100 },
+];
+
+const createMockReceipt = async (lines = null, updatePayload = null) => {
+  const payload = {
+    supplierId: 1,
+    receiptDate: new Date(),
+    referenceNo: "Test Notes",
+    internalNotes: "Test Internal Notes",
+    goodReceiptLines: lines || defaultReceiptLines(),
+  };
+  const gr = await goodReceiptService.create(payload);
+
+  if (updatePayload) {
+    if (typeof updatePayload === "string") {
+      await goodReceiptService.update(gr.id, {
+        status: updatePayload,
+        goodReceiptLines: payload.goodReceiptLines,
+      });
+    } else {
+      await goodReceiptService.update(gr.id, {
+        status: updatePayload.status || "RECEIVED",
+        goodReceiptLines:
+          updatePayload.goodReceiptLines || payload.goodReceiptLines,
+      });
+    }
+  }
+  return gr;
+};
+
 describe("Good Receipt Service (Integration)", () => {
   it("should create a good receipt", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt();
     const goodReceipt = await goodReceiptService.get(1);
 
     expect(goodReceipt.supplierId).toBe(1);
@@ -68,40 +81,13 @@ describe("Good Receipt Service (Integration)", () => {
   });
 
   it("should update a good receipt", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt();
 
     await goodReceiptService.update(1, {
       status: "RECEIVED",
       goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 200,
-        },
+        { combinationId: 1, quantity: 11, purchasePrice: 100 },
+        { combinationId: 2, quantity: 20, discount: 10, purchasePrice: 200 },
       ],
     });
 
@@ -113,7 +99,6 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt2.goodReceiptLines.length).toBe(2);
     expect(goodReceipt2.goodReceiptLines[0].quantity).toBe(11);
     expect(goodReceipt2.goodReceiptLines[0].nameSnapshot).toBe("Shovel - Red");
-
     expect(goodReceipt2.goodReceiptLines[0].categorySnapshot.name).toBe(
       "Tools"
     );
@@ -122,7 +107,6 @@ describe("Good Receipt Service (Integration)", () => {
       Colors: "Red",
     });
     expect(goodReceipt2.goodReceiptLines[0].skuSnapshot).toBe("01-SHO-BOX-RED");
-
     expect(goodReceipt2.goodReceiptStatusHistory.length).toBe(2);
     expect(goodReceipt2.goodReceiptStatusHistory[0].status).toBe("RECEIVED");
     expect(goodReceipt2.goodReceiptStatusHistory[0].user.username).toBe(
@@ -131,40 +115,14 @@ describe("Good Receipt Service (Integration)", () => {
     expect(inventory.length).toBe(2);
     expect(inventory[0].quantity).toBe(11);
     expect(inventory[1].quantity).toBe(20);
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
 
+    // Update second receipt
+    await createMockReceipt();
     await goodReceiptService.update(2, {
       status: "RECEIVED",
       goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
+        { combinationId: 1, quantity: 11, purchasePrice: 100 },
+        { combinationId: 2, quantity: 20, discount: 10, purchasePrice: 100 },
       ],
     });
     const inventory2 = await sequelize.models.Inventory.findAll();
@@ -177,27 +135,9 @@ describe("Good Receipt Service (Integration)", () => {
   it("should complete a good receipt", async () => {
     //complete status is updated by invoice creation
   });
-  it("should void a good receipt", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
 
+  it("should void a good receipt", async () => {
+    await createMockReceipt();
     await goodReceiptService.delete(1);
     const goodReceipt = await goodReceiptService.get(1);
 
@@ -206,45 +146,10 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipt.goodReceiptStatusHistory[0].status).toBe("VOID");
     expect(goodReceipt.goodReceiptStatusHistory[0].user.username).toBe("alice");
   });
+
   it("should get a paginated list of good receipts", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt();
+    await createMockReceipt();
 
     const goodReceipts = await goodReceiptService.getPaginated({
       page: 1,
@@ -256,6 +161,7 @@ describe("Good Receipt Service (Integration)", () => {
     expect(goodReceipts.meta.totalPages).toBe(1);
     expect(goodReceipts.meta.currentPage).toBe(1);
   });
+
   it("should get a list of good receipts by supplier", async () => {
     await createSupplier(1);
     await createGoodReceipt(0);
@@ -266,12 +172,13 @@ describe("Good Receipt Service (Integration)", () => {
     const goodReceipts = await goodReceiptService.getBySupplierId(1, {
       status: "DRAFT",
     });
-
     expect(goodReceipts.data.length).toBe(3);
+
     const goodReceipts2 = await goodReceiptService.getBySupplierId(2, {
       status: "DRAFT",
     });
     expect(goodReceipts2.data.length).toBe(1);
+
     const goodReceipts3 = await goodReceiptService.getBySupplierId(2, {
       status: "POSTED",
     });
@@ -279,154 +186,44 @@ describe("Good Receipt Service (Integration)", () => {
   });
 
   it("should not allow return if status is DRAFT", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
-
+    await createMockReceipt();
     const returns = [
-      {
-        combinationId: 1,
-        quantity: 11,
-      },
-      {
-        combinationId: 2,
-        quantity: 20,
-      },
+      { combinationId: 1, quantity: 11 },
+      { combinationId: 2, quantity: 20 },
     ];
-    try {
-      const result = await goodReceiptService.supplierReturns(
-        1,
-        returns,
-        "reason"
-      );
-      throw new Error(
-        "Expected SequelizeUniqueConstraintError but no error was thrown"
-      );
-    } catch (error) {
-      console.log("Unique error:", {
-        name: error.name,
-        message: error.message,
-        fields: error.fields,
-        errors: error.errors?.map((e) => e.message),
-      });
-      expect(error.name).toBe("Error");
-      expect(error.message).toBe("Good Receipt is not in a valid state: DRAFT");
-    }
+
+    await expect(
+      goodReceiptService.supplierReturns(1, returns, "reason")
+    ).rejects.toThrow("Good Receipt is not in a valid state: DRAFT");
   });
 
   it("should not allow return if status is VOID", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt();
     await goodReceiptService.delete(1);
 
     const returns = [
-      {
-        combinationId: 1,
-        quantity: 11,
-      },
-      {
-        combinationId: 2,
-        quantity: 20,
-      },
+      { combinationId: 1, quantity: 11 },
+      { combinationId: 2, quantity: 20 },
     ];
-    try {
-      await goodReceiptService.supplierReturns(1, returns, "reason");
-      throw new Error(
-        "Expected SequelizeUniqueConstraintError but no error was thrown"
-      );
-    } catch (error) {
-      console.log("Unique error:", {
-        name: error.name,
-        message: error.message,
-        fields: error.fields,
-        errors: error.errors?.map((e) => e.message),
-      });
-      expect(error.name).toBe("Error");
-      expect(error.message).toBe("Good Receipt is not in a valid state: VOID");
-    }
+
+    await expect(
+      goodReceiptService.supplierReturns(1, returns, "reason")
+    ).rejects.toThrow("Good Receipt is not in a valid state: VOID");
   });
 
   it("should return to supplier", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
-    await goodReceiptService.update(1, {
+    await createMockReceipt(null, {
       status: "RECEIVED",
       goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 11,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          discount: 10,
-          purchasePrice: 100,
-        },
+        { combinationId: 1, quantity: 11, purchasePrice: 100 },
+        { combinationId: 2, quantity: 20, discount: 10, purchasePrice: 100 },
       ],
     });
 
     const returns = [
-      {
-        combinationId: 1,
-        quantity: 11,
-      },
-      {
-        combinationId: 2,
-        quantity: 20,
-      },
+      { combinationId: 1, quantity: 11 },
+      { combinationId: 2, quantity: 20 },
     ];
-
     const result = await goodReceiptService.supplierReturns(
       1,
       returns,
@@ -476,39 +273,14 @@ describe("Good Receipt Service (Integration)", () => {
   });
 
   it("should return to supplier twice", async () => {
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
-    await goodReceiptService.update(1, {
-      status: "RECEIVED",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt(
+      [{ combinationId: 1, quantity: 10, purchasePrice: 100 }],
+      "RECEIVED"
+    );
 
     const returns = [
-      {
-        combinationId: 1,
-        quantity: 1,
-      },
-      {
-        combinationId: 2,
-        quantity: 0,
-      },
+      { combinationId: 1, quantity: 1 },
+      { combinationId: 2, quantity: 0 },
     ];
 
     await goodReceiptService.supplierReturns(1, returns, "reason");
@@ -531,6 +303,7 @@ describe("Good Receipt Service (Integration)", () => {
     expect(returnTransaction[1].type).toBe("SUPPLIER_RETURN");
     expect(returnTransaction[1].totalReturnAmount).toBe(100);
     expect(returnTransaction[1].paymentDifference).toBe(-100);
+
     expect(returnItems.length).toBe(2);
     expect(returnItems[0].id).toBe(1);
     expect(returnItems[0].returnTransactionId).toBe(1);
@@ -539,6 +312,7 @@ describe("Good Receipt Service (Integration)", () => {
     expect(returnItems[0].reason).toBe("reason");
     expect(returnItems[0].combinationId).toBe(1);
     expect(returnItems[0].totalAmount).toBe(100);
+
     expect(returnItems[1].id).toBe(2);
     expect(returnItems[1].returnTransactionId).toBe(2);
     expect(returnItems[1].quantity).toBe(1);
@@ -546,8 +320,8 @@ describe("Good Receipt Service (Integration)", () => {
     expect(returnItems[1].reason).toBe("reason");
     expect(returnItems[1].combinationId).toBe(1);
     expect(returnItems[1].totalAmount).toBe(100);
-    const inv = await sequelize.models.Inventory.findAll();
 
+    const inv = await sequelize.models.Inventory.findAll();
     expect(inv[0].quantity).toBe(8);
   });
 
@@ -558,63 +332,106 @@ describe("Good Receipt Service (Integration)", () => {
       reason: "EXPIRED",
       notes: "test",
     });
-    await goodReceiptService.create({
-      supplierId: 1,
-      receiptDate: new Date(),
-      referenceNo: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
-    await goodReceiptService.update(1, {
-      status: "RECEIVED",
-      goodReceiptLines: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          purchasePrice: 100,
-        },
-      ],
-    });
+    await createMockReceipt(
+      [{ combinationId: 1, quantity: 10, purchasePrice: 100 }],
+      "RECEIVED"
+    );
 
-    const returns = [
-      {
-        combinationId: 1,
-        quantity: 2,
-      },
-    ];
+    const returns = [{ combinationId: 1, quantity: 2 }];
 
-    try {
-      await goodReceiptService.supplierReturns(1, returns, "reason");
-      await goodReceiptService.supplierReturns(1, returns, "reason");
-      await goodReceiptService.supplierReturns(
+    await goodReceiptService.supplierReturns(1, returns, "reason");
+    await goodReceiptService.supplierReturns(1, returns, "reason");
+
+    await expect(
+      goodReceiptService.supplierReturns(
         1,
-        [
-          {
-            combinationId: 1,
-            quantity: 10,
-          },
-        ],
+        [{ combinationId: 1, quantity: 10 }],
         "reason"
-      );
-      throw new Error(
-        "Expected SequelizeUniqueConstraintError but no error was thrown"
-      );
-    } catch (error) {
-      console.log("Unique error:", {
-        name: error.name,
-        message: error.message,
-        fields: error.fields,
-        errors: error.errors?.map((e) => e.message),
-      });
+      )
+    ).rejects.toThrow("Return quantity exceeds order quantity");
+  });
 
-      expect(error.name).toBe("Error");
-      expect(error.message).toBe("Return quantity exceeds order quantity");
-    }
+  it("should get Good Receipt with its Return history", async () => {
+    await createMockReceipt(
+      [{ combinationId: 1, quantity: 10, purchasePrice: 100 }],
+      "RECEIVED"
+    );
+    await goodReceiptService.supplierReturns(
+      1,
+      [{ combinationId: 1, quantity: 2 }],
+      "Defective"
+    );
+
+    const result = await goodReceiptService.getGoodReceiptWithReturns(1);
+
+    expect(result.goodReceiptId).toBe(1);
+    expect(result.items.length).toBe(1);
+    expect(result.items[0].receivedQty).toBe(10);
+    expect(result.items[0].returnedQty).toBe(2);
+    expect(result.items[0].netQty).toBe(8);
+    expect(result.items[0].returnHistory.length).toBe(1);
+    expect(result.items[0].returnHistory[0].qty).toBe(2);
+    expect(result.items[0].returnHistory[0].reason).toBe("Defective");
+  });
+
+  it("should get previous prices by product combination list", async () => {
+    await createMockReceipt([
+      { combinationId: 1, quantity: 5, purchasePrice: 200 },
+    ]);
+
+    const result = await goodReceiptService.getByProductCombination([1]);
+    expect(result.length).toBe(1);
+    expect(result[0].comboId).toBe(1);
+    expect(Number(result[0].purchasePrice)).toBe(200);
+    expect(Number(result[0].unitPrice)).toBe(200);
+  });
+
+  it("should update order lines of a DRAFT good receipt", async () => {
+    await createMockReceipt([
+      { combinationId: 1, quantity: 10, purchasePrice: 100 },
+    ]);
+
+    await goodReceiptService.update(1, {
+      status: "DRAFT",
+      goodReceiptLines: [
+        { combinationId: 1, quantity: 15, purchasePrice: 100 },
+      ],
+    });
+
+    const gr = await goodReceiptService.get(1);
+    expect(gr.status).toBe("DRAFT");
+    expect(gr.goodReceiptLines[0].quantity).toBe(15);
+  });
+
+  it("should throw error when transitioning from invalid statuses", async () => {
+    await createMockReceipt(
+      [{ combinationId: 1, quantity: 10, purchasePrice: 100 }],
+      "RECEIVED"
+    );
+
+    await expect(
+      goodReceiptService.update(1, {
+        status: "DRAFT",
+        goodReceiptLines: [
+          { combinationId: 1, quantity: 10, purchasePrice: 100 },
+        ],
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should throw error when deleting a good receipt that is not DRAFT", async () => {
+    await createMockReceipt(
+      [{ combinationId: 1, quantity: 10, purchasePrice: 100 }],
+      "RECEIVED"
+    );
+    await expect(goodReceiptService.delete(1)).rejects.toThrow(
+      "Good Receipt is not in a valid state"
+    );
+  });
+
+  it("should throw an error for a non-existent good receipt", async () => {
+    await expect(goodReceiptService.get(9999)).rejects.toThrow(
+      "Good Receipt not found"
+    );
   });
 });
