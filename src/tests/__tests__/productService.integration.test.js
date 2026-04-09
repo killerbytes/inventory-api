@@ -59,9 +59,9 @@ describe("Product Service (Integration)", () => {
     expect(updated.baseUnit).toBe("BOX");
     expect(productCombination.length).toBe(2);
     expect(productCombination[0].name).toBe("Wood Shovel - Red");
-    expect(productCombination[0].sku).toBe("01|WOO_SHO|BOX|RED");
+    expect(productCombination[0].sku).toBe("01-WOOSHO-BOX-RED");
     expect(productCombination[1].name).toBe("Wood Shovel - Red");
-    expect(productCombination[1].sku).toBe("01|WOO_SHO|PCS|RED");
+    expect(productCombination[1].sku).toBe("01-WOOSHO-PCS-RED");
   });
 
   it("should list all products", async () => {
@@ -114,7 +114,7 @@ describe("Product Service (Integration)", () => {
   it("should fetch all products by sku", async () => {
     await productService.create(products[0]);
     await productService.create(products[1]);
-    const prods = await productService.getAllBySku("01|SHO");
+    const prods = await productService.getAllBySku("01-SHO");
     expect(prods.length).toBe(1);
     expect(prods[0].name).toBe(products[0].name);
   });

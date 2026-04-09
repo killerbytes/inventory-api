@@ -32,22 +32,26 @@ const {
 module.exports = {
   async get(id) {
     const productCombination = await ProductCombination.findByPk(id, {
-      include: [
-        {
-          model: VariantValue,
-          as: "values",
-          through: { attributes: [] },
-        },
-        {
-          model: Product,
-          as: "product",
-          include: [{ model: VariantType, as: "variants" }],
-        },
-        {
-          model: Inventory,
-          as: "inventory",
-        },
+      include: [...getIncludes],
+      order: [
+        [
+          { model: Product, as: "product" },
+          { model: VariantType, as: "variants" },
+          "name",
+          "ASC",
+        ],
       ],
+    });
+
+    if (!productCombination) throw new Error("Product not found");
+
+    return productCombination;
+  },
+
+  async getByBarcode(barcode) {
+    const productCombination = await ProductCombination.findOne({
+      where: { barcode },
+      include: [...getIncludes],
       order: [
         [
           { model: Product, as: "product" },
@@ -232,6 +236,28 @@ module.exports = {
     };
 
     return result;
+  },
+
+  async getByCategoryId(categoryId) {
+    const combinations = await ProductCombination.findAll({
+      include: [
+        {
+          model: Product,
+          as: "product",
+          where: { categoryId },
+        },
+        {
+          model: Inventory,
+          as: "inventory",
+        },
+      ],
+      order: [["product", "name", "ASC"]],
+      where: {
+        isActive: true,
+      },
+    });
+
+    return combinations;
   },
   async updateByProductId(productId, payload) {
     const { error } = Joi.object({
@@ -1087,3 +1113,20 @@ async function validateVariants(payload, product) {
     }
   }
 }
+
+const getIncludes = [
+  {
+    model: VariantValue,
+    as: "values",
+    through: { attributes: [] },
+  },
+  {
+    model: Product,
+    as: "product",
+    include: [{ model: VariantType, as: "variants" }],
+  },
+  {
+    model: Inventory,
+    as: "inventory",
+  },
+];

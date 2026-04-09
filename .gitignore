@@ -30,3 +30,5 @@ src/config/service-account.json
 backups/
 env*
 Dockerfile
+server.key
+server.cert

@@ -72,6 +72,11 @@ module.exports = {
     return product;
   },
 
+  async getProductsByCategoryId(categoryId) {
+    const products = await getProductsByCategoryId(categoryId);
+    return products;
+  },
+
   async update(id, payload) {
     const { error } = productSchema.validate(payload, {
       abortEarly: false,
@@ -355,93 +360,6 @@ module.exports = {
     return products;
   },
 
-  async cloneToUnit(id, payload) {
-    throw new Error("Method not implemented.");
-    const { baseUnit } = payload;
-
-    const transaction = await sequelize.transaction();
-    try {
-      const product = await Product.findByPk(
-        id,
-        {
-          include: [...getDefaultIncludes()],
-          order: [...getDefaultOrder()],
-        },
-        {
-          transaction,
-        }
-      );
-      if (!product) throw new Error("Product not found");
-
-      const { combinations, variants } = product;
-      const variantValueMap = {};
-
-      const newProduct = await Product.create(
-        {
-          name: product.name,
-          description: product.description,
-          categoryId: product.categoryId,
-          baseUnit,
-        },
-        { transaction }
-      );
-
-      for (const variant of variants) {
-        const variantType = await VariantType.create(
-          {
-            name: variant.name,
-            productId: newProduct.id,
-          },
-          { transaction }
-        );
-
-        for (const value of variant.values) {
-          const val = await VariantValue.create(
-            {
-              value: value.value,
-              variantTypeId: variantType.id,
-            },
-            { transaction }
-          );
-          variantValueMap[value.value] = val;
-        }
-      }
-
-      for (const combo of combinations) {
-        const productCombo = await ProductCombination.create(
-          {
-            productId: newProduct.id,
-            name: getMappedProductComboName(product, combo.values),
-            sku: getSKU(
-              product.name,
-              product.categoryId,
-              baseUnit,
-              combo.values
-            ),
-            price: 0,
-          },
-          { transaction }
-        );
-
-        for (const value of combo.values) {
-          const val = variantValueMap[value.value];
-          if (val) {
-            await CombinationValue.create(
-              { combinationId: productCombo.id, variantValueId: val.id },
-              { transaction }
-            );
-          }
-        }
-      }
-      transaction.commit();
-
-      return newProduct;
-    } catch (error) {
-      transaction.rollback();
-      throw error;
-    }
-  },
-
   async updateSheet() {
     // auth with service account
 
@@ -471,30 +389,7 @@ module.exports = {
     });
 
     for (const category of categories) {
-      const products = await Product.findAll({
-        attributes: [],
-        include: [
-          {
-            model: ProductCombination,
-            as: "combinations",
-            attributes: ["id", "name", "unit", "price", "isBreakPack"],
-            where: {
-              isActive: true,
-            },
-            include: [
-              {
-                model: Inventory,
-                as: "inventory",
-                attributes: ["averagePrice", "quantity"],
-              },
-            ],
-          },
-        ],
-        where: { categoryId: category.id },
-        order: [["name", "ASC"]],
-        raw: true,
-        nest: true,
-      });
+      const products = await getProductsByCategoryId(category.id);
 
       for (const row of products) {
         delete row.combinations.inventory.id;
@@ -685,4 +580,31 @@ function getDefaultOrder() {
       "ASC",
     ],
   ];
+}
+
+async function getProductsByCategoryId(categoryId) {
+  return await Product.findAll({
+    attributes: [],
+    include: [
+      {
+        model: ProductCombination,
+        as: "combinations",
+        attributes: ["id", "name", "unit", "price", "isBreakPack"],
+        where: {
+          isActive: true,
+        },
+        include: [
+          {
+            model: Inventory,
+            as: "inventory",
+            attributes: ["averagePrice", "quantity"],
+          },
+        ],
+      },
+    ],
+    where: { categoryId },
+    order: [["name", "ASC"]],
+    raw: true,
+    nest: true,
+  });
 }
