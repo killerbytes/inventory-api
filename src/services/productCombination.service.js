@@ -593,6 +593,7 @@ SELECT
   p.id,
   p.name,
   p.description,
+  p."categoryId",
   
   COALESCE(
     json_agg(
