@@ -71,7 +71,7 @@ module.exports = (sequelize, DataTypes) => {
 
     ProductCombination.hasMany(models.PriceHistory, {
       foreignKey: "combinationId",
-      as: "combinations",
+      as: "priceHistories",
     });
     ProductCombination.hasMany(models.GoodReceiptLine, {
       foreignKey: "combinationId",

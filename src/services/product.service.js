@@ -1,3 +1,4 @@
+const { format } = require("date-fns");
 const path = require("path");
 const { google } = require("googleapis");
 const { sequelize } = require("../models");
@@ -361,6 +362,7 @@ module.exports = {
   },
 
   async updateSheet() {
+    const sheetName = "Master";
     // auth with service account
 
     const auth = new google.auth.GoogleAuth({
@@ -376,7 +378,7 @@ module.exports = {
     const sheets = google.sheets({ version: "v4", auth: client });
 
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
-    const range = "Sheet1!A:G"; // cell or range you want to update
+    const range = `${sheetName}!A:I`; // cell or range you want to update
     const valueInputOption = "USER_ENTERED";
 
     let headers;
@@ -412,7 +414,17 @@ module.exports = {
         ]),
       ];
     }
-    headers = ["ID", "NAME", "QTY", "UNIT", "AVERAGEPRICE", "SRP"];
+    headers = [
+      "ID",
+      "NAME",
+      "QTY",
+      "UNIT",
+      "AVERAGEPRICE",
+      "SRP",
+      "BREAKPACK",
+      "NEW PRICE",
+      `UPDATED: ${format(new Date(), "MM/dd/yyyy HH:mm")}`,
+    ];
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
@@ -428,7 +440,7 @@ module.exports = {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: "Sheet1!A2",
+      range: `${sheetName}!A2`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: result,

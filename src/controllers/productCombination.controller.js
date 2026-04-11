@@ -125,9 +125,9 @@ const productCombinationController = {
       next(error);
     }
   },
-  async bulkGet(req, res, next) {
+  async getByIds(req, res, next) {
     try {
-      const result = await productCombinationService.bulkGet(req.body);
+      const result = await productCombinationService.getByIds(req.body);
       res.status(200).send(result);
     } catch (error) {
       next(error);
@@ -136,7 +136,6 @@ const productCombinationController = {
   async updatePrices(req, res, next) {
     try {
       const result = await productCombinationService.updatePrices(req.body);
-
       res.status(200).send(result);
     } catch (error) {
       next(error);

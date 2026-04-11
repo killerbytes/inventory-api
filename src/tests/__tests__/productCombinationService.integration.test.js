@@ -389,4 +389,60 @@ describe("Product Combination Service (Integration)", () => {
       expect(err.message).toBe("Cannot convert between different products");
     }
   });
+
+  describe("updatePrices", () => {
+    it("should update multiple prices and create price history within a transaction", async () => {
+      const { combinations } = await productCombinationService.getByProductId(1);
+      const list = [
+        { id: combinations[0].id, newPrice: 150.5 },
+        { id: combinations[1].id, newPrice: 10.99 },
+      ];
+
+      const result = await productCombinationService.updatePrices(list);
+      expect(result).toBe(true);
+
+      const combo = await productCombinationService.getByProductId(1);
+      const updatedCombo1 = combo.combinations.find((c) => c.id === combinations[0].id);
+      const updatedCombo2 = combo.combinations.find((c) => c.id === combinations[1].id);
+
+      expect(updatedCombo1.price).toBe(150.5);
+      expect(updatedCombo2.price).toBe(10.99);
+
+      const priceHistories = await sequelize.models.PriceHistory.findAll({
+        where: { combinationId: [combinations[0].id, combinations[1].id] },
+        order: [["id", "DESC"]],
+      });
+      
+      const history1 = priceHistories.find((h) => h.combinationId === combinations[0].id && h.toPrice === 150.5);
+      const history2 = priceHistories.find((h) => h.combinationId === combinations[1].id && h.toPrice === 10.99);
+
+      expect(history1).toBeDefined();
+      expect(history2).toBeDefined();
+
+      expect(history1.fromPrice).toBe(combinations[0].price);
+      expect(history2.fromPrice).toBe(combinations[1].price);
+    });
+
+    it("should rollback transaction and throw error if a combination is not found", async () => {
+      const { combinations } = await productCombinationService.getByProductId(1);
+      const initialPrice = combinations[0].price;
+
+      const list = [
+        { id: combinations[0].id, newPrice: 999.99 },
+        { id: 99999, newPrice: 50.0 }, // Invalid id
+      ];
+
+      await expect(productCombinationService.updatePrices(list)).rejects.toThrow("combo not found");
+
+      // Verify rollback
+      const combo = await productCombinationService.getByProductId(1);
+      const unchangedCombo1 = combo.combinations.find((c) => c.id === combinations[0].id);
+      expect(unchangedCombo1.price).toBe(initialPrice);
+
+      const histories = await sequelize.models.PriceHistory.findAll({
+        where: { combinationId: combinations[0].id, toPrice: 999.99 },
+      });
+      expect(histories.length).toBe(0);
+    });
+  });
 });

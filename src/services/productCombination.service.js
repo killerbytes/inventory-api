@@ -43,7 +43,7 @@ module.exports = {
       ],
     });
 
-    if (!productCombination) throw new Error("Product not found");
+    if (!productCombination) throw ApiError.notFound("Product not found");
 
     return productCombination;
   },
@@ -62,7 +62,7 @@ module.exports = {
       ],
     });
 
-    if (!productCombination) throw new Error("Product not found");
+    if (!productCombination) throw ApiError.notFound("Product not found");
 
     return productCombination;
   },
@@ -144,7 +144,7 @@ module.exports = {
       });
 
       if (!combination) {
-        throw new Error(`Combination with ID ${payload.id} not found`);
+        throw ApiError.notFound(`Combination with ID ${payload.id} not found`);
       }
 
       if (normalize(payload.price) !== normalize(combination.price)) {
@@ -215,7 +215,7 @@ module.exports = {
       ],
     });
 
-    if (!combinations) throw new Error("Combination not found");
+    if (!combinations) throw ApiError.notFound("Combination not found");
 
     const variants = await VariantType.findAll({
       where: { productId: id },
@@ -280,7 +280,7 @@ module.exports = {
       order: [[{ model: VariantType, as: "variants" }, "name", "ASC"]],
     });
 
-    if (!product) throw new Error("Product not found");
+    if (!product) throw ApiError.notFound("Product not found");
 
     validateCombinations(payload.combinations, product);
 
@@ -358,7 +358,7 @@ module.exports = {
         .map((comb) => comb.id);
 
       if (blockedIds.length > 0) {
-        throw new Error(
+        throw ApiError.badRequest(
           `Cannot delete combinations with inventory > 0: ${blockedIds.join(
             ", "
           )}`
@@ -379,7 +379,9 @@ module.exports = {
           .filter(Boolean);
 
         if (variantValueIds.length !== Object.entries(combo.values).length) {
-          throw new Error("Some variant values are invalid or missing");
+          throw ApiError.badRequest(
+            "Some variant values are invalid or missing"
+          );
         }
 
         let combination;
@@ -391,7 +393,9 @@ module.exports = {
           });
 
           if (!combination) {
-            throw new Error(`Combination with ID ${combo.id} not found`);
+            throw ApiError.notFound(
+              `Combination with ID ${combo.id} not found`
+            );
           }
 
           if (normalize(combo.price) !== normalize(combination.price)) {
@@ -499,7 +503,7 @@ module.exports = {
         ],
       });
       if (combinations.inventory.quantity > 0) {
-        throw new Error("Combination has inventory");
+        throw ApiError.badRequest("Combination has inventory");
       }
 
       const breakPack = await ProductCombination.findAll({
@@ -509,7 +513,7 @@ module.exports = {
       });
 
       if (breakPack.length > 0) {
-        throw new Error(
+        throw ApiError.badRequest(
           "Combination has break pack. Please remove break pack before deleting this combination"
         );
       }
@@ -674,7 +678,7 @@ LIMIT :limit;
       });
 
       if (!fromInventory || !toInventory)
-        throw new Error("Invalid combination IDs provided.");
+        throw ApiError.notFound("Invalid combination IDs provided.");
 
       if (fromInventory.productId !== toInventory.productId) {
         throw ApiError.validation(
@@ -894,11 +898,16 @@ LIMIT :limit;
       transaction.rollback();
     }
   },
-  async bulkGet(list) {
+  async getByIds(list) {
     const result = [];
     try {
       for (const id of list) {
-        const combo = await ProductCombination.findByPk(id);
+        const combo = await ProductCombination.findByPk(id, {
+          include: [
+            ...getIncludes,
+            { model: db.PriceHistory, as: "priceHistories" },
+          ],
+        });
 
         result.push(combo);
       }
@@ -911,18 +920,33 @@ LIMIT :limit;
     const transaction = await sequelize.transaction();
     try {
       for (const i of list) {
-        const combo = await ProductCombination.findByPk(i.combo_id);
+        const combo = await ProductCombination.findByPk(i.id);
         if (!combo) {
           throw new Error("combo not found");
         }
-        await combo.update(
-          {
-            price: parseFloat(i.price),
-          },
-          {
-            transaction,
-          }
-        );
+        const fromPrice = normalize(combo.price);
+        const toPrice = normalize(i.newPrice);
+
+        if (fromPrice !== toPrice && toPrice > 0) {
+          await combo.update(
+            {
+              price: toPrice,
+            },
+            { transaction }
+          );
+
+          await db.PriceHistory.create(
+            {
+              productId: combo.productId,
+              combinationId: combo.id,
+              fromPrice,
+              toPrice,
+              changedBy: (await authService.getCurrent()).id,
+              changedAt: new Date(),
+            },
+            { transaction }
+          );
+        }
       }
       transaction.commit();
       return true;
@@ -974,8 +998,15 @@ function validateCombinations(combinations, product) {
 }
 
 function buildTsQuery(search) {
-  const words = search.trim().toLowerCase().split(/\s+/);
+  if (typeof search !== "string") return "";
 
+  const words = search
+    .trim()
+    .toLowerCase()
+    .split(/[\s,;&|!():*]+/)
+    .filter((word) => word.length > 0 && word !== "-");
+
+  if (words.length === 0) return "";
   return words.map((word) => `${word}:*`).join(" & ");
 }
 

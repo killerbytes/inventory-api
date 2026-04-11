@@ -3,8 +3,8 @@ const combinationController = require("../controllers/productCombination.control
 const router = express.Router();
 
 router.get("/search", combinationController.search);
-router.post("/updatePrices", combinationController.updatePrices);
-router.post("/bulkGet", combinationController.bulkGet);
+router.patch("/update-prices", combinationController.updatePrices);
+router.post("/get-by-ids", combinationController.getByIds);
 router.get("/bulkUpdateSKU", combinationController.bulkUpdateSKU);
 router.post("/breakPack", combinationController.breakPack);
 router.post("/stockAdjustment", combinationController.stockAdjustment);
