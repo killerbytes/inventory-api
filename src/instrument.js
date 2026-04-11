@@ -7,5 +7,12 @@ if (process.env.NODE_ENV === "production") {
     // Setting this option to true will send default PII data to Sentry.
     // For example, automatic IP address collection on events
     sendDefaultPii: true,
+    beforeSend(event, hint) {
+      const error = hint.originalException;
+      if (error && error.statusCode && error.statusCode < 500) {
+        return null;
+      }
+      return event;
+    },
   });
 }
