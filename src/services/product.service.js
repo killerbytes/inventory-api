@@ -423,7 +423,7 @@ module.exports = {
       "SRP",
       "BREAKPACK",
       "NEW PRICE",
-      `UPDATED: ${format(new Date(), "MM/dd/yyyy HH:mm")}`,
+      `UPDATED: ${format(new Date(), "MM/dd/yyyy")}`,
     ];
 
     await sheets.spreadsheets.values.clear({
