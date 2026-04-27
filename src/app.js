@@ -28,6 +28,7 @@ const verifyToken = require("./middlewares/verifyToken");
 const passport = require("./middlewares/passport");
 const logger = require("./middlewares/logger");
 const ApiError = require("./services/ApiError");
+const { ROLES } = require("./definitions");
 
 dotenv.config({ path: envPath });
 
@@ -58,7 +59,7 @@ app.use(
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", verifyToken({ adminOnly: true }), usersRouter);
-app.use("/api/categories", verifyToken(), categoriesRouter);
+app.use("/api/categories", categoriesRouter);
 app.use("/api/products", verifyToken(), productsRouter);
 app.use("/api/customers", verifyToken(), customersRouter);
 app.use("/api/suppliers", verifyToken(), suppliersRouter);

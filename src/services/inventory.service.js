@@ -520,6 +520,10 @@ module.exports = {
       quantity: col("Inventory.quantity"),
       reorderLevel: col("combinations.reorderLevel"),
       name: col("combinations.name"),
+      transactionCount: fn(
+        "COUNT",
+        fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+      ),
     };
     // sequelize.options.logging = console.log;
 
@@ -535,6 +539,13 @@ module.exports = {
         [
           fn("MAX", col("combinations->salesOrderItems.updatedAt")),
           "lastSoldAt",
+        ],
+        [
+          fn(
+            "COUNT",
+            fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+          ),
+          "transactionCount",
         ],
       ],
 

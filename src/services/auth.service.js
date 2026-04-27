@@ -4,6 +4,7 @@ const { AsyncLocalStorage } = require("async_hooks");
 const ApiError = require("./ApiError");
 const logger = require("../middlewares/logger");
 const { redis } = require("../utils/redis");
+const { getRolePermissions } = require("../config/roles");
 
 const { User } = db;
 
@@ -14,7 +15,11 @@ module.exports = {
 
   generateAuthTokens: async (user) => {
     const accessToken = jwt.sign(
-      { id: user.id, isAdmin: user.isAdmin },
+      { 
+        id: user.id, 
+        role: user.role, 
+        permissions: getRolePermissions(user.role) 
+      },
       process.env.JWT_SECRET,
       {
         expiresIn: process.env.JWT_EXPIRATION || "15m",

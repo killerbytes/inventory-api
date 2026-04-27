@@ -22,7 +22,7 @@ beforeEach(async () => {
     name: "Admin",
     password: sequelize.models.User.generateHash("password123"),
     email: "admin@example.com",
-    isAdmin: true,
+    role: "Admin",
     isActive: true,
   });
 
@@ -31,7 +31,7 @@ beforeEach(async () => {
     name: "User",
     password: sequelize.models.User.generateHash("password123"),
     email: "user@example.com",
-    isAdmin: false,
+    role: "User",
     isActive: true,
   });
 

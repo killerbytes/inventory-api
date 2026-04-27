@@ -38,7 +38,7 @@ describe("Security (Integration)", () => {
 
   it("should allow authenticated access to /api/users", async () => {
     const user = await createUser(0); // Create an admin or regular user
-    await user.update({ isAdmin: true });
+    await user.update({ role: "Admin" });
     // We need to login or generate a token.
     // utils.js usually has loginUser or we can generate token directly if we have access to service.
     // Let's use the login flow if possible, or just generate a token.

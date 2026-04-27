@@ -83,6 +83,14 @@ const INVOICE_STATUS = {
   PARTIALLY_PAID: "PARTIALLY_PAID",
   PAID: "PAID",
 };
+
+const ROLES = {
+  admin: "Admin",
+  manager: "Manager",
+  cashier: "Cashier",
+  user: "User",
+};
+
 module.exports = {
   ORDER_STATUS,
   ORDER_TYPE,
@@ -95,4 +103,5 @@ module.exports = {
   INVOICE_STATUS,
   INVENTORY_MOVEMENT_REFERENCE_TYPE,
   RETURN_TYPE,
+  ROLES,
 };
