@@ -30,6 +30,22 @@ const reportsController = {
       next(error);
     }
   },
+  async getInventoryValue(req, res, next) {
+    try {
+      const result = await reportsService.getInventoryValue();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+  async getInventoryValueFromMovements(req, res, next) {
+    try {
+      const result = await reportsService.getInventoryValueFromMovements();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = reportsController;
