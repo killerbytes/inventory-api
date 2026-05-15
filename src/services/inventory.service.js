@@ -731,7 +731,6 @@ module.exports = {
           {
             combinationId: item.combinationId,
             quantity: item.quantity,
-            averagePrice: unitPrice,
           },
           type,
           referenceId,
