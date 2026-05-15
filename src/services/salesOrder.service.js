@@ -127,16 +127,16 @@ module.exports = {
           const props = {
             ...item,
             originalPrice: productCombination.price,
-            totalAmount: getAmount(item),
-            unit: productCombination.unit,
-            nameSnapshot: productCombination.name,
-            categorySnapshot: productCombination.product.category,
-            variantSnapshot: getMappedVariantValues(
-              productCombination.product.variants,
-              productCombination.values
-            ),
-            skuSnapshot: productCombination.sku,
           };
+          props.totalAmount = getAmount(props);
+          props.unit = productCombination.unit;
+          props.nameSnapshot = productCombination.name;
+          props.categorySnapshot = productCombination.product.category;
+          props.variantSnapshot = getMappedVariantValues(
+            productCombination.product.variants,
+            productCombination.values
+          );
+          props.skuSnapshot = productCombination.sku;
 
           return props;
         })
@@ -145,7 +145,7 @@ module.exports = {
       const result = await SalesOrder.create(
         {
           ...payload,
-          totalAmount,
+          totalAmount: getTotalAmount(processedItems),
           salesOrderItems: processedItems,
         },
         {
@@ -444,7 +444,9 @@ module.exports = {
           returns,
           salesOrder.salesOrderItems,
           ORDER_TYPE.SALE,
-          RETURN_TYPE.RETURN,
+          exchanges && exchanges.length > 0
+            ? INVENTORY_MOVEMENT_TYPE.EXCHANGE_IN
+            : INVENTORY_MOVEMENT_TYPE.RETURN_IN,
           reason,
           referenceId,
           transaction
@@ -474,7 +476,7 @@ module.exports = {
             unitPrice: replaceItem.price,
             totalAmount: item.quantity * replaceItem.price,
             reason: "Replacement",
-            type: RETURN_TYPE.EXCHANGE,
+            type: RETURN_TYPE.EXCHANGE_IN,
           },
           { transaction }
         );
@@ -484,7 +486,7 @@ module.exports = {
             combinationId: item.combinationId,
             quantity: item.quantity,
           },
-          INVENTORY_MOVEMENT_TYPE.EXCHANGE,
+          INVENTORY_MOVEMENT_TYPE.EXCHANGE_OUT,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
           transaction
@@ -525,7 +527,12 @@ module.exports = {
 
 const getSummary = async (where) => {
   const totalAmount = await SalesOrder.sum("totalAmount", {
-    where: { ...where, ...{ status: { [Op.eq]: ORDER_STATUS.RECEIVED } } },
+    where: {
+      ...where,
+      ...{
+        status: { [Op.in]: [ORDER_STATUS.RECEIVED, ORDER_STATUS.COMPLETED] },
+      },
+    },
   });
 
   const orderIds = await db.SalesOrder.findAll({
@@ -559,8 +566,8 @@ FROM "InventoryMovements" im
 JOIN "SalesOrders" so
   ON so."id" = im."referenceId"
 WHERE
-  im.type = 'OUT'
-AND so."status" NOT IN ('VOID', 'CANCELLED')
+  im."referenceType" = 'SALES_ORDER'
+AND so."status" IN ('RECEIVED', 'COMPLETED')
 AND (:startDate IS NULL OR so."orderDate" >= :startDate)
 AND (:endDate IS NULL OR so."orderDate" <= :endDate)
 `,
@@ -581,7 +588,10 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
     },
     {
       label: "Profit",
-      value: Number(totalAmount - totalCost),
+      value:
+        Number(
+          totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0)
+        ) + Number(totalCost || 0),
     },
     {
       label: "Returns",
@@ -651,7 +661,7 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
         await inventoryIncrease(
           {
             combinationId,
-            quantity,
+            quantity: Math.abs(quantity),
           },
           INVENTORY_MOVEMENT_TYPE.CANCELLATION,
           salesOrder.id,
@@ -813,16 +823,16 @@ const updateOrder = async (
           ...rest,
           salesOrderId: salesOrder.id,
           originalPrice: productCombination.price,
-          totalAmount: getAmount(item),
-          unit: productCombination.unit,
-          nameSnapshot: productCombination.name,
-          categorySnapshot: productCombination.product.category,
-          variantSnapshot: getMappedVariantValues(
-            productCombination.product.variants,
-            productCombination.values
-          ),
-          skuSnapshot: productCombination.sku,
         };
+        props.totalAmount = getAmount(props);
+        props.unit = productCombination.unit;
+        props.nameSnapshot = productCombination.name;
+        props.categorySnapshot = productCombination.product.category;
+        props.variantSnapshot = getMappedVariantValues(
+          productCombination.product.variants,
+          productCombination.values
+        );
+        props.skuSnapshot = productCombination.sku;
 
         if (id) {
           // Update existing
@@ -835,6 +845,14 @@ const updateOrder = async (
           await SalesOrderItem.create(props, { transaction });
         }
       }
+      const updatedItems = await SalesOrderItem.findAll({
+        where: { salesOrderId: salesOrder.id },
+        transaction,
+      });
+      await salesOrder.update(
+        { totalAmount: getTotalAmount(updatedItems) },
+        { transaction }
+      );
     }
   } catch (error) {
     console.log(error);

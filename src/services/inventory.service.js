@@ -714,7 +714,7 @@ module.exports = {
           unitPrice,
           totalAmount: item.quantity * unitPrice,
           reason,
-          type: RETURN_TYPE.RETURN,
+          type: RETURN_TYPE.RETURN_IN,
         },
         { transaction }
       );
@@ -731,7 +731,6 @@ module.exports = {
           {
             combinationId: item.combinationId,
             quantity: item.quantity,
-            averagePrice: unitPrice,
           },
           type,
           referenceId,
@@ -851,9 +850,9 @@ module.exports = {
     await InventoryMovement.create(
       {
         combinationId,
-        quantity,
+        quantity: -quantity,
         costPerUnit: currentPrice,
-        totalCost: truncateQty(quantity * currentPrice),
+        totalCost: -truncateQty(quantity * currentPrice),
         type,
         userId: user.id,
         referenceId,

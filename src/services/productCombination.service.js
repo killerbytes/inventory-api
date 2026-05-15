@@ -27,6 +27,7 @@ const {
   ProductCombination,
   CombinationValue,
   StockAdjustment,
+  BreakPack,
 } = db;
 
 module.exports = {
@@ -758,14 +759,27 @@ LIMIT :limit;
           "Not enough inventory"
         );
       }
+      const user = await authService.getCurrent();
+      const breakPackRecord = await BreakPack.create(
+        {
+          fromCombinationId,
+          toCombinationId,
+          quantity,
+          conversionFactor: conversionRate,
+          type,
+          createdBy: user.id,
+        },
+        { transaction }
+      );
+
       // ⬇️ Decrease inventory from source (same type)
       await inventoryDecrease(
         {
           combinationId: fromCombinationId,
           quantity,
         },
-        INVENTORY_MOVEMENT_TYPE[type],
-        fromInventory.id,
+        INVENTORY_MOVEMENT_TYPE[`${type}_OUT`],
+        breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
         transaction
       );
@@ -777,8 +791,8 @@ LIMIT :limit;
           quantity: totalQuantity,
           averagePrice,
         },
-        INVENTORY_MOVEMENT_TYPE[type],
-        toInventory.id,
+        INVENTORY_MOVEMENT_TYPE[`${type}_IN`],
+        breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
         transaction
       );
@@ -832,44 +846,29 @@ LIMIT :limit;
 
       const oldQty = inventory.quantity;
       const diff = newQuantity - oldQty;
-      if (diff !== 0) {
-        // console.log({
-        //   combinationId,
-        //   type: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
-        //   quantity: diff, // can be negative or positive
-        //   costPerUnit: combination.inventory.averagePrice,
-        //   totalCost: newQuantity * combination.inventory.averagePrice,
-        //   referenceId: adjustment.id,
-        //   referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-        //   userId: user.id,
-        // });
-
-        if (!inventory) {
-          throw new Error("Inventory not found");
-        } else {
-          await inventory.update(
-            {
-              quantity: newQuantity,
-              averagePrice: inventory.averagePrice,
-            },
-            {
-              transaction,
-            }
-          );
-          await InventoryMovement.create(
-            {
-              combinationId,
-              type: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
-              quantity: diff, // can be negative or positive
-              costPerUnit: inventory.averagePrice,
-              totalCost: newQuantity * inventory.averagePrice,
-              referenceId: adjustment.id,
-              referenceType: INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-              userId: user.id,
-            },
-            { transaction }
-          );
-        }
+      if (diff > 0) {
+        await inventoryIncrease(
+          {
+            combinationId,
+            quantity: diff,
+            averagePrice: inventory.averagePrice,
+          },
+          INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_IN,
+          adjustment.id,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
+          transaction
+        );
+      } else if (diff < 0) {
+        await inventoryDecrease(
+          {
+            combinationId,
+            quantity: Math.abs(diff),
+          },
+          INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_OUT,
+          adjustment.id,
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
+          transaction
+        );
       }
 
       transaction.commit();

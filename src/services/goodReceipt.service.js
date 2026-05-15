@@ -579,7 +579,7 @@ module.exports = {
           returns,
           goodReceipt.goodReceiptLines,
           ORDER_TYPE.PURCHASE,
-          RETURN_TYPE.SUPPLIER_RETURN,
+          INVENTORY_MOVEMENT_TYPE.SUPPLIER_RETURN_OUT,
           reason,
           referenceId,
           transaction
