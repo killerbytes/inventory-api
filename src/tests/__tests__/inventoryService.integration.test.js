@@ -111,11 +111,11 @@ describe("Inventory Service (Integration)", () => {
 
     expect(inventoryMovements.data.length).toBe(3);
     expect(inventoryMovements.data[0].combinationId).toBe(combination1.id);
-    expect(inventoryMovements.data[0].type).toBe("ADJUSTMENT");
+    expect(inventoryMovements.data[0].type).toBe("ADJUSTMENT_IN");
     expect(inventoryMovements.data[1].combinationId).toBe(combination1.id);
-    expect(inventoryMovements.data[1].type).toBe("BREAK_PACK");
+    expect(inventoryMovements.data[1].type).toBe("BREAK_PACK_OUT");
     expect(inventoryMovements.data[2].combinationId).toBe(combination2.id);
-    expect(inventoryMovements.data[2].type).toBe("BREAK_PACK");
+    expect(inventoryMovements.data[2].type).toBe("BREAK_PACK_IN");
   });
 
   it("should list break packs", async () => {
@@ -353,9 +353,9 @@ describe("Inventory Service (Integration)", () => {
     expect(movements4.length).toBe(4);
     expect(movements4[3].combinationId).toBe(combination1.id);
     expect(movements4[3].type).toBe("OUT");
-    expect(movements4[3].quantity).toBe(10);
+    expect(movements4[3].quantity).toBe(-10);
     expect(movements4[3].costPerUnit).toBe(233.0833);
-    expect(movements4[3].totalCost).toBe(233.0833 * 10);
+    expect(movements4[3].totalCost).toBe(-233.0833 * 10);
 
     await salesOrderService.cancelOrder(1, {
       reason: "Test",

@@ -13,6 +13,7 @@ const {
 const {
   stockAdjustment,
 } = require("../../services/productCombination.service");
+const { RETURN_TYPE, ORDER_TYPE } = require("../../definitions");
 
 beforeAll(async () => {
   await setupDatabase();
@@ -243,16 +244,16 @@ describe("Good Receipt Service (Integration)", () => {
     expect(inventory[1].averagePrice).toBe(99.5);
     expect(inventoryMovement.length).toBe(4);
     expect(inventoryMovement[2].id).toBe(3);
-    expect(inventoryMovement[2].type).toBe("SUPPLIER_RETURN");
+    expect(inventoryMovement[2].type).toBe(RETURN_TYPE.SUPPLIER_RETURN_OUT);
     expect(inventoryMovement[2].referenceType).toBe("GOOD_RECEIPT");
-    expect(inventoryMovement[2].quantity).toBe(11);
-    expect(inventoryMovement[3].type).toBe("SUPPLIER_RETURN");
+    expect(inventoryMovement[2].quantity).toBe(-11);
+    expect(inventoryMovement[3].type).toBe(RETURN_TYPE.SUPPLIER_RETURN_OUT);
     expect(inventoryMovement[3].referenceType).toBe("GOOD_RECEIPT");
-    expect(inventoryMovement[3].quantity).toBe(20);
+    expect(inventoryMovement[3].quantity).toBe(-20);
     expect(returnTransaction.length).toBe(1);
     expect(returnTransaction[0].id).toBe(1);
-    expect(returnTransaction[0].sourceType).toBe("PURCHASE");
-    expect(returnTransaction[0].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[0].sourceType).toBe(ORDER_TYPE.PURCHASE);
+    expect(returnTransaction[0].type).toBe(RETURN_TYPE.SUPPLIER_RETURN_OUT);
     expect(returnTransaction[0].totalReturnAmount).toBe(3090);
     expect(returnTransaction[0].paymentDifference).toBe(-3090);
     expect(returnItems.length).toBe(2);
@@ -294,13 +295,13 @@ describe("Good Receipt Service (Integration)", () => {
     expect(returnTransaction[0].id).toBe(1);
     expect(returnTransaction[0].referenceId).toBe(1);
     expect(returnTransaction[0].sourceType).toBe("PURCHASE");
-    expect(returnTransaction[0].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[0].type).toBe(RETURN_TYPE.SUPPLIER_RETURN_OUT);
     expect(returnTransaction[0].totalReturnAmount).toBe(100);
     expect(returnTransaction[0].paymentDifference).toBe(-100);
     expect(returnTransaction[1].id).toBe(2);
     expect(returnTransaction[1].referenceId).toBe(1);
     expect(returnTransaction[1].sourceType).toBe("PURCHASE");
-    expect(returnTransaction[1].type).toBe("SUPPLIER_RETURN");
+    expect(returnTransaction[1].type).toBe(RETURN_TYPE.SUPPLIER_RETURN_OUT);
     expect(returnTransaction[1].totalReturnAmount).toBe(100);
     expect(returnTransaction[1].paymentDifference).toBe(-100);
 

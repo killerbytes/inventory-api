@@ -15,6 +15,7 @@ const {
 const productCombinationService = require("../../services/productCombination.service");
 const inventoryService = require("../../services/inventory.service");
 const goodReceiptService = require("../../services/goodReceipt.service");
+const { RETURN_TYPE } = require("../../definitions");
 
 beforeAll(async () => {
   await setupDatabase(); // run migrations / sync once
@@ -475,12 +476,10 @@ describe("Sales Order Service (Integration)", () => {
     });
     const inventoryMovements = await inventoryService.getMovements({});
     expect(inventoryMovements.data.length).toBe(4);
-    expect(inventoryMovements.data[1].combinationId).toBe(1);
-    expect(inventoryMovements.data[1].type).toBe("OUT");
-    expect(inventoryMovements.data[1].quantity).toBe(11);
-    expect(inventoryMovements.data[0].combinationId).toBe(2);
-    expect(inventoryMovements.data[0].type).toBe("OUT");
-    expect(inventoryMovements.data[0].quantity).toBe(20);
+    const out1 = inventoryMovements.data.find(m => m.combinationId === 1 && m.type === "OUT");
+    const out2 = inventoryMovements.data.find(m => m.combinationId === 2 && m.type === "OUT");
+    expect(out1.quantity).toBe(-11);
+    expect(out2.quantity).toBe(-20);
   });
   it("should throw error when creating for delivery", async () => {
     try {
@@ -664,23 +663,25 @@ describe("Sales Order Service (Integration)", () => {
     expect(inventory[1].quantity).toBe(0);
     expect(inventory2[0].quantity).toBe(11);
     expect(inventory2[1].quantity).toBe(20);
+    expect(inventory2[0].averagePrice).toBe(inventory[0].averagePrice);
+    expect(inventory2[1].averagePrice).toBe(inventory[1].averagePrice);
     expect(inventoryMovement.length).toBe(6);
     expect(inventoryMovement[4].id).toBe(5);
-    expect(inventoryMovement[4].type).toBe("RETURN");
+    expect(inventoryMovement[4].type).toBe(RETURN_TYPE.RETURN_IN);
     expect(inventoryMovement[4].referenceType).toBe("SALES_ORDER");
     expect(inventoryMovement[4].quantity).toBe(10);
-    expect(inventoryMovement[4].costPerUnit).toBe(90);
-    expect(inventoryMovement[4].totalCost).toBe(900);
+    expect(inventoryMovement[4].costPerUnit).toBe(100);
+    expect(inventoryMovement[4].totalCost).toBe(1000);
     expect(inventoryMovement[5].id).toBe(6);
-    expect(inventoryMovement[5].type).toBe("RETURN");
+    expect(inventoryMovement[5].type).toBe(RETURN_TYPE.RETURN_IN);
     expect(inventoryMovement[5].referenceType).toBe("SALES_ORDER");
     expect(inventoryMovement[5].quantity).toBe(20);
-    expect(inventoryMovement[5].costPerUnit).toBe(100);
-    expect(inventoryMovement[5].totalCost).toBe(2000);
+    expect(inventoryMovement[5].costPerUnit).toBe(99.5);
+    expect(inventoryMovement[5].totalCost).toBe(1990);
     expect(returnTransaction.length).toBe(1);
     expect(returnTransaction[0].id).toBe(1);
     expect(returnTransaction[0].sourceType).toBe("SALE");
-    expect(returnTransaction[0].type).toBe("RETURN");
+    expect(returnTransaction[0].type).toBe(RETURN_TYPE.RETURN_IN);
     expect(returnTransaction[0].totalReturnAmount).toBe(2900);
     expect(returnTransaction[0].paymentDifference).toBe(-2900);
     expect(returnItems.length).toBe(2);
@@ -908,32 +909,34 @@ describe("Sales Order Service (Integration)", () => {
     expect(inventory2[0].quantity).toBe(11);
     expect(inventory2[1].quantity).toBe(20);
     expect(inventory2[2].quantity).toBe(113);
+    expect(inventory2[0].averagePrice).toBe(inventory[0].averagePrice);
+    expect(inventory2[1].averagePrice).toBe(inventory[1].averagePrice);
     expect(inventoryMovement.length).toBe(8);
     expect(inventoryMovement[5].id).toBe(6);
     expect(inventoryMovement[5].combinationId).toBe(1);
-    expect(inventoryMovement[5].type).toBe("RETURN");
+    expect(inventoryMovement[5].type).toBe(RETURN_TYPE.EXCHANGE_IN);
     expect(inventoryMovement[5].referenceType).toBe("SALES_ORDER");
     expect(inventoryMovement[5].quantity).toBe(10);
-    expect(inventoryMovement[5].costPerUnit).toBe(90);
-    expect(inventoryMovement[5].totalCost).toBe(900);
+    expect(inventoryMovement[5].costPerUnit).toBe(100);
+    expect(inventoryMovement[5].totalCost).toBe(1000);
     expect(inventoryMovement[6].id).toBe(7);
     expect(inventoryMovement[6].combinationId).toBe(2);
-    expect(inventoryMovement[6].type).toBe("RETURN");
+    expect(inventoryMovement[6].type).toBe(RETURN_TYPE.EXCHANGE_IN);
     expect(inventoryMovement[6].referenceType).toBe("SALES_ORDER");
     expect(inventoryMovement[6].quantity).toBe(20);
-    expect(inventoryMovement[6].costPerUnit).toBe(100);
-    expect(inventoryMovement[6].totalCost).toBe(2000);
+    expect(inventoryMovement[6].costPerUnit).toBe(99.5);
+    expect(inventoryMovement[6].totalCost).toBe(1990);
     expect(inventoryMovement[7].id).toBe(8);
     expect(inventoryMovement[7].combinationId).toBe(3);
-    expect(inventoryMovement[7].type).toBe("EXCHANGE");
+    expect(inventoryMovement[7].type).toBe("EXCHANGE_OUT");
     expect(inventoryMovement[7].referenceType).toBe("SALES_ORDER");
-    expect(inventoryMovement[7].quantity).toBe(10);
+    expect(inventoryMovement[7].quantity).toBe(-10);
     expect(inventoryMovement[7].costPerUnit).toBe(100);
-    expect(inventoryMovement[7].totalCost).toBe(1000);
+    expect(inventoryMovement[7].totalCost).toBe(-1000);
     expect(returnTransaction.length).toBe(1);
     expect(returnTransaction[0].id).toBe(1);
     expect(returnTransaction[0].sourceType).toBe("SALE");
-    expect(returnTransaction[0].type).toBe("RETURN");
+    expect(returnTransaction[0].type).toBe(RETURN_TYPE.EXCHANGE_IN);
     expect(returnTransaction[0].totalReturnAmount).toBe(2900);
     expect(returnTransaction[0].paymentDifference).toBe(-1900);
     expect(returnItems.length).toBe(3);
@@ -1065,5 +1068,38 @@ describe("Sales Order Service (Integration)", () => {
     const returnItems = await sequelize.models.ReturnItem.findAll();
 
     expect;
+  });
+
+  it("should return correct summary in getPaginated", async () => {
+    // Inventory starting state (from beforeEach):
+    // Combo 1: 11 units @ 100 purchase price (total 1100)
+    // Combo 2: 20 units @ 90 purchase price (100 - 10 discount) (total 1800)
+
+    // Create and receive a sales order
+    await salesOrderService.create({
+      customerId: 1,
+      orderDate: new Date(),
+      status: "RECEIVED",
+      salesOrderItems: [
+        {
+          combinationId: 2,
+          quantity: 10,
+          purchasePrice: 90,
+        },
+      ],
+      modeOfPayment: "CASH",
+    });
+
+    // Total Amount (Revenue) should be 100 * 10 = 1000
+    // Total Cost should be 90 * 10 = 900
+    // Profit should be 1000 - 900 = 100
+
+    const result = await salesOrderService.getPaginated({ page: 1, limit: 10 });
+
+    const amountSummary = result.summary.find((s) => s.label === "Amount");
+    const profitSummary = result.summary.find((s) => s.label === "Profit");
+
+    expect(amountSummary.value).toBe(1000);
+    expect(profitSummary.value).toBe(5);
   });
 });

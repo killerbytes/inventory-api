@@ -3,7 +3,9 @@ function getTotalAmount(items) {
 }
 
 function getAmount(item) {
-  return item.purchasePrice * item.quantity - Number(item.discount || 0);
+  const price =
+    item.originalPrice !== undefined ? item.originalPrice : item.purchasePrice;
+  return price * item.quantity - Number(item.discount || 0);
 }
 
 function normalize(value, precision = 4) {

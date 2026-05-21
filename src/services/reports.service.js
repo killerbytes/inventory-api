@@ -297,4 +297,40 @@ module.exports = {
       throw error;
     }
   },
+  async getInventoryValue() {
+    try {
+      const result = await db.Inventory.findOne({
+        attributes: [
+          [
+            sequelize.literal('SUM("quantity" * "averagePrice")'),
+            "totalValue",
+          ],
+        ],
+        raw: true,
+      });
+
+      return {
+        totalValue: parseFloat(result.totalValue) || 0,
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+  async getInventoryValueFromMovements() {
+    try {
+      const result = await db.InventoryMovement.findOne({
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("totalCost")), "totalValue"],
+        ],
+        raw: true,
+      });
+
+      return {
+        totalValue: parseFloat(result.totalValue) || 0,
+      };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
 };
