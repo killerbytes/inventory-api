@@ -5,6 +5,7 @@ const userBaseSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   isActive: Joi.boolean().default(true),
+  role: Joi.string().required(),
 })
   .required()
   .meta({ className: "userBase" });

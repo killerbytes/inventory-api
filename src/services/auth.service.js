@@ -15,10 +15,10 @@ module.exports = {
 
   generateAuthTokens: async (user) => {
     const accessToken = jwt.sign(
-      { 
-        id: user.id, 
-        role: user.role, 
-        permissions: getRolePermissions(user.role) 
+      {
+        id: user.id,
+        role: user.role,
+        permissions: getRolePermissions(user.role)
       },
       process.env.JWT_SECRET,
       {
