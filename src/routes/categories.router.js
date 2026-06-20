@@ -13,28 +13,28 @@ router.post(
   verifyToken({
     requiredPermission: [ROLES.admin, ROLES.manager],
   }),
-  categoriesController.create
+  categoriesController.create,
 );
 router.patch(
   "/updateSort",
   verifyToken({
     requiredPermission: [ROLES.admin, ROLES.manager],
   }),
-  categoriesController.updateSort
+  categoriesController.updateSort,
 );
 router.patch(
   "/:id",
   verifyToken({
     requiredPermission: [ROLES.admin, ROLES.manager],
   }),
-  categoriesController.update
+  categoriesController.update,
 );
 router.delete(
   "/:id",
   verifyToken({
     requiredPermission: [ROLES.admin, ROLES.manager],
   }),
-  categoriesController.delete
+  categoriesController.delete,
 );
 
 module.exports = router;

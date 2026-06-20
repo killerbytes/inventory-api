@@ -63,7 +63,6 @@ const categoriesController = {
       const result = await categoryServices.updateSort(req.body);
       res.status(200).json(result);
     } catch (error) {
-      console.log("catch", error);
       next(error);
     }
   },

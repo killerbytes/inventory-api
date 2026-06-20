@@ -214,6 +214,7 @@ const users = [
     username: "alice",
     password: "123456",
     confirmPassword: "123456",
+    role: "Admin",
   },
   {
     name: "Charlie",
@@ -221,6 +222,7 @@ const users = [
     username: "charlie",
     password: "123456",
     confirmPassword: "123456",
+    role: "User",
   },
 ];
 

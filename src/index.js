@@ -6,12 +6,26 @@ const Sentry = require("@sentry/node");
 const app = require("./app");
 const logger = require("./middlewares/logger");
 const errorHandler = require("./middlewares/errorHandler");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 
 if (process.env.NODE_ENV === "production") {
   Sentry.setupExpressErrorHandler(app);
 }
 app.use(errorHandler);
 
-app.listen(process.env.PORT || 8080, () => {
-  logger.info(`Server started on port ${process.env.PORT || 8080}`);
-});
+if (process.env.NODE_ENV === "development") {
+  const options = {
+    key: fs.readFileSync(path.join(__dirname, "../server.key")),
+    cert: fs.readFileSync(path.join(__dirname, "../server.cert"))
+  };
+
+  https.createServer(options, app).listen(process.env.PORT || 8080, () => {
+    logger.info(`HTTPS Server started on port ${process.env.PORT || 8080}`);
+  });
+} else {
+  app.listen(process.env.PORT || 8080, () => {
+    logger.info(`Server started on port ${process.env.PORT || 8080}`);
+  });
+}
