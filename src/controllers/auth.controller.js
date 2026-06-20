@@ -21,14 +21,14 @@ const authController = {
             const { refreshToken, accessToken } = await authService.login(
               user,
               err,
-              info
+              info,
             );
             res.cookie("refreshToken", refreshToken, cookieOptions);
             res.status(200).json({ accessToken });
           } catch (error) {
             next(error);
           }
-        }
+        },
       )(req, res, next);
     } catch (error) {
       next(error);
@@ -38,7 +38,7 @@ const authController = {
   refreshTokens: async (req, res, next) => {
     try {
       const { accessToken, refreshToken } = await authService.refreshAuth(
-        req.cookies.refreshToken
+        req.cookies.refreshToken,
       );
 
       res.cookie("refreshToken", refreshToken, cookieOptions);

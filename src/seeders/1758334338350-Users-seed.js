@@ -13,7 +13,7 @@ module.exports = {
           password:
             "$2b$08$BwRhRpz6W97nfUICpyWP2OWBvOlaTYgfy/xtuR.In3BbBii.T9WRy",
           isActive: true,
-          isAdmin: false,
+          role: "Admin",
           createdAt: "2025-09-20T02:12:18.350Z",
           updatedAt: "2025-09-20T02:12:18.350Z",
         },
@@ -25,7 +25,7 @@ module.exports = {
           password:
             "$2b$08$IMqjhjcqkTdl4vh/8zF1reYBIdCyJ0wUsejvLBk4yZJqhWPBuf3yS",
           isActive: true,
-          isAdmin: false,
+          role: "Admin",
           createdAt: "2025-09-20T02:12:18.350Z",
           updatedAt: "2025-09-20T02:12:18.350Z",
         },

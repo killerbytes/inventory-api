@@ -5,6 +5,7 @@ const userBaseSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   isActive: Joi.boolean().default(true),
+  role: Joi.string().required(),
 })
   .required()
   .meta({ className: "userBase" });
@@ -60,7 +61,7 @@ const variantTypesSchema = Joi.object({
   isBreakpackFilter: Joi.boolean().optional().allow(null),
   values: Joi.array()
     .items(
-      Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema)
+      Joi.alternatives().try(variantValueSchema, variantValuePayloadSchema),
     )
     .required(),
   productId: Joi.number().optional(),
@@ -88,7 +89,7 @@ const productCombinationSchema = Joi.object({
   isActive: Joi.boolean().default(true).allow(null),
   isBreakPackOfId: Joi.number().optional().allow(null),
   values: Joi.alternatives().try(
-    Joi.array().items(variantValueSchema).required()
+    Joi.array().items(variantValueSchema).required(),
     // Joi.object()
   ),
 })
@@ -346,7 +347,6 @@ const searchSchema = Joi.object({
 });
 
 module.exports = {
-  userBaseSchema,
   userSchema,
   loginSchema,
   supplierSchema,
