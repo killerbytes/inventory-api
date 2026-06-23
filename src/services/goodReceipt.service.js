@@ -105,7 +105,7 @@ module.exports = {
                 },
               ],
               transaction,
-            }
+            },
           );
           if (!productCombination) {
             throw new Error("Product Combination not found");
@@ -116,7 +116,7 @@ module.exports = {
             totalAmount: getAmount(item),
             ...mappedProductCombinationProps(productCombination),
           };
-        })
+        }),
       );
 
       const result = await GoodReceipt.create(
@@ -133,7 +133,7 @@ module.exports = {
             },
           ],
           transaction,
-        }
+        },
       );
 
       const user = await authService.getCurrent();
@@ -144,7 +144,7 @@ module.exports = {
           changedBy: user.id,
           changedAt: new Date(),
         },
-        { transaction }
+        { transaction },
       );
       transaction.commit();
       await redis.del("goodReceipt:list");
@@ -222,7 +222,7 @@ module.exports = {
         break;
       default:
         throw new Error(
-          `Invalid status change from ${goodReceipt.status} to ${payload.status}`
+          `Invalid status change from ${goodReceipt.status} to ${payload.status}`,
         );
     }
   },
@@ -242,7 +242,7 @@ module.exports = {
           },
           goodReceipt,
           transaction,
-          false
+          false,
         );
       } else {
         throw new Error("Good Receipt is not in a valid state");
@@ -259,7 +259,7 @@ module.exports = {
         },
         {
           transaction,
-        }
+        },
       );
       await redis.del("goodReceipt:list");
       await redis.del("goodReceipt:paginated");
@@ -454,12 +454,12 @@ module.exports = {
 
       const totalReturnAmount = await db.ReturnTransaction.sum(
         "totalReturnAmount",
-        { where: returnsWhere }
+        { where: returnsWhere },
       );
 
       const totalExchangeAmount = await db.ReturnTransaction.sum(
         "totalExchangeAmount",
-        { where: returnsWhere }
+        { where: returnsWhere },
       );
 
       totalAmount =
@@ -550,7 +550,7 @@ module.exports = {
       { referenceId, returns, reason },
       {
         abortEarly: false,
-      }
+      },
     );
     if (error) {
       console.log(error);
@@ -567,7 +567,7 @@ module.exports = {
       goodReceipt.status === ORDER_STATUS.VOID
     ) {
       throw new Error(
-        `Good Receipt is not in a valid state: ${goodReceipt.status}`
+        `Good Receipt is not in a valid state: ${goodReceipt.status}`,
       );
     }
 
@@ -582,7 +582,7 @@ module.exports = {
           INVENTORY_MOVEMENT_TYPE.SUPPLIER_RETURN_OUT,
           reason,
           referenceId,
-          transaction
+          transaction,
         );
 
       const paymentDifference = totalReplaceAmount - totalReturnAmount;
@@ -592,7 +592,7 @@ module.exports = {
           totalReturnAmount,
           paymentDifference,
         },
-        { transaction }
+        { transaction },
       );
 
       await transaction.commit();
@@ -650,7 +650,7 @@ module.exports = {
         quantity: ri.quantity,
         reason: ri.reason,
         date: rt.createdAt,
-      }))
+      })),
     );
     console.log(JSON.stringify(returnTransactions, null, 2));
 
@@ -659,7 +659,7 @@ module.exports = {
 
     const resultItems = gr.goodReceiptLines.map((item) => {
       const returned = allReturnItems.filter(
-        (ri) => ri.combinationId === item.combinationId
+        (ri) => ri.combinationId === item.combinationId,
       );
 
       const returnedQty = returned.reduce((sum, x) => sum + x.quantity, 0);
@@ -710,7 +710,7 @@ const getSummary = async (where) => {
 
   const totalReturnAmount = await db.ReturnTransaction.sum(
     "totalReturnAmount",
-    { where: returnsWhere }
+    { where: returnsWhere },
   );
 
   return [
@@ -739,7 +739,7 @@ const processCompletedOrder = async (payload, goodReceipt) => {
       },
       goodReceipt,
       transaction,
-      false
+      false,
     );
 
     await OrderStatusHistory.create(
@@ -753,7 +753,7 @@ const processCompletedOrder = async (payload, goodReceipt) => {
       },
       {
         transaction,
-      }
+      },
     );
 
     transaction.commit();
@@ -775,7 +775,7 @@ const processCancelledOrder = async (goodReceipt, payload) => {
         cancellationReason: payload.reason,
       },
       goodReceipt,
-      transaction
+      transaction,
     );
 
     const { goodReceiptLines, id } = goodReceipt;
@@ -789,9 +789,9 @@ const processCancelledOrder = async (goodReceipt, payload) => {
           INVENTORY_MOVEMENT_TYPE.CANCELLATION,
           id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
-          transaction
+          transaction,
         );
-      })
+      }),
     );
 
     await OrderStatusHistory.create(
@@ -805,7 +805,7 @@ const processCancelledOrder = async (goodReceipt, payload) => {
       },
       {
         transaction,
-      }
+      },
     );
 
     transaction.commit();
@@ -829,7 +829,7 @@ const processReceivedOrder = async (payload, goodReceipt) => {
       },
       goodReceipt,
       transaction,
-      true
+      true,
     );
 
     const { goodReceiptLines, id } = goodReceipt;
@@ -863,9 +863,9 @@ const processReceivedOrder = async (payload, goodReceipt) => {
           INVENTORY_MOVEMENT_TYPE.IN,
           id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
-          transaction
+          transaction,
         );
-      })
+      }),
     );
 
     await OrderStatusHistory.create(
@@ -879,14 +879,12 @@ const processReceivedOrder = async (payload, goodReceipt) => {
       },
       {
         transaction,
-      }
+      },
     );
 
     transaction.commit();
     return;
   } catch (error) {
-    console.log(123, error);
-
     transaction.rollback();
     throw new Error("Error in processInventoryUpdates");
   }
@@ -905,7 +903,7 @@ const updateOrder = async (
   payload,
   goodReceipt,
   transaction,
-  updateOrderItems = false
+  updateOrderItems = false,
 ) => {
   try {
     await goodReceipt.update(
@@ -915,7 +913,7 @@ const updateOrder = async (
           totalAmount: getTotalAmount(payload.goodReceiptLines),
         }),
       },
-      { transaction }
+      { transaction },
     );
 
     if (updateOrderItems) {
@@ -958,7 +956,7 @@ const updateOrder = async (
                 order: [["variantTypeId", "ASC"]],
               },
             ],
-          }
+          },
         );
 
         const lineData = {
@@ -993,7 +991,7 @@ const mappedProductCombinationProps = (productCombination) => {
     categorySnapshot: productCombination.product.category,
     variantSnapshot: getMappedVariantValues(
       productCombination.product.variants,
-      productCombination.values
+      productCombination.values,
     ),
     skuSnapshot: productCombination.sku,
   };

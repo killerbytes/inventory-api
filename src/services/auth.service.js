@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const db = require("../models");
-const { AsyncLocalStorage } = require("async_hooks");
 const ApiError = require("./ApiError");
 const logger = require("../middlewares/logger");
 const { redis } = require("../utils/redis");
@@ -8,22 +7,18 @@ const { getRolePermissions } = require("../config/roles");
 
 const { User } = db;
 
-const authStorage = new AsyncLocalStorage();
-
 module.exports = {
-  authStorage,
-
   generateAuthTokens: async (user) => {
     const accessToken = jwt.sign(
       {
         id: user.id,
         role: user.role,
-        permissions: getRolePermissions(user.role)
+        permissions: getRolePermissions(user.role),
       },
       process.env.JWT_SECRET,
       {
         expiresIn: process.env.JWT_EXPIRATION || "15m",
-      }
+      },
     );
 
     const refreshToken = jwt.sign(
@@ -31,15 +26,18 @@ module.exports = {
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
       {
         expiresIn: "7d",
-      }
+      },
     );
 
     return { accessToken, refreshToken };
   },
 
-  login: async (user, err, info) => {
-    if (err || !user) {
-      throw new Error("Invalid username or password");
+  login: async (username, password) => {
+    const user = await User.scope("withPassword").findOne({
+      where: { username },
+    });
+    if (!user || !User.validatePassword(password, user.password)) {
+      throw ApiError.unauthorized("Invalid username or password");
     }
     const tokens = await module.exports.generateAuthTokens(user);
     const userModel = await User.scope("withRefreshToken").findByPk(user.id);
@@ -53,7 +51,7 @@ module.exports = {
     try {
       const decoded = jwt.verify(
         refreshToken,
-        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
       );
 
       if (decoded.type !== "refresh") {
@@ -65,13 +63,13 @@ module.exports = {
       if (!user || user.refreshToken !== refreshToken) {
         if (user) {
           logger.warn(
-            `Refresh token reuse detected for user ${user.id}. Revoking current token.`
+            `Refresh token reuse detected for user ${user.id}. Revoking current token.`,
           );
           user.refreshToken = null;
           await user.save();
         }
         throw ApiError.unauthorized(
-          "Refresh token is invalid or has been reused"
+          "Refresh token is invalid or has been reused",
         );
       }
 
@@ -102,23 +100,17 @@ module.exports = {
     }
   },
 
-  getCurrent: async () => {
+  getCurrent: async (contextUser) => {
     try {
-      const store = authStorage.getStore();
-      if (!store) {
-        const env = process.env.NODE_ENV || "development";
-        if (env === "test") {
-          return await User.findOne({ where: { id: 1 }, raw: true });
-        }
+      if (!contextUser) {
         throw ApiError.forbidden("No auth context");
       }
 
-      const { userId } = store;
-      const cacheKey = `user:${userId}`;
+      const cacheKey = `user:${contextUser.id}`;
       const cached = await redis.get(cacheKey);
       if (cached) return JSON.parse(cached);
       const user = await User.findOne({
-        where: { id: userId, isActive: true },
+        where: { id: contextUser.id, isActive: true },
         raw: true,
       });
 
@@ -133,9 +125,8 @@ module.exports = {
     }
   },
 
-  async changePassword(payload) {
-    const { password } = payload;
-    const logged = await this.getCurrent();
+  async changePassword(contextUser, password) {
+    const logged = await module.exports.getCurrent(contextUser);
     const user = await User.findByPk(logged.id);
 
     user.password = User.generateHash(password);
