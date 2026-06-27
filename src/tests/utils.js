@@ -6,7 +6,7 @@ const productCombinationService = require("../services/productCombination.servic
 const supplierService = require("../services/supplier.service");
 const userService = require("../services/user.service");
 const variantTypeService = require("../services/variantType.service");
-const app = require("../app");
+const { app } = require("../app");
 const customerService = require("../services/customer.service");
 const goodReceiptService = require("../services/goodReceipt.service");
 
@@ -116,21 +116,40 @@ async function createInvoice() {
 
 async function loginUser() {
   const res = await request(app)
-    .post("/api/auth/login")
+    .post("/graphql")
     .set("Accept", "application/json") // tell server to expect json
     .set("Content-Type", "application/json")
-    .send({ username: "alice", password: "123456" });
+    .send({
+      query: `
+        mutation Login($username: String!, $password: String!) {
+          login(username: $username, password: $password) {
+            accessToken
+          }
+        }
+      `,
+      variables: { username: "alice", password: "123456" }
+    });
 
-  const token = res.body.accessToken;
-
+  const token = res.body.data?.login?.accessToken;
   return token;
 }
 
 async function getUser(token) {
   const me = await request(app)
-    .get("/api/auth/me")
-    .set("x-access-token", token);
-  return me;
+    .post("/graphql")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      query: `
+        query Me {
+          me {
+            id
+            username
+            role
+          }
+        }
+      `
+    });
+  return me.body.data?.me;
 }
 
 const stockAdjustments = [
@@ -214,6 +233,7 @@ const users = [
     username: "alice",
     password: "123456",
     confirmPassword: "123456",
+    role: "ADMIN",
   },
   {
     name: "Charlie",
@@ -221,6 +241,7 @@ const users = [
     username: "charlie",
     password: "123456",
     confirmPassword: "123456",
+    role: "USER",
   },
 ];
 

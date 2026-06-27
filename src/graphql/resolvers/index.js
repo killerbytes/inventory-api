@@ -13,86 +13,157 @@ const productCombinationService = require("../../services/productCombination.ser
 const variantTypesService = require("../../services/variantType.service");
 const { GraphQLJSON } = require("graphql-type-json");
 
+const { requireAuth, requirePermission } = require("../auth");
+const { PERMISSIONS } = require("../../config/roles");
+
 const resolvers = {
   JSON: GraphQLJSON,
   Query: {
-    me: async (_, __, context) => {
-      if (!context.user) {
-        const { GraphQLError } = require("graphql");
-        throw new GraphQLError("No auth context", {
-          extensions: { code: "UNAUTHENTICATED" },
-        });
-      }
+    me: requireAuth(async (_, __, context) => {
       return await authService.getCurrent(context.user);
-    },
+    }),
 
-    users: async () => await userService.list(),
-    user: async (_, { id }) => await userService.get(id),
+    users: requirePermission(
+      PERMISSIONS.MANAGE_USERS,
+      async () => await userService.list(),
+    ),
+    user: requirePermission(
+      PERMISSIONS.MANAGE_USERS,
+      async (_, { id }) => await userService.get(id),
+    ),
 
-    categories: async () => await categoryService.list(),
-    category: async (_, { id }) => await categoryService.get(id),
+    categories: requirePermission(
+      PERMISSIONS.READ_CATEGORIES,
+      async () => await categoryService.list(),
+    ),
+    category: requirePermission(
+      PERMISSIONS.READ_CATEGORIES,
+      async (_, { id }) => await categoryService.get(id),
+    ),
 
-    products: async () => await productService.list(),
-    product: async (_, { id }) => await productService.get(id),
+    products: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async () => await productService.list(),
+    ),
+    product: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async (_, { id }) => await productService.get(id),
+    ),
 
-    customers: async () => await customerService.list(),
-    customer: async (_, { id }) => await customerService.get(id),
+    customers: requirePermission(
+      PERMISSIONS.READ_CUSTOMERS,
+      async () => await customerService.list(),
+    ),
+    customer: requirePermission(
+      PERMISSIONS.READ_CUSTOMERS,
+      async (_, { id }) => await customerService.get(id),
+    ),
 
-    suppliers: async (_, args) => {
-      const res = await supplierService.getPaginated({
-        limit: 1000,
-        ...args,
-      });
-      return res;
-    },
-    supplier: async (_, { id }) => await supplierService.get(id),
-    supplierProducts: async (_, { productId }) =>
-      await supplierService.getByProductId(productId),
+    suppliers: requirePermission(
+      PERMISSIONS.READ_SUPPLIERS,
+      async (_, args) => {
+        const res = await supplierService.list({
+          ...args,
+        });
+        return res;
+      },
+    ),
+    supplier: requirePermission(
+      PERMISSIONS.READ_SUPPLIERS,
+      async (_, { id }) => await supplierService.get(id),
+    ),
+    supplierProducts: requirePermission(
+      PERMISSIONS.READ_SUPPLIERS,
+      async (_, { productId }) =>
+        await supplierService.getByProductId(productId),
+    ),
 
-    inventory: async (_, { productId }) =>
-      await inventoryService.getAllInventory(productId),
-    breakPacks: async (_, args) => {
-      const res = await inventoryService.getBreakPacks(args);
-      return res.data;
-    },
+    productCombinationsByCategories: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async (_, { categoryId }) => {
+        return await productCombinationService.getByCategoryId(categoryId);
+      },
+    ),
 
-    salesOrders: async (_, args) =>
-      await salesOrderService.getPaginated({ limit: 1000, ...args }),
+    breakPacks: requirePermission(
+      PERMISSIONS.MANAGE_INVENTORY,
+      async (_, args) => {
+        const res = await inventoryService.getBreakPacks(args);
+        return res.data;
+      },
+    ),
+    inventoryMovements: requirePermission(
+      PERMISSIONS.MANAGE_INVENTORY,
+      async (_, args) => await inventoryService.getMovements(args),
+    ),
 
-    salesOrder: async (_, { id }) => await salesOrderService.get(id),
+    salesOrders: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, args) =>
+        await salesOrderService.getPaginated({ limit: 1000, ...args }),
+    ),
 
-    invoices: async (_, args) =>
-      await invoiceService.getPaginated({
-        limit: 1000,
-        ...args,
-      }),
-    invoice: async (_, { id }) => await invoiceService.getInvoiceById(id),
+    salesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { id }) => await salesOrderService.get(id),
+    ),
 
-    payments: async (_, args) =>
-      await paymentService.getPaginated({
-        limit: 1000,
-        ...args,
-      }),
+    invoices: requirePermission(
+      PERMISSIONS.MANAGE_INVOICES,
+      async (_, args) =>
+        await invoiceService.getPaginated({
+          limit: 1000,
+          ...args,
+        }),
+    ),
+    invoice: requirePermission(
+      PERMISSIONS.MANAGE_INVOICES,
+      async (_, { id }) => await invoiceService.get(id),
+    ),
 
-    goodReceipt: async (_, { id }) => await goodReceiptService.get(id),
+    payments: requirePermission(
+      PERMISSIONS.MANAGE_PAYMENTS,
+      async (_, args) =>
+        await paymentService.getPaginated({
+          limit: 1000,
+          ...args,
+        }),
+    ),
 
-    goodReceipts: async (_, args) =>
-      await goodReceiptService.getPaginated({
-        limit: 1000,
-        ...args,
-      }),
-    productCombinations: async () =>
-      await productCombinationService.getAllProductCombinations(),
-    productCombinationsByIds: async (_, { ids }) =>
-      await productCombinationService.getByIds(ids),
-    searchProductCombinations: async (_, args) =>
-      await productCombinationService.search(args),
+    goodReceipt: requirePermission(
+      PERMISSIONS.MANAGE_RECEIPTS,
+      async (_, { id }) => await goodReceiptService.get(id),
+    ),
 
-    priceHistory: async (_, args) =>
-      await inventoryService.getPriceHistory(args),
+    goodReceipts: requirePermission(
+      PERMISSIONS.MANAGE_RECEIPTS,
+      async (_, args) =>
+        await goodReceiptService.getPaginated({
+          ...args,
+        }),
+    ),
+    productCombinations: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async () => await productCombinationService.getAllProductCombinations(),
+    ),
+    productCombinationsByIds: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async (_, { ids }) => await productCombinationService.getByIds(ids),
+    ),
+    searchProductCombinations: requirePermission(
+      PERMISSIONS.READ_PRODUCTS,
+      async (_, args) => await productCombinationService.search(args),
+    ),
 
-    stockAdjustments: async (_, args) =>
-      await inventoryService.getStockAdjustments(args),
+    priceHistory: requirePermission(
+      PERMISSIONS.MANAGE_INVENTORY,
+      async (_, args) => await inventoryService.getPriceHistory(args),
+    ),
+
+    stockAdjustments: requirePermission(
+      PERMISSIONS.MANAGE_INVENTORY,
+      async (_, args) => await inventoryService.getStockAdjustments(args),
+    ),
   },
 
   Mutation: {
@@ -122,124 +193,219 @@ const resolvers = {
       return true;
     },
 
-    createUser: async (_, { input }, context) =>
-      await userService.createUser(input),
-    updateUser: async (_, { id, input }, context) =>
-      await userService.updateUser(id, input),
-    deleteUser: async (_, { id }, context) => {
-      await userService.deleteUser(id);
-      return true;
-    },
+    createUser: requirePermission(
+      PERMISSIONS.MANAGE_USERS,
+      async (_, { input }, context) => await userService.create(input),
+    ),
+    updateUser: requirePermission(
+      PERMISSIONS.MANAGE_USERS,
+      async (_, { id, input }, context) => await userService.update(id, input),
+    ),
+    deleteUser: requirePermission(
+      PERMISSIONS.MANAGE_USERS,
+      async (_, { id }, context) => {
+        await userService.delete(id);
+        return true;
+      },
+    ),
 
-    createCategory: async (_, { input }) =>
-      await categoryService.createCategory(input),
-    updateCategory: async (_, { id, input }) =>
-      await categoryService.updateCategory(id, input),
-    deleteCategory: async (_, { id }) => {
-      await categoryService.deleteCategory(id);
-      return true;
-    },
+    createCategory: requirePermission(
+      PERMISSIONS.WRITE_CATEGORIES,
+      async (_, { input }) => await categoryService.create(input),
+    ),
+    updateCategory: requirePermission(
+      PERMISSIONS.WRITE_CATEGORIES,
+      async (_, { id, input }) => await categoryService.update(id, input),
+    ),
+    deleteCategory: requirePermission(
+      PERMISSIONS.WRITE_CATEGORIES,
+      async (_, { id }) => {
+        await categoryService.delete(id);
+        return true;
+      },
+    ),
 
-    createProduct: async (_, { input }) =>
-      await productService.createProduct(input),
-    updateProduct: async (_, { id, input }) =>
-      await productService.updateProduct(id, input),
-    deleteProduct: async (_, { id }) => {
-      await productService.deleteProduct(id);
-      return true;
-    },
+    createProduct: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { input }) => await productService.create(input),
+    ),
+    updateProduct: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { id, input }) => await productService.update(id, input),
+    ),
+    deleteProduct: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { id }) => {
+        await productService.delete(id);
+        return true;
+      },
+    ),
 
-    createCustomer: async (_, { input }) =>
-      await customerService.createCustomer(input),
-    updateCustomer: async (_, { id, input }) =>
-      await customerService.updateCustomer(id, input),
-    deleteCustomer: async (_, { id }) => {
-      await customerService.deleteCustomer(id);
-      return true;
-    },
+    createCustomer: requirePermission(
+      PERMISSIONS.WRITE_CUSTOMERS,
+      async (_, { input }) => await customerService.create(input),
+    ),
+    updateCustomer: requirePermission(
+      PERMISSIONS.WRITE_CUSTOMERS,
+      async (_, { id, input }) => await customerService.update(id, input),
+    ),
+    deleteCustomer: requirePermission(
+      PERMISSIONS.WRITE_CUSTOMERS,
+      async (_, { id }) => {
+        await customerService.delete(id);
+        return true;
+      },
+    ),
 
-    createSupplier: async (_, { input }) =>
-      await supplierService.createSupplier(input),
-    updateSupplier: async (_, { id, input }) =>
-      await supplierService.updateSupplier(id, input),
-    deleteSupplier: async (_, { id }) => {
-      await supplierService.deleteSupplier(id);
-      return true;
-    },
+    createSupplier: requirePermission(
+      PERMISSIONS.WRITE_SUPPLIERS,
+      async (_, { input }) => await supplierService.create(input),
+    ),
+    updateSupplier: requirePermission(
+      PERMISSIONS.WRITE_SUPPLIERS,
+      async (_, { id, input }) => await supplierService.update(id, input),
+    ),
+    deleteSupplier: requirePermission(
+      PERMISSIONS.WRITE_SUPPLIERS,
+      async (_, { id }) => {
+        await supplierService.delete(id);
+        return true;
+      },
+    ),
 
-    createSalesOrder: async (_, { input }, context) =>
-      await salesOrderService.createSalesOrder(input, context.user),
-    updateSalesOrder: async (_, { id, input }, context) =>
-      await salesOrderService.updateSalesOrder(id, input, context.user),
-    deleteSalesOrder: async (_, { id }) => {
-      await salesOrderService.deleteSalesOrder(id);
-      return true;
-    },
-    cancelSalesOrder: async (_, { id, input }) => {
-      await salesOrderService.cancelOrder(id, input);
-      return true;
-    },
-    returnSalesOrder: async (_, { id, input }) => {
-      return await salesOrderService.returnExchange(
-        id,
-        input?.returns,
-        input?.exchanges,
-        input?.reason,
-      );
-    },
+    createSalesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { input }, context) =>
+        await salesOrderService.create(input, context.user),
+    ),
+    updateSalesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { id, input }, context) =>
+        await salesOrderService.update(id, input, context.user),
+    ),
+    deleteSalesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { id }) => {
+        await salesOrderService.delete(id);
+        return true;
+      },
+    ),
+    cancelSalesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { id, input }) => {
+        await salesOrderService.cancelOrder(id, input);
+        return true;
+      },
+    ),
+    returnSalesOrder: requirePermission(
+      PERMISSIONS.MANAGE_SALES,
+      async (_, { id, input }) => {
+        return await salesOrderService.returnExchange(
+          id,
+          input?.returns,
+          input?.exchanges,
+          input?.reason,
+        );
+      },
+    ),
 
-    createInvoice: async (_, { input }, context) =>
-      await invoiceService.createInvoice(input),
-    updateInvoice: async (_, { id, input }, context) =>
-      await invoiceService.updateInvoice(id, input),
-    deleteInvoice: async (_, { id }) => {
-      await invoiceService.deleteInvoice(id);
-      return true;
-    },
+    createInvoice: requirePermission(
+      PERMISSIONS.MANAGE_INVOICES,
+      async (_, { input }, context) => await invoiceService.create(input),
+    ),
+    updateInvoice: requirePermission(
+      PERMISSIONS.MANAGE_INVOICES,
+      async (_, { id, input }, context) =>
+        await invoiceService.update(id, input),
+    ),
+    deleteInvoice: requirePermission(
+      PERMISSIONS.MANAGE_INVOICES,
+      async (_, { id }) => {
+        await invoiceService.delete(id);
+        return true;
+      },
+    ),
 
-    createPayment: async (_, { input }, context) =>
-      await paymentService.createPayment(input),
-    updatePayment: async (_, { id, input }, context) =>
-      await paymentService.updatePayment(id, input),
-    deletePayment: async (_, { id }) => {
-      await paymentService.deletePayment(id);
-      return true;
-    },
+    createPayment: requirePermission(
+      PERMISSIONS.MANAGE_PAYMENTS,
+      async (_, { input }, context) => await paymentService.create(input),
+    ),
+    updatePayment: requirePermission(
+      PERMISSIONS.MANAGE_PAYMENTS,
+      async (_, { id, input }, context) =>
+        await paymentService.update(id, input),
+    ),
+    deletePayment: requirePermission(
+      PERMISSIONS.MANAGE_PAYMENTS,
+      async (_, { id }) => {
+        await paymentService.delete(id);
+        return true;
+      },
+    ),
 
-    createGoodReceipt: async (_, { input }, context) =>
-      await goodReceiptService.createGoodReceipt(input),
-    updateGoodReceipt: async (_, { id, input }, context) =>
-      await goodReceiptService.updateGoodReceipt(id, input),
-    deleteGoodReceipt: async (_, { id }) => {
-      await goodReceiptService.deleteGoodReceipt(id);
-      return true;
-    },
+    createGoodReceipt: requirePermission(
+      PERMISSIONS.MANAGE_RECEIPTS,
+      async (_, { input }, context) => await goodReceiptService.create(input),
+    ),
+    updateGoodReceipt: requirePermission(
+      PERMISSIONS.MANAGE_RECEIPTS,
+      async (_, { id, input }, context) =>
+        await goodReceiptService.update(id, input),
+    ),
+    deleteGoodReceipt: requirePermission(
+      PERMISSIONS.MANAGE_RECEIPTS,
+      async (_, { id }) => {
+        await goodReceiptService.delete(id);
+        return true;
+      },
+    ),
 
-    createVariantType: async (_, { input }) =>
-      await variantTypesService.createVariantType(input),
-    updateVariantType: async (_, { id, input }) =>
-      await variantTypesService.updateVariantType(id, input),
-    deleteVariantType: async (_, { id }) => {
-      await variantTypesService.deleteVariantType(id);
-      return true;
-    },
+    createVariantType: requirePermission(
+      PERMISSIONS.MANAGE_VARIANTS,
+      async (_, { input }) => await variantTypesService.create(input),
+    ),
+    updateVariantType: requirePermission(
+      PERMISSIONS.MANAGE_VARIANTS,
+      async (_, { id, input }) => await variantTypesService.update(id, input),
+    ),
+    deleteVariantType: requirePermission(
+      PERMISSIONS.MANAGE_VARIANTS,
+      async (_, { id }) => {
+        await variantTypesService.delete(id);
+        return true;
+      },
+    ),
 
-    createProductCombination: async (_, { input }) =>
-      await productCombinationService.createProductCombination(input),
-    updateProductCombination: async (_, { id, input }) =>
-      await productCombinationService.updateProductCombination(id, input),
-    deleteProductCombination: async (_, { id }) => {
-      await productCombinationService.deleteProductCombination(id);
-      return true;
-    },
-    updatePrices: async (_, { input }) => {
-      await productCombinationService.updatePrices(input);
-      return true;
-    },
+    createProductCombination: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { input }) => await productCombinationService.create(input),
+    ),
+    updateProductCombination: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { id, input }) =>
+        await productCombinationService.update(id, input),
+    ),
+    deleteProductCombination: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { id }) => {
+        await productCombinationService.delete(id);
+        return true;
+      },
+    ),
+    updatePrices: requirePermission(
+      PERMISSIONS.WRITE_PRODUCTS,
+      async (_, { input }) => {
+        await productCombinationService.updatePrices(input);
+        return true;
+      },
+    ),
   },
 
   GoodReceipt: {
     receiptNumber: (parent) => parent.referenceNo || "",
+  },
+  SalesOrder: {
+    salesOrderHistory: (parent) => parent.salesOrderStatusHistory || [],
   },
 };
 

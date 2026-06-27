@@ -22,7 +22,7 @@ describe("GraphQL Resolvers", () => {
 
       supplierService.getPaginated.mockResolvedValue(paginatedResponse);
 
-      const result = await resolvers.Query.suppliers(null, { limit: 10, page: 1 });
+      const result = await resolvers.Query.suppliers(null, { limit: 10, page: 1 }, { user: { role: "Admin" } });
       
       expect(result).toEqual(paginatedResponse);
       expect(supplierService.getPaginated).toHaveBeenCalledWith({

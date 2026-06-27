@@ -1,5 +1,23 @@
 // src/tests/setup.js
-const { sequelize } = require("../models");
+const { sequelize, User } = require("../models");
+const authService = require("../services/auth.service");
+
+// Mock authService.getCurrent to return a default test user
+jest.mock("../services/auth.service", () => {
+  const originalModule = jest.requireActual("../services/auth.service");
+  return {
+    __esModule: true,
+    ...originalModule,
+    getCurrent: jest.fn().mockImplementation(async () => {
+      const models = require("../models");
+      const user = await models.sequelize.models.User.findOne({ where: { username: "alice" } });
+      if (!user) {
+        throw new Error("Test user 'alice' not found");
+      }
+      return user;
+    }),
+  };
+});
 
 // ✅ Run once before all tests (authenticate)
 async function setupDatabase() {

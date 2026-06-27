@@ -1,10 +1,13 @@
-const request = require("supertest");
-const app = require("../../app");
 const { setupDatabase, resetDatabase } = require("../setup");
+const request = require("supertest");
+const { startServer } = require("../../app");
 const { createUser } = require("../utils");
+
+let app;
 
 beforeAll(async () => {
   await setupDatabase();
+  app = await startServer();
 });
 
 beforeEach(async () => {
@@ -12,48 +15,72 @@ beforeEach(async () => {
 });
 
 describe("Security (Integration)", () => {
-  it("should block unauthenticated access to /api/users", async () => {
-    const res = await request(app).get("/api/users");
-    expect(res.status).toBe(403);
+  it("should block unauthenticated access to users query", async () => {
+    const res = await request(app)
+      .post("/graphql")
+      .send({
+        query: `query { users { id username } }`
+      });
+
+    expect(res.body.errors).toBeDefined();
+    expect(res.body.errors[0].extensions.code).toBe("UNAUTHENTICATED");
   });
 
-  it("should block unauthenticated access to /api/categories POST", async () => {
-    const res = await request(app).post("/api/categories").send({
-      name: "Hacker Category",
-    });
-    expect(res.status).toBe(403);
+  it("should block unauthenticated access to createCategory mutation", async () => {
+    const res = await request(app)
+      .post("/graphql")
+      .send({
+        query: `
+          mutation {
+            createCategory(input: { name: "Hacker Category" }) {
+              id
+            }
+          }
+        `
+      });
+
+    expect(res.body.errors).toBeDefined();
+    expect(res.body.errors[0].extensions.code).toBe("UNAUTHENTICATED");
   });
 
-  it("should block unauthenticated access to /api/product-combinations", async () => {
-    const res = await request(app).get("/api/product-combinations");
-    // Ensure 403 or 401 is returned. The middleware returns 403 for "No token provided".
-    expect(res.status).toBe(403);
+  it("should block unauthenticated access to productCombinations query", async () => {
+    const res = await request(app)
+      .post("/graphql")
+      .send({
+        query: `query { productCombinations { id } }`
+      });
+
+    expect(res.body.errors).toBeDefined();
+    expect(res.body.errors[0].extensions.code).toBe("UNAUTHENTICATED");
   });
 
-  it("should block unauthenticated access to /api/backup", async () => {
-    // Note: /api/backup is a POST request in app.js
-    const res = await request(app).post("/api/backup");
-    expect(res.status).toBe(403);
-  });
-
-  it("should allow authenticated access to /api/users", async () => {
-    const user = await createUser(0); // Create an admin or regular user
+  it("should allow authenticated access to users query for Admin", async () => {
+    const user = await createUser(0);
     await user.update({ role: "Admin" });
-    // We need to login or generate a token.
-    // utils.js usually has loginUser or we can generate token directly if we have access to service.
-    // Let's use the login flow if possible, or just generate a token.
-    // Checking authService.integration.test.js: it uses `request(app).post("/api/auth/login")`.
 
     const loginRes = await request(app)
-      .post("/api/auth/login")
-      .send({ username: "alice", password: "123456" });
+      .post("/graphql")
+      .send({
+        query: `
+          mutation {
+            login(username: "alice", password: "123456") {
+              accessToken
+            }
+          }
+        `
+      });
 
-    const token = loginRes.body.accessToken;
+    const token = loginRes.body.data.login.accessToken;
 
     const res = await request(app)
-      .get("/api/users")
-      .set("x-access-token", token);
+      .post("/graphql")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        query: `query { users { id username } }`
+      });
 
     expect(res.status).toBe(200);
+    expect(res.body.errors).toBeUndefined();
+    expect(Array.isArray(res.body.data.users)).toBe(true);
   });
 });

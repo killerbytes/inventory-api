@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { Sequelize, sequelize } = require("../models");
 const { Op, where } = require("sequelize");
 const db = require("../models");
@@ -90,7 +91,7 @@ module.exports = {
       };
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -203,7 +204,7 @@ module.exports = {
       };
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -293,7 +294,7 @@ module.exports = {
       };
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -329,7 +330,7 @@ module.exports = {
         totalValue: parseFloat(result.totalValue) || 0,
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },

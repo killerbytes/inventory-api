@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { format } = require("date-fns");
 const path = require("path");
 const { google } = require("googleapis");
@@ -53,7 +54,7 @@ module.exports = {
       if (!product) throw ApiError.notFound("Product not found");
       return product;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       throw error;
     }
@@ -349,7 +350,7 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
     }
   },
   async flat() {

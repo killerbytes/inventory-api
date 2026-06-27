@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 const { Op } = require("sequelize");
 const { sequelize } = require("../models/index.js");
 const db = require("../models/index.js");
@@ -152,7 +153,7 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       transaction.rollback();
 
@@ -268,7 +269,7 @@ module.exports = {
       transaction.commit();
       return goodReceipt;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
       throw error;
     }
@@ -377,7 +378,7 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -490,7 +491,7 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -553,7 +554,7 @@ module.exports = {
       },
     );
     if (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
 
@@ -608,7 +609,7 @@ module.exports = {
               : "Even exchange completed",
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       await transaction.rollback();
       throw error;
     }
@@ -652,10 +653,8 @@ module.exports = {
         date: rt.createdAt,
       })),
     );
-    console.log(JSON.stringify(returnTransactions, null, 2));
 
     // 3. Build final structured output
-    console.log(JSON.stringify(allReturnItems, null, 2));
 
     const resultItems = gr.goodReceiptLines.map((item) => {
       const returned = allReturnItems.filter(
@@ -758,7 +757,7 @@ const processCompletedOrder = async (payload, goodReceipt) => {
 
     transaction.commit();
   } catch (error) {
-    console.log(error);
+    logger.error({ error }, "Service error");
 
     transaction.rollback();
     throw new Error("Error in processCompletedOrder");
@@ -811,7 +810,7 @@ const processCancelledOrder = async (goodReceipt, payload) => {
     transaction.commit();
     return;
   } catch (error) {
-    console.log(error);
+    logger.error({ error }, "Service error");
 
     transaction.rollback();
     throw new Error("Error in processCancelledOrder");
@@ -979,7 +978,7 @@ const updateOrder = async (
       }
     }
   } catch (error) {
-    console.log(321, error);
+    logger.error({ error }, "Service error");
     throw new Error("Error in updateOrderItems");
   }
 };

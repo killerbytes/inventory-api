@@ -42,6 +42,7 @@ const typeDefs = gql`
     categoryId: Int
     sku: String
     combinations: [ProductCombination]
+    variants: [VariantType]
   }
 
   type Customer {
@@ -64,7 +65,7 @@ const typeDefs = gql`
     updatedAt: Date
   }
 
-  type PaginatedSuppliers {
+  type Suppliers {
     data: [Supplier]
     meta: PaginationMeta
   }
@@ -104,6 +105,7 @@ const typeDefs = gql`
     totalReturnAmount: Float
     totalExchangeAmount: Float
     salesOrderStatusHistory: [OrderStatusHistory]
+    salesOrderHistory: [OrderStatusHistory]
     salesOrderItems: [SalesOrderItem]
   }
 
@@ -125,6 +127,17 @@ const typeDefs = gql`
   type PaginatedSalesOrders {
     data: [SalesOrder]
     meta: PaginationMeta
+    summary: [JSON]
+  }
+
+  type InvoiceLine {
+    id: ID!
+    invoiceId: Int
+    goodReceiptId: Int
+    amount: Float
+    goodReceipt: GoodReceipt
+    createdAt: Date
+    updatedAt: Date
   }
 
   type Invoice {
@@ -137,6 +150,9 @@ const typeDefs = gql`
     supplierId: Int
     supplier: Supplier
     totalAmount: Float
+    notes: String
+    invoiceLines: [InvoiceLine]
+    applications: [PaymentApplication]
     createdAt: Date
     updatedAt: Date
   }
@@ -196,12 +212,11 @@ const typeDefs = gql`
     goodReceiptId: Int
     nameSnapshot: String
     unit: String
-    conversionFactor: Int
-    barcode: String
     quantity: Int
     purchasePrice: Float
     totalAmount: Float
     combinations: ProductCombination
+    combinationId: Int
     goodReceipt: GoodReceipt
     skuSnapshot: String
     discount: Float
@@ -216,6 +231,16 @@ const typeDefs = gql`
   type VariantType {
     id: ID!
     name: String!
+    values: [VariantValue]
+    isBreakpackFilter: Boolean
+    isTemplate: Boolean
+    productId: Int
+  }
+
+  type VariantValue {
+    id: ID!
+    value: String!
+    variantTypeId: Int
   }
 
   type ProductCombination {
@@ -232,6 +257,8 @@ const typeDefs = gql`
     price: Float
     stock: Int
     inventory: Inventory
+    priceHistories: [PriceHistory]
+    product: Product
   }
 
   type Inventory {
@@ -239,6 +266,27 @@ const typeDefs = gql`
     combinationId: Int
     quantity: Int
     averagePrice: Float
+  }
+
+  type InventoryMovement {
+    id: ID!
+    combinationId: Int
+    combination: ProductCombination
+    costPerUnit: Float
+    quantity: Int
+    referenceId: Int
+    referenceType: String
+    totalCost: Float
+    type: String!
+    user: User
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  type PaginatedInventoryMovements {
+    data: [InventoryMovement]
+    meta: PaginationMeta
+    summary: JSON
   }
 
   type PriceHistory {
@@ -311,12 +359,23 @@ const typeDefs = gql`
       q: String
       sort: String
       order: String
-    ): PaginatedSuppliers
+      view: String
+    ): Suppliers
 
     supplier(id: ID!): Supplier
     supplierProducts(productId: ID!): [GoodReceiptLine]
 
-    inventory(productId: ID): [InventoryMovement]
+    inventoryMovements(
+      ids: [ID!]
+      q: String
+      type: String
+      sort: String
+      startDate: String
+      endDate: String
+      limit: Int
+      page: Int
+    ): PaginatedInventoryMovements
+
     breakPacks(q: String, limit: Int, page: Int): [BreakPack]
 
     salesOrders(
@@ -330,7 +389,7 @@ const typeDefs = gql`
       order: String
     ): PaginatedSalesOrders
 
-    salesOrder(id: ID!): SalesOrder
+    salesOrder(id: ID): SalesOrder
 
     invoices(
       limit: Int
@@ -343,9 +402,18 @@ const typeDefs = gql`
       order: String
     ): PaginatedInvoices
 
-    invoice(id: ID!): Invoice
+    invoice(id: ID): Invoice
 
-    payments(limit: Int, page: Int): PaginatedPayments
+    payments(
+      limit: Int
+      page: Int
+      q: String
+      startDate: String
+      endDate: String
+      status: String
+      sort: String
+      order: String
+    ): PaginatedPayments
 
     goodReceipt(id: ID!): GoodReceipt
     goodReceipts(
@@ -363,6 +431,7 @@ const typeDefs = gql`
     variantTypes: [VariantType]
     productCombinations: [ProductCombination]
     productCombinationsByIds(ids: [ID!]!): [ProductCombination]
+    productCombinationsByCategories(categoryId: Int): [ProductCombination]
     searchProductCombinations(search: String, limit: Int): JSON
 
     # Reports
@@ -372,6 +441,7 @@ const typeDefs = gql`
       page: Int
       q: String
       sort: String
+      productId: String
     ): PaginatedPriceHistory
 
     salesReport(startDate: String, endDate: String): Report

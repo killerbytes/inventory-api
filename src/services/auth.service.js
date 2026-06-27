@@ -102,15 +102,20 @@ module.exports = {
 
   getCurrent: async (contextUser) => {
     try {
-      if (!contextUser) {
+      const { authContext } = require("../utils/context");
+      const store = authContext.getStore();
+      const userFromStore = store ? store.get("user") : null;
+      const currentUser = contextUser || userFromStore;
+
+      if (!currentUser) {
         throw ApiError.forbidden("No auth context");
       }
 
-      const cacheKey = `user:${contextUser.id}`;
+      const cacheKey = `user:${currentUser.id}`;
       const cached = await redis.get(cacheKey);
       if (cached) return JSON.parse(cached);
       const user = await User.findOne({
-        where: { id: contextUser.id, isActive: true },
+        where: { id: currentUser.id, isActive: true },
         raw: true,
       });
 

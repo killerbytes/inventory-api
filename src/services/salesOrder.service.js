@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { Op, fn } = require("sequelize");
 const Sequelize = require("sequelize");
 const { sequelize } = require("../models");
@@ -37,6 +38,10 @@ const {
 } = db;
 
 module.exports = {
+  /**
+   * Retrieves order from cache to minimize DB load on frequent reads.
+   * @param {number|string} id
+   */
   async get(id) {
     try {
       const cacheKey = `salesOrder:${id}`;
@@ -64,6 +69,10 @@ module.exports = {
       throw error;
     }
   },
+  /**
+   * Orchestrates transaction to safely decrement inventory and log status history atomically.
+   * @param {Object} payload
+   */
   async create(payload) {
     const { error } = salesOrderFormSchema.validate(payload, {
       abortEarly: false,
@@ -178,13 +187,18 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       await transaction.rollback();
       throw error;
     }
   },
 
+  /**
+   * Reconciles order state differences to prevent stock desync during status transitions.
+   * @param {number|string} id
+   * @param {Object} payload
+   */
   async update(id, payload) {
     const salesOrder = await SalesOrder.findByPk(id, {
       include: [
@@ -229,6 +243,9 @@ module.exports = {
       throw error;
     }
   },
+  /**
+   * Fetches all cached orders to offload primary database listing queries.
+   */
   async list() {
     const cacheKey = `salesOrder:list`;
     const cached = await redis.get(cacheKey);
@@ -244,6 +261,10 @@ module.exports = {
     return result;
   },
 
+  /**
+   * Soft deletes via VOID status to maintain historical audit trails.
+   * @param {number|string} id
+   */
   async delete(id) {
     const transaction = await db.sequelize.transaction({
       type: Sequelize.Transaction.TYPES.IMMEDIATE,
@@ -290,11 +311,15 @@ module.exports = {
 
       return salesOrder;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       await transaction.rollback();
       throw error;
     }
   },
+  /**
+   * Provides sliced aggregate views to support heavy frontend table rendering without overwhelming memory.
+   * @param {Object} params
+   */
   async getPaginated(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
@@ -367,11 +392,16 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
 
+  /**
+   * Reverts inventory allocations specifically for cancelled orders to free up stock automatically.
+   * @param {number|string} id
+   * @param {Object} payload
+   */
   async cancelOrder(id, payload) {
     const transaction = await sequelize.transaction({
       type: Sequelize.Transaction.TYPES.IMMEDIATE,
@@ -410,12 +440,19 @@ module.exports = {
       await processCancelledOrder(salesOrder, payload, transaction);
       await transaction.commit();
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       await transaction.rollback();
       throw error;
     }
   },
 
+  /**
+   * Computes payment differences natively within the transaction to ensure financial reconciliation matches stock logic.
+   * @param {number|string} referenceId
+   * @param {Array} returns
+   * @param {Array} exchanges
+   * @param {string} reason
+   */
   async returnExchange(referenceId, returns = [], exchanges = [], reason) {
     // returns = [{ combinationId, quantity }]
     // exchanges = [{ combinationId, quantity }]
@@ -517,7 +554,7 @@ module.exports = {
               : "Even exchange completed",
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       await transaction.rollback();
       throw error;
@@ -632,7 +669,7 @@ const processCompletedOrder = async (payload, salesOrder, transaction) => {
       }
     );
   } catch (error) {
-    console.log(error);
+    logger.error({ error }, "Service error");
     throw new Error("Error in processCompletedOrder");
   }
 };
@@ -687,7 +724,7 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
       }
     );
   } catch (error) {
-    console.log(error);
+    logger.error({ error }, "Service error");
 
     throw new Error("Error in processCancelledOrder");
   }
@@ -855,7 +892,7 @@ const updateOrder = async (
       );
     }
   } catch (error) {
-    console.log(error);
+    logger.error({ error }, "Service error");
     throw new Error("Error in updateOrderItems");
   }
 };

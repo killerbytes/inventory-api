@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { sequelize } = require("../models");
 const db = require("../models");
 const {
@@ -88,7 +89,7 @@ module.exports = {
       const variantValueIds = await getVariantValueIds(
         product.id,
         payload.values,
-        transaction
+        transaction,
       );
 
       const combination = await ProductCombination.create(
@@ -99,10 +100,10 @@ module.exports = {
             product.name,
             product.categoryId,
             payload.unit,
-            payload.values
+            payload.values,
           ),
         },
-        { transaction }
+        { transaction },
       );
       await combination.setValues(variantValueIds, { transaction });
 
@@ -118,7 +119,7 @@ module.exports = {
       await transaction.commit();
       return combination;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       await transaction.rollback();
       throw error;
@@ -159,7 +160,7 @@ module.exports = {
             changedBy: (await authService.getCurrent()).id,
             changedAt: new Date(),
           },
-          { transaction }
+          { transaction },
         );
       }
 
@@ -171,16 +172,16 @@ module.exports = {
             product.name,
             product.categoryId,
             payload.unit,
-            payload.values
+            payload.values,
           ),
         },
-        { transaction }
+        { transaction },
       );
 
       const variantValueIds = await getVariantValueIds(
         product.id,
         payload.values,
-        transaction
+        transaction,
       );
 
       await combination.setValues(variantValueIds, { transaction });
@@ -188,7 +189,7 @@ module.exports = {
       await transaction.commit();
       return combination;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       await transaction.rollback();
       throw error;
@@ -345,7 +346,7 @@ module.exports = {
       const incomingIds = combinations.map((i) => i.id);
 
       const deleteCandidates = existingCombinations.filter(
-        (comb) => !incomingIds.includes(comb.id)
+        (comb) => !incomingIds.includes(comb.id),
       );
 
       const deletableIds = deleteCandidates
@@ -361,8 +362,8 @@ module.exports = {
       if (blockedIds.length > 0) {
         throw ApiError.badRequest(
           `Cannot delete combinations with inventory > 0: ${blockedIds.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
 
@@ -381,7 +382,7 @@ module.exports = {
 
         if (variantValueIds.length !== Object.entries(combo.values).length) {
           throw ApiError.badRequest(
-            "Some variant values are invalid or missing"
+            "Some variant values are invalid or missing",
           );
         }
 
@@ -395,7 +396,7 @@ module.exports = {
 
           if (!combination) {
             throw ApiError.notFound(
-              `Combination with ID ${combo.id} not found`
+              `Combination with ID ${combo.id} not found`,
             );
           }
 
@@ -410,7 +411,7 @@ module.exports = {
                 changedBy: (await authService.getCurrent()).id,
                 changedAt: new Date(),
               },
-              { transaction }
+              { transaction },
             );
           }
 
@@ -422,10 +423,10 @@ module.exports = {
                 product.name,
                 product.categoryId,
                 combo.unit,
-                combo.values
+                combo.values,
               ),
             },
-            { transaction }
+            { transaction },
           );
           // Optional: update variant values if changed
           await combination.setValues(variantValueIds, { transaction });
@@ -440,10 +441,10 @@ module.exports = {
                 product.name,
                 product.categoryId,
                 combo.unit,
-                combo.values
+                combo.values,
               ),
             },
-            { transaction }
+            { transaction },
           );
 
           await combination.addValues(variantValueIds, { transaction });
@@ -484,7 +485,7 @@ module.exports = {
 
       return { message: "Product updated successfully" };
     } catch (err) {
-      console.log(22, err);
+      logger.error({ err }, "Service error");
 
       await transaction.rollback();
 
@@ -515,7 +516,7 @@ module.exports = {
 
       if (breakPack.length > 0) {
         throw ApiError.badRequest(
-          "Combination has break pack. Please remove break pack before deleting this combination"
+          "Combination has break pack. Please remove break pack before deleting this combination",
         );
       }
 
@@ -649,8 +650,9 @@ LIMIT :limit;
           noBreakPacks,
         },
         type: sequelize.QueryTypes.SELECT,
-      }
+      },
     );
+    
 
     return results;
   },
@@ -671,7 +673,7 @@ LIMIT :limit;
             { model: Product, as: "product" },
           ],
           transaction,
-        }
+        },
       );
 
       const toInventory = await ProductCombination.findByPk(toCombinationId, {
@@ -691,7 +693,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Cannot convert between different products"
+          "Cannot convert between different products",
         );
       }
 
@@ -707,7 +709,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Invalid break pack relationship"
+          "Invalid break pack relationship",
         );
       }
 
@@ -736,7 +738,7 @@ LIMIT :limit;
               },
             ],
             400,
-            "Quantity must be a multiple of the break pack conversion factor"
+            "Quantity must be a multiple of the break pack conversion factor",
           );
         }
       }
@@ -756,7 +758,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Not enough inventory"
+          "Not enough inventory",
         );
       }
       const user = await authService.getCurrent();
@@ -769,7 +771,7 @@ LIMIT :limit;
           type,
           createdBy: user.id,
         },
-        { transaction }
+        { transaction },
       );
 
       // ⬇️ Decrease inventory from source (same type)
@@ -781,7 +783,7 @@ LIMIT :limit;
         INVENTORY_MOVEMENT_TYPE[`${type}_OUT`],
         breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
-        transaction
+        transaction,
       );
 
       // ⬆️ Increase inventory to target (same type)
@@ -794,7 +796,7 @@ LIMIT :limit;
         INVENTORY_MOVEMENT_TYPE[`${type}_IN`],
         breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
-        transaction
+        transaction,
       );
 
       await transaction.commit();
@@ -841,7 +843,7 @@ LIMIT :limit;
           createdAt: new Date(),
           createdBy: user.id,
         },
-        { transaction }
+        { transaction },
       );
 
       const oldQty = inventory.quantity;
@@ -856,7 +858,7 @@ LIMIT :limit;
           INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_IN,
           adjustment.id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-          transaction
+          transaction,
         );
       } else if (diff < 0) {
         await inventoryDecrease(
@@ -867,14 +869,14 @@ LIMIT :limit;
           INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_OUT,
           adjustment.id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-          transaction
+          transaction,
         );
       }
 
       transaction.commit();
       return true;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       transaction.rollback();
       throw error;
@@ -893,7 +895,7 @@ LIMIT :limit;
       });
       transaction.commit();
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
 
       transaction.rollback();
     }
@@ -932,7 +934,7 @@ LIMIT :limit;
             {
               price: toPrice,
             },
-            { transaction }
+            { transaction },
           );
 
           await db.PriceHistory.create(
@@ -944,7 +946,7 @@ LIMIT :limit;
               changedBy: (await authService.getCurrent()).id,
               changedAt: new Date(),
             },
-            { transaction }
+            { transaction },
           );
         }
       }
@@ -968,7 +970,7 @@ function validateCombinations(combinations, product) {
           product.name,
           product.categoryId,
           combo.unit,
-          combo.values
+          combo.values,
         );
         seen.set(computedSKU, combo);
       }
@@ -980,7 +982,7 @@ function validateCombinations(combinations, product) {
       product.name,
       product.categoryId,
       combo.unit,
-      combo.values
+      combo.values,
     );
 
     if (seen.has(computedSKU)) {
@@ -1098,7 +1100,7 @@ async function validateVariants(payload, product) {
             through: { attributes: [] },
           },
         ],
-      }
+      },
     );
     if (!parentCombination) {
       throw new Error("Parent combination not found");
@@ -1113,21 +1115,21 @@ async function validateVariants(payload, product) {
         throw new Error("Product must have a primary variant");
       }
       const primaryofParent = parentCombination.values.find(
-        (v) => v.variantTypeId === isPrimary.id
+        (v) => v.variantTypeId === isPrimary.id,
       );
       const primaryofChild = payload.values.find(
-        (v) => v.variantTypeId === isPrimary.id
+        (v) => v.variantTypeId === isPrimary.id,
       );
       if (primaryofParent.id !== primaryofChild.id) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
       const parentValue = parentCombination.values.map((v) => v.id);
       const childValue = payload.values.map((v) => v.id);
       if (parentValue.sort().join(",") === childValue.sort().join(",")) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
     } else {
@@ -1138,7 +1140,7 @@ async function validateVariants(payload, product) {
         parentCombination.values[0].id !== payload.values[0].id
       ) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
     }

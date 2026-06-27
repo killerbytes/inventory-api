@@ -64,6 +64,10 @@ async function startServer() {
 
     app.use(
       "/graphql",
+      (req, res, next) => {
+        const { authContext } = require("./utils/context");
+        authContext.run(new Map(), () => next());
+      },
       expressMiddleware(server, {
         context: async ({ req, res }) => {
           let user = null;
@@ -79,6 +83,12 @@ async function startServer() {
                 role: decoded.role,
                 permissions: decoded.permissions,
               };
+              
+              const { authContext } = require("./utils/context");
+              const store = authContext.getStore();
+              if (store) {
+                store.set("user", user);
+              }
             } catch (err) {
               logger.error("Token verification failed", err.message);
             }

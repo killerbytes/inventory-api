@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { Op, fn, col, literal } = require("sequelize");
 const {
   PAGINATION,
@@ -178,7 +179,7 @@ module.exports = {
       const groupedByCategory = {};
       inventories.forEach((inventory) => {
         // inventory.ProductCombination.forEach((combination) => {
-        //   console.log(combination.product);
+        //   
         // });
         //   const category = inventory.product?.category;
         //   if (!category) return;
@@ -202,7 +203,7 @@ module.exports = {
       //   currentPage: page,
       // };
     } catch (error) {
-      // console.log(error.stack);
+      // logger.error({ error }, "Service error");
 
       throw error;
     }
@@ -216,6 +217,8 @@ module.exports = {
       startDate,
       endDate,
     } = payload;
+    
+
     const limit = parseInt(payload.limit) || PAGINATION.LIMIT;
     const page = parseInt(payload.page) || PAGINATION.PAGE;
     try {
@@ -360,7 +363,7 @@ module.exports = {
         data: breakPacks,
       };
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
     }
   },
 
@@ -430,7 +433,7 @@ module.exports = {
         },
       };
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
     }
   },
   async getPriceHistory(params = {}) {
@@ -500,7 +503,7 @@ module.exports = {
         },
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },
@@ -522,7 +525,7 @@ module.exports = {
       name: col("combinations.name"),
       transactionCount: fn(
         "COUNT",
-        fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+        fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId")),
       ),
     };
     // sequelize.options.logging = console.log;
@@ -543,7 +546,7 @@ module.exports = {
         [
           fn(
             "COUNT",
-            fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+            fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId")),
           ),
           "transactionCount",
         ],
@@ -555,7 +558,7 @@ module.exports = {
           as: "combinations",
           required: true,
           where: sequelize.literal(
-            `"Inventory"."quantity" < "combinations"."reorderLevel"`
+            `"Inventory"."quantity" < "combinations"."reorderLevel"`,
           ),
           include: [
             {
@@ -644,7 +647,7 @@ module.exports = {
     type,
     reason,
     referenceId,
-    transaction
+    transaction,
   ) {
     let totalReturnAmount = 0;
 
@@ -656,7 +659,7 @@ module.exports = {
         totalReturnAmount,
         paymentDifference: 0,
       },
-      { transaction }
+      { transaction },
     );
     let itemLine;
 
@@ -677,7 +680,7 @@ module.exports = {
 
       const totalReturnQuantity = returnTransactions.reduce(
         (acc, cur) => acc + Number(cur.returnItems[0].quantity),
-        0
+        0,
       );
 
       if (
@@ -688,7 +691,7 @@ module.exports = {
       }
 
       const returnItem = items.find(
-        (x) => x.combinationId === item.combinationId
+        (x) => x.combinationId === item.combinationId,
       );
 
       if (!returnItem) {
@@ -727,7 +730,7 @@ module.exports = {
           reason,
           type: RETURN_TYPE.RETURN_IN,
         },
-        { transaction }
+        { transaction },
       );
 
       const inventory = await Inventory.findOne({
@@ -746,7 +749,7 @@ module.exports = {
           type,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
-          transaction
+          transaction,
         );
       } else if (sourceType === ORDER_TYPE.PURCHASE) {
         // Inventory: remove stock
@@ -763,7 +766,7 @@ module.exports = {
           type,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
-          transaction
+          transaction,
         );
       }
     }
@@ -793,7 +796,7 @@ module.exports = {
           quantity,
           averagePrice: averagePrice ?? 0,
         },
-        { transaction }
+        { transaction },
       );
     } else {
       const newQty = truncateQty(Number(inventory.quantity) + quantity);
@@ -803,7 +806,7 @@ module.exports = {
           quantity: newQty,
           ...(averagePrice !== undefined && { averagePrice }),
         },
-        { transaction }
+        { transaction },
       );
     }
 
@@ -823,7 +826,7 @@ module.exports = {
         userId: user.id,
         combinationId,
       },
-      { transaction }
+      { transaction },
     );
 
     return inventory;
@@ -833,7 +836,7 @@ module.exports = {
     type,
     referenceId = null,
     referenceType = null,
-    transaction
+    transaction,
   ) {
     const user = await authService.getCurrent();
     const { combinationId } = item;
@@ -869,7 +872,7 @@ module.exports = {
         referenceId,
         referenceType,
       },
-      { transaction }
+      { transaction },
     );
 
     await inventory.update({ quantity: newQuantity }, { transaction });

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { Op } = require("sequelize");
 const db = require("../models");
 const { invoiceSchema, invoiceSchemaCreate } = require("../schemas");
@@ -114,7 +115,7 @@ module.exports = {
       transaction.commit();
       return invoice;
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
 
       throw error;
@@ -170,7 +171,7 @@ module.exports = {
 
       return;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
       throw error;
     }
@@ -192,7 +193,7 @@ module.exports = {
       const deleted = await Invoice.destroy({ where: { id } });
       return deleted > 0;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
       throw error;
     }
@@ -274,7 +275,7 @@ module.exports = {
         },
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },

@@ -1,4 +1,5 @@
-const { INVOICE_STATUS } = require("../definitions.js");
+const logger = require("../utils/logger");
+const { INVOICE_STATUS, PAGINATION } = require("../definitions.js");
 const db = require("../models/index.js");
 const { paymentSchema } = require("../schemas.js");
 const ApiError = require("./ApiError.js");
@@ -45,7 +46,7 @@ module.exports = {
         { ...payload, changedBy: user.id },
         {
           transaction,
-        }
+        },
       );
 
       let totalApplied = 0;
@@ -67,8 +68,8 @@ module.exports = {
         if (app.amountApplied > remaining) {
           throw new Error(
             `Cannot apply ₱${app.amountApplied} — only ₱${normalize(
-              remaining
-            )} remaining on invoice ${invoice.id}`
+              remaining,
+            )} remaining on invoice ${invoice.id}`,
           );
         }
 
@@ -79,33 +80,33 @@ module.exports = {
             amountApplied: app.amountApplied,
             amountRemaining: remaining - app.amountApplied,
           },
-          { transaction }
+          { transaction },
         );
         totalApplied += app.amountApplied;
 
         if (app.amountApplied === remaining) {
           await invoice.update(
             { status: INVOICE_STATUS.PAID },
-            { transaction }
+            { transaction },
           );
         } else {
           await invoice.update(
             { status: INVOICE_STATUS.PARTIALLY_PAID },
-            { transaction }
+            { transaction },
           );
         }
       }
 
       if (totalApplied > payload.amount) {
         throw new Error(
-          `Total applied ₱${totalApplied} exceeds payment amount ₱${payload.amount}`
+          `Total applied ₱${totalApplied} exceeds payment amount ₱${payload.amount}`,
         );
       }
 
       transaction.commit();
       return payment;
     } catch (error) {
-      console.log(1, error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
 
       throw error;
@@ -142,7 +143,7 @@ module.exports = {
           break;
         default:
           throw new Error(
-            `Invalid status change from ${invoice.status} to ${payload.status}`
+            `Invalid status change from ${invoice.status} to ${payload.status}`,
           );
       }
 
@@ -150,7 +151,7 @@ module.exports = {
 
       return;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
       throw error;
     }
@@ -172,7 +173,7 @@ module.exports = {
       const deleted = await Payment.destroy({ where: { id } });
       return deleted > 0;
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       transaction.rollback();
       throw error;
     }
@@ -180,7 +181,7 @@ module.exports = {
   async getPaginated(params = {}) {
     const {
       limit = PAGINATION.LIMIT,
-      page = PAGINATION,
+      page = PAGINATION.PAGE,
       q,
       startDate,
       endDate,
@@ -277,7 +278,7 @@ module.exports = {
         },
       };
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, "Service error");
       throw error;
     }
   },

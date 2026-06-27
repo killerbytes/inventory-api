@@ -48,21 +48,21 @@ module.exports = {
     }
   },
 
-  async list() {
-    const cacheKey = `supplier:list`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+  // async list() {
+  //   const cacheKey = `supplier:list`;
+  //   const cached = await redis.get(cacheKey);
+  //   if (cached) {
+  //     return JSON.parse(cached);
+  //   }
 
-    const result = await Supplier.findAll({
-      raw: true,
-      order: [["name", "ASC"]],
-      attributes: ["id", "name"],
-    });
-    await redis.setEx(cacheKey, 300, JSON.stringify(result));
-    return result;
-  },
+  //   const result = await Supplier.findAll({
+  //     raw: true,
+  //     order: [["name", "ASC"]],
+  //     attributes: ["id", "name"],
+  //   });
+  //   await redis.setEx(cacheKey, 300, JSON.stringify(result));
+  //   return result;
+  // },
 
   async update(id, payload) {
     const { id: _id, ...params } = payload;
@@ -103,11 +103,13 @@ module.exports = {
       throw error;
     }
   },
-  async getPaginated(query = {}) {
-    const { q = null, sort } = query;
+  async list(query = {}) {
+    const { q = null, sort, view = "full" } = query;
+    console.log(view);
+
     const limit = parseInt(query.limit) || PAGINATION.LIMIT;
     const page = parseInt(query.page) || PAGINATION.PAGE;
-    const cacheKey = `supplier:paginated`;
+    const cacheKey = `supplier:list`;
     const cached = await redis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
