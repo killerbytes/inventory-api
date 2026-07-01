@@ -199,6 +199,7 @@ const salesOrderItemSchema = salesOrderStatusSchema
   .meta({ className: "salesOrderItem" });
 
 const salesOrderFormSchema = Joi.object({
+  salesOrderNumber: Joi.string().required(),
   customerId: Joi.number().required(),
   orderDate: Joi.date().required(),
   isDelivery: Joi.boolean().optional(),

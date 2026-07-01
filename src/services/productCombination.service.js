@@ -88,7 +88,7 @@ module.exports = {
       const variantValueIds = await getVariantValueIds(
         product.id,
         payload.values,
-        transaction
+        transaction,
       );
 
       const combination = await ProductCombination.create(
@@ -99,10 +99,10 @@ module.exports = {
             product.name,
             product.categoryId,
             payload.unit,
-            payload.values
+            payload.values,
           ),
         },
-        { transaction }
+        { transaction },
       );
       await combination.setValues(variantValueIds, { transaction });
 
@@ -159,7 +159,7 @@ module.exports = {
             changedBy: (await authService.getCurrent()).id,
             changedAt: new Date(),
           },
-          { transaction }
+          { transaction },
         );
       }
 
@@ -171,16 +171,16 @@ module.exports = {
             product.name,
             product.categoryId,
             payload.unit,
-            payload.values
+            payload.values,
           ),
         },
-        { transaction }
+        { transaction },
       );
 
       const variantValueIds = await getVariantValueIds(
         product.id,
         payload.values,
-        transaction
+        transaction,
       );
 
       await combination.setValues(variantValueIds, { transaction });
@@ -345,7 +345,7 @@ module.exports = {
       const incomingIds = combinations.map((i) => i.id);
 
       const deleteCandidates = existingCombinations.filter(
-        (comb) => !incomingIds.includes(comb.id)
+        (comb) => !incomingIds.includes(comb.id),
       );
 
       const deletableIds = deleteCandidates
@@ -361,8 +361,8 @@ module.exports = {
       if (blockedIds.length > 0) {
         throw ApiError.badRequest(
           `Cannot delete combinations with inventory > 0: ${blockedIds.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
 
@@ -381,7 +381,7 @@ module.exports = {
 
         if (variantValueIds.length !== Object.entries(combo.values).length) {
           throw ApiError.badRequest(
-            "Some variant values are invalid or missing"
+            "Some variant values are invalid or missing",
           );
         }
 
@@ -395,7 +395,7 @@ module.exports = {
 
           if (!combination) {
             throw ApiError.notFound(
-              `Combination with ID ${combo.id} not found`
+              `Combination with ID ${combo.id} not found`,
             );
           }
 
@@ -410,7 +410,7 @@ module.exports = {
                 changedBy: (await authService.getCurrent()).id,
                 changedAt: new Date(),
               },
-              { transaction }
+              { transaction },
             );
           }
 
@@ -422,10 +422,10 @@ module.exports = {
                 product.name,
                 product.categoryId,
                 combo.unit,
-                combo.values
+                combo.values,
               ),
             },
-            { transaction }
+            { transaction },
           );
           // Optional: update variant values if changed
           await combination.setValues(variantValueIds, { transaction });
@@ -440,10 +440,10 @@ module.exports = {
                 product.name,
                 product.categoryId,
                 combo.unit,
-                combo.values
+                combo.values,
               ),
             },
-            { transaction }
+            { transaction },
           );
 
           await combination.addValues(variantValueIds, { transaction });
@@ -515,7 +515,7 @@ module.exports = {
 
       if (breakPack.length > 0) {
         throw ApiError.badRequest(
-          "Combination has break pack. Please remove break pack before deleting this combination"
+          "Combination has break pack. Please remove break pack before deleting this combination",
         );
       }
 
@@ -649,8 +649,274 @@ LIMIT :limit;
           noBreakPacks,
         },
         type: sequelize.QueryTypes.SELECT,
-      }
+      },
     );
+
+    return results;
+  },
+
+  async searchSuggestion(search, unit, price) {
+    if (!search || typeof search !== "string") return [];
+
+    let words = search
+      .trim()
+      .toLowerCase()
+      .replace(/['"]/g, "") // Remove all quotes to prevent tsquery syntax errors
+      .split(/[\s,;&|!():*]+/)
+      .filter((word) => word.length > 0 && word !== "-");
+
+    if (words.length === 0) return [];
+
+    // For the DB query, exclude single-char tokens (e.g. "x", "d" from "d.")
+    // that are too generic for full-text search and make the AND query overly
+    // restrictive. These noise words often come from measurement notation like
+    // "5/32 x 3/4" or abbreviations like "D." in article names.
+    // coreWords is kept intact for combo keyword overlap scoring.
+    const queryWords = words.filter(
+      (w) => w.replace(/[^a-z0-9]/g, "").length > 1,
+    );
+
+    // Fall back to all coreWords if filtering leaves nothing meaningful
+    const wordsForQuery = queryWords.length > 0 ? queryWords : words;
+
+    let tsQuery = words.map((w) => `${w}:*`).join(" & ");
+
+    const ilikeConditionsAnd = wordsForQuery
+      .map((w, i) => `p.search_text::text ILIKE :word${i}`)
+      .join(" AND ");
+    const ilikeConditionsOr = wordsForQuery
+      .map((w, i) => `p.search_text::text ILIKE :word${i}`)
+      .join(" OR ");
+
+    const replacements = { tsQuery };
+    wordsForQuery.forEach((w, i) => {
+      replacements[`word${i}`] = `%${w}%`;
+    });
+
+    let results = await sequelize.query(
+      `
+SELECT
+  p.id,
+  p.name,
+  p.description,
+  p."categoryId",
+  
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', pc.id,
+        'productId', pc."productId",
+        'name', pc.name,
+        'sku', pc.sku,
+        'unit', pc.unit,
+        'price', pc.price,
+        'inventory', inv."Inventory"
+      )
+    ) FILTER (WHERE pc.id IS NOT NULL),
+    '[]'
+  ) AS "combinations",
+  ts_rank(p.search_text, to_tsquery('simple', :tsQuery)) as rank
+FROM "Products" p
+LEFT JOIN "ProductCombinations" pc
+  ON pc."productId" = p.id
+  AND pc."deletedAt" IS NULL
+LEFT JOIN LATERAL (
+  SELECT
+    jsonb_build_object(
+      'id', i.id,
+      'quantity', i.quantity,
+      'averagePrice', i."averagePrice"
+    ) AS "Inventory"
+  FROM "Inventories" i
+  WHERE i."combinationId" = pc.id
+    AND i."deletedAt" IS NULL
+  LIMIT 1
+) inv ON true
+WHERE
+  p."deletedAt" IS NULL
+  AND (
+    p.search_text @@ to_tsquery('simple', :tsQuery)
+    OR (${ilikeConditionsOr})
+  )
+GROUP BY p.id, p.name, rank
+ORDER BY rank DESC
+LIMIT 100;
+`,
+      {
+        replacements,
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
+    if (results.length === 0) {
+      // Try OR query — still use noise-filtered words to avoid false positives
+      tsQuery = wordsForQuery.map((w) => `${w}:*`).join(" | ");
+      replacements.tsQuery = tsQuery;
+
+      results = await sequelize.query(
+        `
+SELECT
+  p.id,
+  p.name,
+  p.description,
+  p."categoryId",
+  
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', pc.id,
+        'productId', pc."productId",
+        'name', pc.name,
+        'sku', pc.sku,
+        'unit', pc.unit,
+        'price', pc.price,
+        'inventory', inv."Inventory"
+      )
+    ) FILTER (WHERE pc.id IS NOT NULL),
+    '[]'
+  ) AS "combinations",
+  ts_rank(p.search_text, to_tsquery('simple', :tsQuery)) as rank
+FROM "Products" p
+LEFT JOIN "ProductCombinations" pc
+  ON pc."productId" = p.id
+  AND pc."deletedAt" IS NULL
+  AND pc."isBreakPack" = false
+LEFT JOIN LATERAL (
+  SELECT
+    jsonb_build_object(
+      'id', i.id,
+      'quantity', i.quantity,
+      'averagePrice', i."averagePrice"
+    ) AS "Inventory"
+  FROM "Inventories" i
+  WHERE i."combinationId" = pc.id
+    AND i."deletedAt" IS NULL
+  LIMIT 1
+) inv ON true
+WHERE
+  p."deletedAt" IS NULL
+  AND (
+    p.search_text @@ to_tsquery('simple', :tsQuery)
+    OR (${ilikeConditionsOr})
+  )
+GROUP BY p.id, p.name, rank
+ORDER BY rank DESC
+LIMIT 20;
+`,
+        {
+          replacements,
+          type: sequelize.QueryTypes.SELECT,
+        },
+      );
+    }
+
+    // Normalize a token for number matching: convert Unicode vulgar fractions to
+    // their ASCII digit equivalents, then strip all non-alphanumeric characters.
+    // e.g. "¾" → "34", '2"' → "2", "#2" → "2", "5/32" → "532".
+    const UNICODE_FRACTIONS = {
+      "\u00bc": "14", // ¼
+      "\u00bd": "12", // ½
+      "\u00be": "34", // ¾
+      "\u2153": "13", // ⅓
+      "\u2154": "23", // ⅔
+      "\u215b": "18", // ⅛
+      "\u215c": "38", // ⅜
+      "\u215d": "58", // ⅝
+      "\u215e": "78", // ⅞
+    };
+    const normToken = (s) =>
+      s
+        .replace(
+          /[\u00bc\u00bd\u00be\u2153\u2154\u215b\u215c\u215d\u215e]/g,
+          (ch) => UNICODE_FRACTIONS[ch] ?? ch,
+        )
+        .replace(/[^a-z0-9]/g, "");
+
+    // Refine ranking using unit, number-word, keyword overlap, and price
+    for (let product of results) {
+      let maxComboScore = 0;
+      let bestCombo = null;
+
+      if (product.combinations && product.combinations.length > 0) {
+        for (let combo of product.combinations) {
+          let comboScore = 0;
+
+          if (unit && combo.unit) {
+            const parsedUnit = String(unit)
+              .toLowerCase()
+              .replace(/[^a-z]/g, "");
+            const comboUnit = String(combo.unit)
+              .toLowerCase()
+              .replace(/[^a-z]/g, "");
+            if (
+              parsedUnit === comboUnit ||
+              (parsedUnit.includes(comboUnit) && comboUnit.length > 0) ||
+              (comboUnit.includes(parsedUnit) && parsedUnit.length > 0)
+            ) {
+              comboScore += 10;
+            }
+          }
+
+          const comboNameText = String(combo.name || "").toLowerCase();
+
+          const comboNameWords = comboNameText
+            .split(/[\s,;&|!():*]+/)
+            .filter((w) => w.length > 0 && w !== "-");
+
+          const qw = flatten(words);
+          const cw = flatten(comboNameWords);
+
+          const remaining = [...cw];
+
+          if (combo.productId === 425) {
+          }
+          for (const token of qw) {
+            const index = remaining.indexOf(token);
+            if (index !== -1) {
+              remaining.splice(index, 1);
+              comboScore += 5;
+            }
+          }
+
+          if (
+            price !== undefined &&
+            price !== null &&
+            combo.price !== undefined &&
+            combo.price !== null
+          ) {
+            const p1 = parseFloat(price);
+            const p2 = parseFloat(combo.price);
+            if (!isNaN(p1) && !isNaN(p2)) {
+              if (p1 === p2) {
+                comboScore += 15;
+              } else {
+                const diff = Math.abs(p1 - p2);
+                const percentDiff = diff / Math.max(p1, p2);
+                if (percentDiff <= 0.05) {
+                  comboScore += 10;
+                } else if (percentDiff <= 0.15) {
+                  comboScore += 5;
+                }
+              }
+            }
+          }
+
+          // Use strict > so a genuinely better combo always wins;
+          // ties keep the first encountered (most DB-ordered) combo.
+          if (comboScore > maxComboScore) {
+            maxComboScore = comboScore;
+            bestCombo = combo;
+          }
+        }
+      }
+
+      product.suggestionScore = product.rank * 10 + maxComboScore;
+      if (bestCombo) {
+        product.bestMatchCombination = bestCombo;
+      }
+    }
+
+    results.sort((a, b) => b.suggestionScore - a.suggestionScore);
 
     return results;
   },
@@ -671,7 +937,7 @@ LIMIT :limit;
             { model: Product, as: "product" },
           ],
           transaction,
-        }
+        },
       );
 
       const toInventory = await ProductCombination.findByPk(toCombinationId, {
@@ -691,7 +957,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Cannot convert between different products"
+          "Cannot convert between different products",
         );
       }
 
@@ -707,7 +973,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Invalid break pack relationship"
+          "Invalid break pack relationship",
         );
       }
 
@@ -736,7 +1002,7 @@ LIMIT :limit;
               },
             ],
             400,
-            "Quantity must be a multiple of the break pack conversion factor"
+            "Quantity must be a multiple of the break pack conversion factor",
           );
         }
       }
@@ -756,7 +1022,7 @@ LIMIT :limit;
             },
           ],
           400,
-          "Not enough inventory"
+          "Not enough inventory",
         );
       }
       const user = await authService.getCurrent();
@@ -769,7 +1035,7 @@ LIMIT :limit;
           type,
           createdBy: user.id,
         },
-        { transaction }
+        { transaction },
       );
 
       // ⬇️ Decrease inventory from source (same type)
@@ -781,7 +1047,7 @@ LIMIT :limit;
         INVENTORY_MOVEMENT_TYPE[`${type}_OUT`],
         breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
-        transaction
+        transaction,
       );
 
       // ⬆️ Increase inventory to target (same type)
@@ -794,7 +1060,7 @@ LIMIT :limit;
         INVENTORY_MOVEMENT_TYPE[`${type}_IN`],
         breakPackRecord.id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.BREAK_PACK,
-        transaction
+        transaction,
       );
 
       await transaction.commit();
@@ -841,7 +1107,7 @@ LIMIT :limit;
           createdAt: new Date(),
           createdBy: user.id,
         },
-        { transaction }
+        { transaction },
       );
 
       const oldQty = inventory.quantity;
@@ -856,7 +1122,7 @@ LIMIT :limit;
           INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_IN,
           adjustment.id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-          transaction
+          transaction,
         );
       } else if (diff < 0) {
         await inventoryDecrease(
@@ -867,7 +1133,7 @@ LIMIT :limit;
           INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_OUT,
           adjustment.id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.STOCK_ADJUSTMENT,
-          transaction
+          transaction,
         );
       }
 
@@ -932,7 +1198,7 @@ LIMIT :limit;
             {
               price: toPrice,
             },
-            { transaction }
+            { transaction },
           );
 
           await db.PriceHistory.create(
@@ -944,7 +1210,7 @@ LIMIT :limit;
               changedBy: (await authService.getCurrent()).id,
               changedAt: new Date(),
             },
-            { transaction }
+            { transaction },
           );
         }
       }
@@ -968,7 +1234,7 @@ function validateCombinations(combinations, product) {
           product.name,
           product.categoryId,
           combo.unit,
-          combo.values
+          combo.values,
         );
         seen.set(computedSKU, combo);
       }
@@ -980,7 +1246,7 @@ function validateCombinations(combinations, product) {
       product.name,
       product.categoryId,
       combo.unit,
-      combo.values
+      combo.values,
     );
 
     if (seen.has(computedSKU)) {
@@ -1003,6 +1269,7 @@ function buildTsQuery(search) {
   const words = search
     .trim()
     .toLowerCase()
+    .replace(/['"#]/g, "") // Remove all quotes to prevent tsquery syntax errors
     .split(/[\s,;&|!():*]+/)
     .filter((word) => word.length > 0 && word !== "-");
 
@@ -1098,7 +1365,7 @@ async function validateVariants(payload, product) {
             through: { attributes: [] },
           },
         ],
-      }
+      },
     );
     if (!parentCombination) {
       throw new Error("Parent combination not found");
@@ -1113,21 +1380,21 @@ async function validateVariants(payload, product) {
         throw new Error("Product must have a primary variant");
       }
       const primaryofParent = parentCombination.values.find(
-        (v) => v.variantTypeId === isPrimary.id
+        (v) => v.variantTypeId === isPrimary.id,
       );
       const primaryofChild = payload.values.find(
-        (v) => v.variantTypeId === isPrimary.id
+        (v) => v.variantTypeId === isPrimary.id,
       );
       if (primaryofParent.id !== primaryofChild.id) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
       const parentValue = parentCombination.values.map((v) => v.id);
       const childValue = payload.values.map((v) => v.id);
       if (parentValue.sort().join(",") === childValue.sort().join(",")) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
     } else {
@@ -1138,7 +1405,7 @@ async function validateVariants(payload, product) {
         parentCombination.values[0].id !== payload.values[0].id
       ) {
         throw new Error(
-          "Parent combination values are not the same as break pack values"
+          "Parent combination values are not the same as break pack values",
         );
       }
     }
@@ -1161,3 +1428,16 @@ const getIncludes = [
     as: "inventory",
   },
 ];
+
+function flatten(tokens) {
+  return tokens.flatMap((token) => {
+    token = token.toLowerCase();
+
+    // Split dimensions like "2x2" -> ["2", "x", "2"]
+    if (/^\d+(\.\d+)?x\d+(\.\d+)?$/i.test(token)) {
+      return token.split(/(x)/i).filter(Boolean);
+    }
+
+    return token;
+  });
+}
