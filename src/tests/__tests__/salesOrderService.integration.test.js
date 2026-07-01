@@ -51,29 +51,32 @@ beforeEach(async () => {
   await loginUser();
 });
 
+const testData = {
+  salesOrderNumber: "1",
+  customerId: 1,
+  orderDate: new Date(),
+  notes: "Test Notes",
+  internalNotes: "Test Internal Notes",
+  salesOrderItems: [
+    {
+      combinationId: 1,
+      quantity: 10,
+      originalPrice: 100,
+      purchasePrice: 100,
+    },
+    {
+      combinationId: 2,
+      quantity: 20,
+      originalPrice: 100,
+      purchasePrice: 100,
+    },
+  ],
+  modeOfPayment: "CASH",
+};
+
 describe("Sales Order Service (Integration)", () => {
   it("should create a sale order", async () => {
-    await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+    await salesOrderService.create(testData);
     const salesOrder = await salesOrderService.get(1);
     expect(salesOrder.customerId).toBe(1);
     expect(salesOrder.orderDate).toBeInstanceOf(Date);
@@ -89,26 +92,8 @@ describe("Sales Order Service (Integration)", () => {
   });
   it("should create a sales order in RECEIVED status", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
     });
     const salesOrder = await salesOrderService.get(1);
     const inventory = await sequelize.models.Inventory.findAll();
@@ -118,27 +103,7 @@ describe("Sales Order Service (Integration)", () => {
     expect(inventory[1].quantity).toBe(0);
   });
   it("should update a sales order", async () => {
-    await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
-      salesOrderItems: [
-        {
-          combinationId: 1,
-          quantity: 10,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-        {
-          combinationId: 2,
-          quantity: 20,
-          originalPrice: 100,
-          purchasePrice: 100,
-        },
-      ],
-      modeOfPayment: "CASH",
-    });
+    await salesOrderService.create(testData);
     await salesOrderService.update(1, {
       status: "RECEIVED",
       salesOrderItems: [
@@ -185,10 +150,7 @@ describe("Sales Order Service (Integration)", () => {
       notes: "test",
     });
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -235,10 +197,7 @@ describe("Sales Order Service (Integration)", () => {
   it("should cancel a sales order", async () => {
     const inventory = await sequelize.models.Inventory.findAll();
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -253,7 +212,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     await salesOrderService.update(1, {
       status: "RECEIVED",
@@ -296,10 +254,7 @@ describe("Sales Order Service (Integration)", () => {
       notes: "test",
     });
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -314,7 +269,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     await salesOrderService.delete(1);
     const salesOrder = await salesOrderService.get(1);
@@ -325,10 +279,7 @@ describe("Sales Order Service (Integration)", () => {
   });
   it("should get a paginated list of sales orders", async () => {
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -343,13 +294,10 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
+      salesOrderNumber: "2",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -364,7 +312,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const salesOrders = await salesOrderService.getPaginated({
       page: 1,
@@ -384,10 +331,7 @@ describe("Sales Order Service (Integration)", () => {
     });
     try {
       await salesOrderService.create({
-        customerId: 1,
-        orderDate: new Date(),
-        notes: "Test Notes",
-        internalNotes: "Test Internal Notes",
+        ...testData,
         salesOrderItems: [
           {
             combinationId: 1,
@@ -402,7 +346,6 @@ describe("Sales Order Service (Integration)", () => {
             purchasePrice: 100,
           },
         ],
-        modeOfPayment: "CASH",
       });
       await salesOrderService.update(1, {
         status: "RECEIVED",
@@ -436,10 +379,7 @@ describe("Sales Order Service (Integration)", () => {
   });
   it("should update inventory movements", async () => {
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -454,7 +394,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     await salesOrderService.update(1, {
       status: "RECEIVED",
@@ -476,19 +415,21 @@ describe("Sales Order Service (Integration)", () => {
     });
     const inventoryMovements = await inventoryService.getMovements({});
     expect(inventoryMovements.data.length).toBe(4);
-    const out1 = inventoryMovements.data.find(m => m.combinationId === 1 && m.type === "OUT");
-    const out2 = inventoryMovements.data.find(m => m.combinationId === 2 && m.type === "OUT");
+    const out1 = inventoryMovements.data.find(
+      (m) => m.combinationId === 1 && m.type === "OUT",
+    );
+    const out2 = inventoryMovements.data.find(
+      (m) => m.combinationId === 2 && m.type === "OUT",
+    );
     expect(out1.quantity).toBe(-11);
     expect(out2.quantity).toBe(-20);
   });
   it("should throw error when creating for delivery", async () => {
     try {
       await salesOrderService.create({
-        customerId: 1,
+        ...testData,
         isDelivery: true,
         deliveryDate: new Date(),
-        notes: "Test Notes",
-        internalNotes: "Test Internal Notes",
         salesOrderItems: [
           {
             combinationId: 1,
@@ -497,7 +438,6 @@ describe("Sales Order Service (Integration)", () => {
             purchasePrice: 100,
           },
         ],
-        modeOfPayment: "CASH",
       });
       throw new Error("Expected Error but no error was thrown");
     } catch (error) {
@@ -514,13 +454,10 @@ describe("Sales Order Service (Integration)", () => {
   });
   it("should create a sales order for delivery", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       isDelivery: true,
-      orderDate: new Date(),
       deliveryAddress: "Test Address",
       deliveryDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -529,7 +466,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const salesOrder = await salesOrderService.get(1);
     expect(salesOrder.isDelivery).toBe(true);
@@ -538,10 +474,8 @@ describe("Sales Order Service (Integration)", () => {
   });
   it("should create a sales order with bank as payment", async () => {
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
+      modeOfPayment: "BANK",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -550,18 +484,14 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "BANK",
     });
     const saleOrder = await salesOrderService.get(1);
     expect(saleOrder.modeOfPayment).toBe("BANK");
   });
   it("should create a sales order twice", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -576,7 +506,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const salesOrder2 = await salesOrderService.get(1);
     expect(salesOrder2.status).toBe("RECEIVED");
@@ -590,11 +519,9 @@ describe("Sales Order Service (Integration)", () => {
     const combination2 = await productCombinationService.get(2);
     expect(combination2.inventory.quantity).toBe(16);
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
+      salesOrderNumber: "2",
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -609,7 +536,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const inv = await sequelize.models.Inventory.findAll();
     expect(inv.length).toBe(2);
@@ -619,11 +545,8 @@ describe("Sales Order Service (Integration)", () => {
 
   it("should return item", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -639,7 +562,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const returns = [
       {
@@ -703,11 +625,8 @@ describe("Sales Order Service (Integration)", () => {
 
   it("should not allow cancel when having returns", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -723,7 +642,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const returns = [
       {
@@ -752,11 +670,7 @@ describe("Sales Order Service (Integration)", () => {
 
   it("should not allow returns when cancelled", async () => {
     await salesOrderService.create({
-      customerId: 1,
-      status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
+      ...testData,
       salesOrderItems: [
         {
           combinationId: 1,
@@ -772,7 +686,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     await salesOrderService.cancelOrder(1, { reason: "reason" });
 
@@ -857,11 +770,8 @@ describe("Sales Order Service (Integration)", () => {
     });
 
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -877,7 +787,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const returns = [
       {
@@ -966,11 +875,8 @@ describe("Sales Order Service (Integration)", () => {
     const inv = await sequelize.models.Inventory.findAll();
 
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -986,7 +892,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const returns = [
       {
@@ -1011,11 +916,8 @@ describe("Sales Order Service (Integration)", () => {
 
   it("should not allow return if more than the actual order quantity", async () => {
     await salesOrderService.create({
-      customerId: 1,
+      ...testData,
       status: "RECEIVED",
-      orderDate: new Date(),
-      notes: "Test Notes",
-      internalNotes: "Test Internal Notes",
       salesOrderItems: [
         {
           combinationId: 1,
@@ -1025,7 +927,6 @@ describe("Sales Order Service (Integration)", () => {
           discount: 100,
         },
       ],
-      modeOfPayment: "CASH",
     });
     const returns = [
       {
@@ -1046,10 +947,10 @@ describe("Sales Order Service (Integration)", () => {
           },
         ],
         null,
-        "reason"
+        "reason",
       );
       throw new Error(
-        "Expected SequelizeUniqueConstraintError but no error was thrown"
+        "Expected SequelizeUniqueConstraintError but no error was thrown",
       );
     } catch (error) {
       console.log("Unique error:", {
@@ -1077,8 +978,7 @@ describe("Sales Order Service (Integration)", () => {
 
     // Create and receive a sales order
     await salesOrderService.create({
-      customerId: 1,
-      orderDate: new Date(),
+      ...testData,
       status: "RECEIVED",
       salesOrderItems: [
         {
@@ -1087,7 +987,6 @@ describe("Sales Order Service (Integration)", () => {
           purchasePrice: 90,
         },
       ],
-      modeOfPayment: "CASH",
     });
 
     // Total Amount (Revenue) should be 100 * 10 = 1000

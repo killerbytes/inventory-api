@@ -21,6 +21,7 @@ const salesRouter = require("./routes/salesOrder.router");
 const variantTypesRouter = require("./routes/variantTypes.router");
 const productCombinationRouter = require("./routes/productCombination.router");
 const reportsRouter = require("./routes/reports.router");
+const ocrRouter = require("./routes/ocr.router");
 const env = process.env.NODE_ENV || "development";
 const envPath = `.env.${env}`;
 // const zlib = require("zlib");
@@ -41,7 +42,7 @@ app.use(
   cors({
     origin: env === "development" ? true : [process.env.CLIENT_URL],
     credentials: true,
-  })
+  }),
 ); // Enable CORS for all routes
 
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -54,7 +55,7 @@ app.use(
     genReqId: (req, res) => {
       return req.headers["x-request-id"] || randomUUID();
     },
-  })
+  }),
 );
 
 app.use("/api/auth", authRouter);
@@ -71,6 +72,7 @@ app.use("/api/product-combinations", verifyToken(), productCombinationRouter);
 app.use("/api/invoices", verifyToken(), invoiceRouter);
 app.use("/api/payments", verifyToken(), paymentRouter);
 app.use("/api/reports", verifyToken(), reportsRouter);
+app.use("/api/ocr", ocrRouter);
 app.post("/api/backup", verifyToken({ adminOnly: true }), (req, res) => {
   const backup = spawn("node", ["backup.js", "backup"], {
     stdio: "inherit", // pipes logs to server logs

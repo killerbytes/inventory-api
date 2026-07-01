@@ -77,11 +77,11 @@ beforeEach(async () => {
         ],
       },
     ],
-    product0.id
+    product0.id,
   );
 
   const combinations = await productCombinationService.getByProductId(
-    product0.id
+    product0.id,
   );
   // Assuming the first one created is combination1 (BOX) and second is combination2 (PCS)
   // or we can find them by unit
@@ -211,7 +211,7 @@ describe("Inventory Service (Integration)", () => {
 
     // Filter movements by combination to be safe, or assume order
     const movComb1 = movements.filter(
-      (m) => m.combinationId === combination1.id
+      (m) => m.combinationId === combination1.id,
     );
 
     expect(movements.length).toBe(1);
@@ -315,6 +315,7 @@ describe("Inventory Service (Integration)", () => {
 
     await salesOrderService.create({
       customerId: customer0.id,
+      salesOrderNumber: "1",
       status: "RECEIVED",
       orderDate: new Date(),
       notes: "Test Notes",
@@ -433,6 +434,7 @@ describe("Inventory Service (Integration)", () => {
     // 2. Sell to Customer
     await salesOrderService.create({
       customerId: customer0.id,
+      salesOrderNumber: "2",
       status: "RECEIVED",
       orderDate: new Date(),
       notes: "Test Notes",
@@ -455,7 +457,7 @@ describe("Inventory Service (Integration)", () => {
 
     // Expect combination1 to be in the list
     const found1 = reorders.data.find(
-      (r) => r.combinationId === combination1.id
+      (r) => r.combinationId === combination1.id,
     );
     expect(found1).toBeDefined();
     expect(Number(found1.quantity)).toBe(0);
@@ -507,7 +509,7 @@ describe("Inventory Service (Integration)", () => {
 
     expect(history.data.length).toBeGreaterThan(0);
     const change = history.data.find(
-      (h) => h.combinationId === combination1.id && h.toPrice == 150
+      (h) => h.combinationId === combination1.id && h.toPrice == 150,
     );
     expect(change).toBeDefined();
     expect(change.fromPrice).toBe(100);

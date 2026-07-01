@@ -90,7 +90,7 @@ module.exports = {
               },
             ],
             400,
-            "Quantity is greater than inventory"
+            "Quantity is greater than inventory",
           );
         }
       }
@@ -121,7 +121,7 @@ module.exports = {
                 },
               ],
               transaction,
-            }
+            },
           );
 
           const props = {
@@ -134,12 +134,12 @@ module.exports = {
           props.categorySnapshot = productCombination.product.category;
           props.variantSnapshot = getMappedVariantValues(
             productCombination.product.variants,
-            productCombination.values
+            productCombination.values,
           );
           props.skuSnapshot = productCombination.sku;
 
           return props;
-        })
+        }),
       );
 
       const result = await SalesOrder.create(
@@ -156,7 +156,7 @@ module.exports = {
             },
           ],
           transaction,
-        }
+        },
       );
       await OrderStatusHistory.create(
         {
@@ -166,7 +166,7 @@ module.exports = {
           changedBy: user.id,
           changedAt: new Date(),
         },
-        { transaction }
+        { transaction },
       );
       if (payload.status === ORDER_STATUS.RECEIVED) {
         await processReceivedOrder(payload, result, transaction);
@@ -178,9 +178,22 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.log(error);
-
       await transaction.rollback();
+
+      if (error.name === "SequelizeUniqueConstraintError") {
+        const errItem = error.errors[0];
+        throw ApiError.validation(
+          [
+            {
+              path: errItem.path,
+              message: errItem.message,
+            },
+          ],
+          400,
+          errItem.message,
+        );
+      }
+
       throw error;
     }
   },
@@ -220,12 +233,27 @@ module.exports = {
           break;
         default:
           throw new Error(
-            `Invalid status change from ${salesOrder.status} to ${payload.status}`
+            `Invalid status change from ${salesOrder.status} to ${payload.status}`,
           );
       }
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
+
+      if (error.name === "SequelizeUniqueConstraintError") {
+        const errItem = error.errors[0];
+        throw ApiError.validation(
+          [
+            {
+              path: errItem.path,
+              message: errItem.message,
+            },
+          ],
+          400,
+          errItem.message,
+        );
+      }
+
       throw error;
     }
   },
@@ -263,7 +291,7 @@ module.exports = {
           },
           salesOrder,
           transaction,
-          false
+          false,
         );
       } else {
         throw new Error("SalesOrder is not in a valid state");
@@ -280,7 +308,7 @@ module.exports = {
         },
         {
           transaction,
-        }
+        },
       );
 
       await transaction.commit();
@@ -449,7 +477,7 @@ module.exports = {
             : INVENTORY_MOVEMENT_TYPE.RETURN_IN,
           reason,
           referenceId,
-          transaction
+          transaction,
         );
 
       for (const item of exchanges || []) {
@@ -457,7 +485,7 @@ module.exports = {
           item.combinationId,
           {
             include: [{ model: Inventory, as: "inventory" }],
-          }
+          },
         );
 
         if (!replaceItem)
@@ -478,7 +506,7 @@ module.exports = {
             reason: "Replacement",
             type: RETURN_TYPE.EXCHANGE_IN,
           },
-          { transaction }
+          { transaction },
         );
 
         await inventoryDecrease(
@@ -489,7 +517,7 @@ module.exports = {
           INVENTORY_MOVEMENT_TYPE.EXCHANGE_OUT,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
-          transaction
+          transaction,
         );
       }
 
@@ -501,7 +529,7 @@ module.exports = {
           totalExchangeAmount,
           paymentDifference,
         },
-        { transaction }
+        { transaction },
       );
 
       await transaction.commit();
@@ -552,7 +580,7 @@ const getSummary = async (where) => {
 
   const totalExchangeAmount = await ReturnTransaction.sum(
     "totalExchangeAmount",
-    { where: returnsWhere }
+    { where: returnsWhere },
   );
 
   const startDate = where?.orderDate?.[Op.gte] ?? null;
@@ -577,7 +605,7 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
         endDate,
       },
       type: sequelize.QueryTypes.SELECT,
-    }
+    },
   );
 
   return [
@@ -590,7 +618,7 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
       label: "Profit",
       value:
         Number(
-          totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0)
+          totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
         ) + Number(totalCost || 0),
     },
     {
@@ -614,7 +642,7 @@ const processCompletedOrder = async (payload, salesOrder, transaction) => {
       },
       salesOrder,
       transaction,
-      false
+      false,
     );
 
     await OrderStatusHistory.create(
@@ -629,7 +657,7 @@ const processCompletedOrder = async (payload, salesOrder, transaction) => {
       },
       {
         transaction,
-      }
+      },
     );
   } catch (error) {
     console.log(error);
@@ -645,7 +673,7 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
         cancellationReason: payload.reason,
       },
       salesOrder,
-      transaction
+      transaction,
     );
     const salesMovements = await InventoryMovement.findAll({
       where: {
@@ -666,9 +694,9 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
           INVENTORY_MOVEMENT_TYPE.CANCELLATION,
           salesOrder.id,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
-          transaction
+          transaction,
         );
-      })
+      }),
     );
 
     const user = await authService.getCurrent();
@@ -684,7 +712,7 @@ const processCancelledOrder = async (salesOrder, payload, transaction) => {
       },
       {
         transaction,
-      }
+      },
     );
   } catch (error) {
     console.log(error);
@@ -703,7 +731,7 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
     },
     salesOrder,
     transaction,
-    true
+    true,
   );
 
   const errors = [];
@@ -729,7 +757,7 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
         message: e.message,
       })),
       400,
-      "Quantity is greater than inventory"
+      "Quantity is greater than inventory",
     );
   }
   await Promise.all(
@@ -743,9 +771,9 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
         INVENTORY_MOVEMENT_TYPE.OUT,
         id,
         INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
-        transaction
+        transaction,
       );
-    })
+    }),
   );
 
   await OrderStatusHistory.create(
@@ -760,7 +788,7 @@ const processReceivedOrder = async (payload, salesOrder, transaction) => {
     },
     {
       transaction,
-    }
+    },
   );
 };
 
@@ -768,7 +796,7 @@ const updateOrder = async (
   payload,
   salesOrder,
   transaction,
-  updateOrderItems = false
+  updateOrderItems = false,
 ) => {
   try {
     await salesOrder.update(payload, { transaction });
@@ -814,7 +842,7 @@ const updateOrder = async (
               },
             ],
             transaction,
-          }
+          },
         );
 
         const { id, ...rest } = item;
@@ -830,7 +858,7 @@ const updateOrder = async (
         props.categorySnapshot = productCombination.product.category;
         props.variantSnapshot = getMappedVariantValues(
           productCombination.product.variants,
-          productCombination.values
+          productCombination.values,
         );
         props.skuSnapshot = productCombination.sku;
 
@@ -851,11 +879,23 @@ const updateOrder = async (
       });
       await salesOrder.update(
         { totalAmount: getTotalAmount(updatedItems) },
-        { transaction }
+        { transaction },
       );
     }
   } catch (error) {
-    console.log(error);
+    if (error.name === "SequelizeUniqueConstraintError") {
+      const errItem = error.errors[0];
+      throw ApiError.validation(
+        [
+          {
+            path: errItem.path,
+            message: errItem.message,
+          },
+        ],
+        400,
+        errItem.message,
+      );
+    }
     throw new Error("Error in updateOrderItems");
   }
 };

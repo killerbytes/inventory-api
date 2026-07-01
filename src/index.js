@@ -18,7 +18,7 @@ app.use(errorHandler);
 if (process.env.NODE_ENV === "development") {
   const options = {
     key: fs.readFileSync(path.join(__dirname, "../server.key")),
-    cert: fs.readFileSync(path.join(__dirname, "../server.cert"))
+    cert: fs.readFileSync(path.join(__dirname, "../server.cert")),
   };
 
   https.createServer(options, app).listen(process.env.PORT || 8080, () => {

@@ -42,10 +42,12 @@ const verifyToken = (options = {}) => {
           // Usually, you might want to require ALL permissions listed or ANY.
           // Let's implement require EVERY permission listed.
           const hasRequired = options.requirePermissions.every((p) =>
-            userPerms.includes(p)
+            userPerms.includes(p),
           );
           if (!hasAll && !hasRequired) {
-            return res.status(403).json({ message: "Insufficient permissions" });
+            return res
+              .status(403)
+              .json({ message: "Insufficient permissions" });
           }
         }
 
@@ -54,7 +56,7 @@ const verifyToken = (options = {}) => {
         authStorage.run({ userId: decoded.id }, () => {
           next();
         });
-      }
+      },
     );
   };
 };
