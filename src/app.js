@@ -4,12 +4,12 @@ const pinoHttp = require("pino-http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { randomUUID } = require("crypto");
-const { spawn } = require("child_process");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const usersRouter = require("./routes/users.router");
 const authRouter = require("./routes/auth.router");
 const categoriesRouter = require("./routes/categories.router");
+const commonRouter = require("./routes/common.router");
 const productsRouter = require("./routes/products.router");
 const suppliersRouter = require("./routes/supplier.router");
 const customersRouter = require("./routes/customer.router");
@@ -58,6 +58,7 @@ app.use(
   }),
 );
 
+app.use("/api", commonRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", verifyToken({ adminOnly: true }), usersRouter);
 app.use("/api/categories", categoriesRouter);
@@ -73,23 +74,6 @@ app.use("/api/invoices", verifyToken(), invoiceRouter);
 app.use("/api/payments", verifyToken(), paymentRouter);
 app.use("/api/reports", verifyToken(), reportsRouter);
 app.use("/api/ocr", ocrRouter);
-app.post("/api/backup", verifyToken({ adminOnly: true }), (req, res) => {
-  const backup = spawn("node", ["backup.js", "backup"], {
-    stdio: "inherit", // pipes logs to server logs
-  });
-
-  backup.on("close", (code) => {
-    if (code === 0) {
-      res.send("✅ Backup finished successfully!");
-    } else {
-      res.status(500).send(`❌ Backup failed with exit code ${code}`);
-    }
-  });
-
-  backup.on("error", (err) => {
-    res.status(500).send("❌ Failed to start backup: " + err.message);
-  });
-});
 
 app.get("/api", (req, res) => {
   const { BUILD_TIME } = require("../dist/build-info");
