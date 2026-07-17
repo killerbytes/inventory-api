@@ -1,90 +1,50 @@
 const salesOrderService = require("../services/salesOrder.service");
+const asyncHandler = require("express-async-handler");
 
 const salesOrderController = {
-  async get(req, res, next) {
+  get: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const salesOrder = await salesOrderService.get(id);
-      res.status(200).json(salesOrder);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async create(req, res, next) {
-    try {
-      const result = await salesOrderService.create(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async list(req, res, next) {
-    try {
-      const result = await salesOrderService.list();
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async update(req, res, next) {
+    const salesOrder = await salesOrderService.get(id);
+    res.status(200).json(salesOrder);
+  }),
+  create: asyncHandler(async (req, res) => {
+    const result = await salesOrderService.create(req.body);
+    res.status(201).json(result);
+  }),
+  list: asyncHandler(async (req, res) => {
+    const result = await salesOrderService.list();
+    res.status(200).json(result);
+  }),
+  update: asyncHandler(async (req, res) => {
     const { id } = req.params;
-
-    try {
-      const salesOrder = await salesOrderService.update(id, req.body);
-      res.status(200).json(salesOrder);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async delete(req, res, next) {
+    const salesOrder = await salesOrderService.update(id, req.body);
+    res.status(200).json(salesOrder);
+  }),
+  delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      await salesOrderService.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getPaginated(req, res, next) {
-    try {
-      const result = await salesOrderService.getPaginated(req.query);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async cancelOrder(req, res, next) {
+    await salesOrderService.delete(id);
+    res.status(204).send();
+  }),
+  getPaginated: asyncHandler(async (req, res) => {
+    const result = await salesOrderService.getPaginated(req.query);
+    res.status(200).json(result);
+  }),
+  cancelOrder: asyncHandler(async (req, res) => {
     const { id } = req.params;
-
-    try {
-      const salesOrder = await salesOrderService.cancelOrder(id, req.body);
-
-      res.status(200).json(salesOrder);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async returnExchange(req, res, next) {
+    const salesOrder = await salesOrderService.cancelOrder(id, req.body);
+    res.status(200).json(salesOrder);
+  }),
+  returnExchange: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { returns, exchanges, reason } = req.body;
-    try {
-      const result = await salesOrderService.returnExchange(
-        id,
-        returns,
-        exchanges,
-        reason
-      );
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const result = await salesOrderService.returnExchange(
+      id,
+      returns,
+      exchanges,
+      reason,
+    );
+    res.status(200).json(result);
+  }),
 };
 
 module.exports = salesOrderController;

@@ -1,49 +1,30 @@
 const variantTypesService = require("../services/variantType.service");
+const asyncHandler = require("express-async-handler");
 
 const variantTypesController = {
-  async create(req, res, next) {
-    try {
-      const result = await variantTypesService.create(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getByProductId(req, res, next) {
+  create: asyncHandler(async (req, res) => {
+    const result = await variantTypesService.create(req.body);
+    res.status(201).json(result);
+  }),
+  getByProductId: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const user = await variantTypesService.getByProductId(id);
-      res.status(200).json(user);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getAll(req, res, next) {
-    try {
-      const user = await variantTypesService.getAll();
-      res.status(200).json(user);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async update(req, res, next) {
+    const user = await variantTypesService.getByProductId(id);
+    res.status(200).json(user);
+  }),
+  getAll: asyncHandler(async (req, res) => {
+    const user = await variantTypesService.getAll();
+    res.status(200).json(user);
+  }),
+  update: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const user = await variantTypesService.update(id, req.body);
-      res.status(200).json(user);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async delete(req, res, next) {
+    const user = await variantTypesService.update(id, req.body);
+    res.status(200).json(user);
+  }),
+  delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      await variantTypesService.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
+    await variantTypesService.delete(id);
+    res.status(204).send();
+  }),
 };
 
 module.exports = variantTypesController;

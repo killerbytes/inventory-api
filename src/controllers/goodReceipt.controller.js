@@ -1,110 +1,69 @@
 const goodReceiptService = require("../services/goodReceipt.service");
 const authService = require("../services/auth.service");
-const { returnSchema } = require("../schemas");
+const asyncHandler = require("express-async-handler");
 
 const goodReceiptController = {
-  async get(req, res, next) {
+  get: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const goodReceipt = await goodReceiptService.get(id);
-      res.status(200).json(goodReceipt);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async create(req, res, next) {
+    const goodReceipt = await goodReceiptService.get(id);
+    res.status(200).json(goodReceipt);
+  }),
+
+  create: asyncHandler(async (req, res) => {
     const user = await authService.getCurrent();
-    try {
-      const result = await goodReceiptService.create(req.body, user);
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const result = await goodReceiptService.create(req.body, user);
+    res.status(201).json(result);
+  }),
 
-  async list(req, res, next) {
-    try {
-      const result = await goodReceiptService.list();
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  list: asyncHandler(async (req, res) => {
+    const result = await goodReceiptService.list();
+    res.status(200).json(result);
+  }),
 
-  async update(req, res, next) {
+  update: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const goodReceipt = await goodReceiptService.update(id, req.body);
+    res.status(200).json(goodReceipt);
+  }),
 
-    try {
-      const goodReceipt = await goodReceiptService.update(id, req.body);
-      res.status(200).json(goodReceipt);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async delete(req, res, next) {
+  delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      await goodReceiptService.delete(id);
-      res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
+    await goodReceiptService.delete(id);
+    res.status(204).send();
+  }),
 
-  async getPaginated(req, res, next) {
-    try {
-      const result = await goodReceiptService.getPaginated(req.query);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getPaginated: asyncHandler(async (req, res) => {
+    const result = await goodReceiptService.getPaginated(req.query);
+    res.status(200).json(result);
+  }),
 
-  async getBySupplierId(req, res, next) {
+  getBySupplierId: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const result = await goodReceiptService.getBySupplierId(id, req.body);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const result = await goodReceiptService.getBySupplierId(id, req.body);
+    res.status(200).json(result);
+  }),
 
-  async cancelOrder(req, res, next) {
+  cancelOrder: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const goodReceipt = await goodReceiptService.cancelOrder(id, req.body);
+    res.status(200).json(goodReceipt);
+  }),
 
-    try {
-      const goodReceipt = await goodReceiptService.cancelOrder(id, req.body);
+  getByProductCombination: asyncHandler(async (req, res) => {
+    const result = await goodReceiptService.getByProductCombination(req.body);
+    res.status(200).json(result);
+  }),
 
-      res.status(200).json(goodReceipt);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getByProductCombination(req, res, next) {
-    try {
-      const result = await goodReceiptService.getByProductCombination(req.body);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async supplierReturns(req, res, next) {
+  supplierReturns: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { returns = [], reason } = req.body;
-    try {
-      const result = await goodReceiptService.supplierReturns(
-        id,
-        returns,
-        reason
-      );
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const result = await goodReceiptService.supplierReturns(
+      id,
+      returns,
+      reason,
+    );
+    res.status(200).json(result);
+  }),
 };
 
 module.exports = goodReceiptController;

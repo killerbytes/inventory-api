@@ -1,119 +1,72 @@
 const inventoryService = require("../services/inventory.service");
+const asyncHandler = require("express-async-handler");
 
 const inventoryController = {
-  async get(req, res, next) {
+  get: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const inventories = await inventoryService.get(id);
-      return res.status(200).json(inventories);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async create(req, res, next) {
-    try {
-      const { name, description } = req.body;
-      const result = await inventoryService.create({
-        name,
-        description,
-      });
-      return res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const inventories = await inventoryService.get(id);
+    return res.status(200).json(inventories);
+  }),
+  create: asyncHandler(async (req, res) => {
+    const { name, description } = req.body;
+    const result = await inventoryService.create({
+      name,
+      description,
+    });
+    return res.status(201).json(result);
+  }),
 
-  async list(req, res, next) {
-    try {
-      const result = await inventoryService.list();
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(500).json(error);
-    }
-  },
+  list: asyncHandler(async (req, res) => {
+    const result = await inventoryService.list();
+    return res.status(200).json(result);
+  }),
 
-  async delete(req, res, next) {
+  delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      await inventoryService.delete(id);
-      return res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getPaginated(req, res, next) {
-    try {
-      const result = await inventoryService.getPaginated(req.query);
-      return res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    await inventoryService.delete(id);
+    return res.status(204).send();
+  }),
+  getPaginated: asyncHandler(async (req, res) => {
+    const result = await inventoryService.getPaginated(req.query);
+    return res.status(200).json(result);
+  }),
 
-  async getMovements(req, res, next) {
-    try {
-      const result = await inventoryService.getMovements(req.body);
-      return res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getMovements: asyncHandler(async (req, res) => {
+    const result = await inventoryService.getMovements(req.body);
+    return res.status(200).json(result);
+  }),
 
-  async getBreakPacks(req, res, next) {
-    try {
-      const breakPacks = await inventoryService.getBreakPacks(req.body);
-      return res.status(200).json(breakPacks);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getBreakPacks: asyncHandler(async (req, res) => {
+    const breakPacks = await inventoryService.getBreakPacks(req.body);
+    return res.status(200).json(breakPacks);
+  }),
 
-  async getStockAdjustments(req, res, next) {
-    try {
-      const stockAdjustments = await inventoryService.getStockAdjustments(
-        req.body
-      );
-      return res.status(200).json(stockAdjustments);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getPriceHistory(req, res, next) {
-    try {
-      const priceHistory = await inventoryService.getPriceHistory(req.body);
-      return res.status(200).json(priceHistory);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getReorderLevels(req, res, next) {
-    try {
-      const reorders = await inventoryService.getReordersLevels(req.query);
-      return res.status(200).json(reorders);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getStockAdjustments: asyncHandler(async (req, res) => {
+    const stockAdjustments = await inventoryService.getStockAdjustments(
+      req.body,
+    );
+    return res.status(200).json(stockAdjustments);
+  }),
+  getPriceHistory: asyncHandler(async (req, res) => {
+    const priceHistory = await inventoryService.getPriceHistory(req.body);
+    return res.status(200).json(priceHistory);
+  }),
+  getReorderLevels: asyncHandler(async (req, res) => {
+    const reorders = await inventoryService.getReordersLevels(req.query);
+    return res.status(200).json(reorders);
+  }),
 
-  async getReturnTransaction(req, res, next) {
-    try {
-      const returnTransaction = await inventoryService.getReturnTransaction(
-        req.params.id
-      );
-      return res.status(200).json(returnTransaction);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getReturnTransaction: asyncHandler(async (req, res) => {
+    const returnTransaction = await inventoryService.getReturnTransaction(
+      req.params.id,
+    );
+    return res.status(200).json(returnTransaction);
+  }),
 
-  async getReturnItems(req, res, next) {
-    try {
-      const returnItems = await inventoryService.getReturnItems(req.params.id);
-      return res.status(200).json(returnItems);
-    } catch (error) {
-      next(error);
-    }
-  },
+  getReturnItems: asyncHandler(async (req, res) => {
+    const returnItems = await inventoryService.getReturnItems(req.params.id);
+    return res.status(200).json(returnItems);
+  }),
 };
 
 module.exports = inventoryController;

@@ -1,71 +1,42 @@
 const categoryServices = require("../services/category.service");
+const asyncHandler = require("express-async-handler");
 
 const categoriesController = {
-  get: async (req, res, next) => {
+  get: asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    try {
-      const result = await categoryServices.get(id);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const result = await categoryServices.get(id);
+    res.status(200).json(result);
+  }),
 
-  create: async (req, res, next) => {
-    try {
-      const result = await categoryServices.create(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  create: asyncHandler(async (req, res, next) => {
+    const result = await categoryServices.create(req.body);
+    res.status(201).json(result);
+  }),
 
-  list: async (req, res, next) => {
-    try {
-      const result = await categoryServices.list(req.query);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  list: asyncHandler(async (req, res, next) => {
+    const result = await categoryServices.list(req.query);
+    res.status(200).json(result);
+  }),
 
-  update: async (req, res, next) => {
+  update: asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    try {
-      const result = await categoryServices.update(id, req.body);
+    const result = await categoryServices.update(id, req.body);
 
-      res.status(200).json(result);
-    } catch (error) {
-      console.log("catch", error);
-
-      next(error);
-    }
-  },
-  delete: async (req, res, next) => {
+    res.status(200).json(result);
+  }),
+  delete: asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    try {
-      await categoryServices.delete(id);
-      res.status(204).json();
-    } catch (error) {
-      next(error);
-    }
-  },
-  getPaginated: async (req, res, next) => {
-    try {
-      const result = await categoryServices.getPaginated(req.query);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
-  updateSort: async (req, res, next) => {
-    try {
-      const result = await categoryServices.updateSort(req.body);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    await categoryServices.delete(id);
+    res.status(204).json();
+  }),
+  getPaginated: asyncHandler(async (req, res, next) => {
+    const result = await categoryServices.getPaginated(req.query);
+    res.status(200).json(result);
+  }),
+  updateSort: asyncHandler(async (req, res, next) => {
+    const result = await categoryServices.updateSort(req.body);
+    res.status(200).json(result);
+  }),
 };
 
 module.exports = categoriesController;

@@ -1,66 +1,44 @@
 const customerService = require("../services/customer.service.js");
+const asyncHandler = require("express-async-handler");
 
 const customerController = {
-  async get(req, res, next) {
+  get: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const customer = await customerService.get(id);
-      return res.status(200).json(customer);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async create(req, res, next) {
-    try {
-      const { name, contact, email, phone, address } = req.body;
-      const result = await customerService.create({
-        name,
-        contact,
-        email,
-        phone,
-        address,
-      });
-      return res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    const customer = await customerService.get(id);
+    res.status(200).json(customer);
+  }),
 
-  async list(req, res, next) {
-    try {
-      const result = await customerService.list();
-      return res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+  create: asyncHandler(async (req, res) => {
+    const { name, contact, email, phone, address } = req.body;
+    const result = await customerService.create({
+      name,
+      contact,
+      email,
+      phone,
+      address,
+    });
+    res.status(201).json(result);
+  }),
 
-  async update(req, res, next) {
+  list: asyncHandler(async (req, res) => {
+    const result = await customerService.list();
+    res.status(200).json(result);
+  }),
+
+  update: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      const customer = await customerService.update(id, req.body);
-      return res.status(200).json(customer);
-    } catch (error) {
-      next(error);
-    }
-  },
-  async delete(req, res, next) {
+    const customer = await customerService.update(id, req.body);
+    res.status(200).json(customer);
+  }),
+  delete: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    try {
-      await customerService.delete(id);
-      return res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
-  async getPaginated(req, res, next) {
-    try {
-      const result = await customerService.getPaginated(req.query);
-      return res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  },
+    await customerService.delete(id);
+    res.status(204).send();
+  }),
+  getPaginated: asyncHandler(async (req, res) => {
+    const result = await customerService.getPaginated(req.query);
+    res.status(200).json(result);
+  }),
 };
 
 module.exports = customerController;
