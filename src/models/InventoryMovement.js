@@ -44,6 +44,16 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "combinationId",
       as: "combination",
     });
+    InventoryMovement.belongsTo(models.SalesOrder, {
+      foreignKey: "referenceId",
+      constraints: false,
+      as: "salesOrder",
+    });
+    InventoryMovement.belongsTo(models.GoodReceipt, {
+      foreignKey: "referenceId",
+      constraints: false,
+      as: "goodReceipt",
+    });
   };
 
   return InventoryMovement;

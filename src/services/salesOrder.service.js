@@ -423,8 +423,16 @@ module.exports = {
         ],
         transaction,
       });
+
       if (!salesOrder) {
         throw new Error("SalesOrder not found");
+      }
+
+      if (
+        salesOrder.status === ORDER_STATUS.CANCELLED ||
+        salesOrder.status === ORDER_STATUS.VOID
+      ) {
+        throw new Error("SalesOrder is not in a valid state to be cancelled");
       }
 
       if (salesOrder.returnTransactions.length > 0) {
@@ -610,23 +618,23 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
 
   return [
     {
-      label: "Amount",
+      label: "Total Amount",
       value:
         totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
     },
     {
-      label: "Profit",
+      label: "Calculated Profit",
       value:
         Number(
           totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
         ) + Number(totalCost || 0),
     },
     {
-      label: "Returns",
+      label: "Total Returns",
       value: totalReturnAmount,
     },
     {
-      label: "Exchange",
+      label: "Total Exchange",
       value: totalExchangeAmount,
     },
   ];

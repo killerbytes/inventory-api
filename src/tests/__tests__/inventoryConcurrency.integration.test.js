@@ -87,8 +87,8 @@ describe("Inventory Concurrency (Integration)", () => {
     const user = await sequelize.models.User.findByPk(1);
 
     // We'll fire two promises at once.
-    const p1 = salesOrderService.create(createOrderParams);
-    const p2 = salesOrderService.create(createOrderParams);
+    const p1 = salesOrderService.create({ ...createOrderParams, salesOrderNumber: "SO-CONC-1" });
+    const p2 = salesOrderService.create({ ...createOrderParams, salesOrderNumber: "SO-CONC-2" });
 
     const results = await Promise.allSettled([p1, p2]);
 

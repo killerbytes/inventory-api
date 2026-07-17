@@ -458,19 +458,6 @@ module.exports = {
           },
           transaction,
         });
-
-        // Update inventory price/qty if different
-        const updateFields = {};
-        if (combo.price != null && inventory.price !== combo.price) {
-          updateFields.price = combo.price;
-        }
-        if (combo.quantity != null && inventory.quantity !== combo.quantity) {
-          updateFields.quantity = combo.quantity;
-        }
-
-        if (Object.keys(updateFields).length > 0) {
-          await inventory.update(updateFields, { transaction });
-        }
       }
 
       await productService.syncCombinationNames(productId, transaction);

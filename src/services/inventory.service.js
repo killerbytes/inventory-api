@@ -26,6 +26,8 @@ const {
   User,
   ReturnItem,
   ReturnTransaction,
+  SalesOrder,
+  GoodReceipt,
 } = db;
 
 module.exports = {
@@ -207,6 +209,14 @@ module.exports = {
       throw error;
     }
   },
+  /**
+   * Retrieves inventory movements with combination details, user information, and reference dates.
+   * Joins SalesOrder and GoodReceipt to allow frontends to display when a transaction took place
+   * directly within the movement log without requiring extra fetch roundtrips.
+   *
+   * @param {Object} [payload={}] Filters, pagination, and sorting settings.
+   * @returns {Promise<Object>} The paginated movements and audit summary.
+   */
   async getMovements(payload = {}) {
     const {
       ids = [],
@@ -243,6 +253,10 @@ module.exports = {
         where: Object.keys(where).length ? where : undefined,
       });
 
+      totalQuantity = await InventoryMovement.sum("quantity", {
+        where: Object.keys(where).length ? where : undefined,
+      });
+
       const offset = (page - 1) * limit;
       const order = [];
       order.push([sort, payload.order || "DESC"]);
@@ -258,6 +272,18 @@ module.exports = {
           {
             model: User,
             as: "user",
+          },
+          {
+            model: SalesOrder,
+            as: "salesOrder",
+            attributes: ["orderDate"],
+            required: false,
+          },
+          {
+            model: GoodReceipt,
+            as: "goodReceipt",
+            attributes: ["receiptDate"],
+            required: false,
           },
           {
             model: ProductCombination,
@@ -286,8 +312,29 @@ module.exports = {
           },
         ],
       });
+      const formattedRows = rows.map((row) => {
+        const movement = row.toJSON();
+        let referenceDate = movement.updatedAt;
+        if (
+          movement.referenceType ===
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER
+        ) {
+          referenceDate = movement.salesOrder?.orderDate || movement.updatedAt;
+        } else if (
+          movement.referenceType ===
+          INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT
+        ) {
+          referenceDate =
+            movement.goodReceipt?.receiptDate || movement.updatedAt;
+        }
+        movement.referenceDate = referenceDate;
+        delete movement.salesOrder;
+        delete movement.goodReceipt;
+        return movement;
+      });
+
       return {
-        data: rows,
+        data: formattedRows,
         meta: {
           total: count,
           totalPages: Math.ceil(count / limit),
@@ -297,6 +344,10 @@ module.exports = {
           {
             label: "Total Amount",
             value: totalAmount,
+          },
+          {
+            label: "Total Quantity",
+            value: totalQuantity,
           },
         ],
       };
@@ -522,7 +573,7 @@ module.exports = {
       name: col("combinations.name"),
       transactionCount: fn(
         "COUNT",
-        fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+        fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId")),
       ),
     };
     // sequelize.options.logging = console.log;
@@ -543,7 +594,7 @@ module.exports = {
         [
           fn(
             "COUNT",
-            fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId"))
+            fn("DISTINCT", col("combinations->salesOrderItems.salesOrderId")),
           ),
           "transactionCount",
         ],
@@ -555,7 +606,7 @@ module.exports = {
           as: "combinations",
           required: true,
           where: sequelize.literal(
-            `"Inventory"."quantity" < "combinations"."reorderLevel"`
+            `"Inventory"."quantity" < "combinations"."reorderLevel"`,
           ),
           include: [
             {
@@ -644,7 +695,7 @@ module.exports = {
     type,
     reason,
     referenceId,
-    transaction
+    transaction,
   ) {
     let totalReturnAmount = 0;
 
@@ -656,7 +707,7 @@ module.exports = {
         totalReturnAmount,
         paymentDifference: 0,
       },
-      { transaction }
+      { transaction },
     );
     let itemLine;
 
@@ -677,7 +728,7 @@ module.exports = {
 
       const totalReturnQuantity = returnTransactions.reduce(
         (acc, cur) => acc + Number(cur.returnItems[0].quantity),
-        0
+        0,
       );
 
       if (
@@ -688,7 +739,7 @@ module.exports = {
       }
 
       const returnItem = items.find(
-        (x) => x.combinationId === item.combinationId
+        (x) => x.combinationId === item.combinationId,
       );
 
       if (!returnItem) {
@@ -717,6 +768,11 @@ module.exports = {
 
       totalReturnAmount += returnCost;
 
+      const returnItemType =
+        sourceType === ORDER_TYPE.PURCHASE
+          ? RETURN_TYPE.SUPPLIER_RETURN_OUT
+          : RETURN_TYPE.RETURN_IN;
+
       await ReturnItem.create(
         {
           returnTransactionId: returnTransaction.id,
@@ -725,9 +781,9 @@ module.exports = {
           unitPrice,
           totalAmount: item.quantity * unitPrice,
           reason,
-          type: RETURN_TYPE.RETURN_IN,
+          type: returnItemType,
         },
-        { transaction }
+        { transaction },
       );
 
       const inventory = await Inventory.findOne({
@@ -746,13 +802,17 @@ module.exports = {
           type,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.SALES_ORDER,
-          transaction
+          transaction,
         );
       } else if (sourceType === ORDER_TYPE.PURCHASE) {
         // Inventory: remove stock
-        const averagePrice = //recompute average price
-          (inventory.averagePrice * inventory.quantity + returnCost) /
-          (inventory.quantity + item.quantity);
+        const remainingQty = Number(inventory.quantity) - item.quantity;
+        const averagePrice =
+          remainingQty > 0
+            ? (Number(inventory.averagePrice) * Number(inventory.quantity) -
+                returnCost) /
+              remainingQty
+            : Number(inventory.averagePrice);
 
         await this.inventoryDecrease(
           {
@@ -763,7 +823,7 @@ module.exports = {
           type,
           referenceId,
           INVENTORY_MOVEMENT_REFERENCE_TYPE.GOOD_RECEIPT,
-          transaction
+          transaction,
         );
       }
     }
@@ -781,9 +841,11 @@ module.exports = {
         ? truncateQty(item.averagePrice)
         : undefined;
 
+    const lock = transaction ? { lock: transaction.LOCK.UPDATE } : {};
     let inventory = await Inventory.findOne({
       where: { combinationId },
       transaction,
+      ...lock,
     });
 
     if (!inventory) {
@@ -793,7 +855,7 @@ module.exports = {
           quantity,
           averagePrice: averagePrice ?? 0,
         },
-        { transaction }
+        { transaction },
       );
     } else {
       const newQty = truncateQty(Number(inventory.quantity) + quantity);
@@ -803,7 +865,7 @@ module.exports = {
           quantity: newQty,
           ...(averagePrice !== undefined && { averagePrice }),
         },
-        { transaction }
+        { transaction },
       );
     }
 
@@ -823,7 +885,7 @@ module.exports = {
         userId: user.id,
         combinationId,
       },
-      { transaction }
+      { transaction },
     );
 
     return inventory;
@@ -833,16 +895,18 @@ module.exports = {
     type,
     referenceId = null,
     referenceType = null,
-    transaction
+    transaction,
   ) {
     const user = await authService.getCurrent();
     const { combinationId } = item;
 
     const quantity = truncateQty(item.quantity);
 
+    const lock = transaction ? { lock: transaction.LOCK.UPDATE } : {};
     const inventory = await Inventory.findOne({
       where: { combinationId },
       transaction,
+      ...lock,
     });
 
     if (!inventory) {
@@ -869,10 +933,18 @@ module.exports = {
         referenceId,
         referenceType,
       },
-      { transaction }
+      { transaction },
     );
 
-    await inventory.update({ quantity: newQuantity }, { transaction });
+    await inventory.update(
+      {
+        quantity: newQuantity,
+        ...(item.averagePrice !== undefined && {
+          averagePrice: truncateQty(item.averagePrice),
+        }),
+      },
+      { transaction },
+    );
 
     return inventory;
   },

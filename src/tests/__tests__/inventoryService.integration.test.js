@@ -514,4 +514,166 @@ describe("Inventory Service (Integration)", () => {
     expect(change).toBeDefined();
     expect(change.fromPrice).toBe(100);
   });
+
+  it("should include salesOrder.orderDate and goodReceipt.receiptDate in inventory movements", async () => {
+    const grDate = new Date("2026-07-16T10:00:00Z");
+    const soDate = new Date("2026-07-16T12:00:00Z");
+
+    await goodReceiptService.create({
+      supplierId: supplier0.id,
+      receiptDate: grDate,
+      referenceNo: "Test GR",
+      internalNotes: "Test GR Notes",
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      supplierId: supplier0.id,
+      receiptDate: grDate,
+      referenceNo: "Test GR",
+      internalNotes: "Test GR Notes",
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    await salesOrderService.create({
+      customerId: customer0.id,
+      salesOrderNumber: "SO-12345",
+      status: "RECEIVED",
+      orderDate: soDate,
+      notes: "Test SO Notes",
+      internalNotes: "Test SO Internal Notes",
+      salesOrderItems: [
+        {
+          combinationId: combination1.id,
+          quantity: 5,
+          originalPrice: 100,
+          purchasePrice: 100,
+        },
+      ],
+      modeOfPayment: "CASH",
+    });
+
+    const movements = await inventoryService.getMovements({
+      order: "ASC",
+    });
+
+    // Check for the Good Receipt movement
+    const grMovement = movements.data.find(
+      (m) => m.referenceType === "GOOD_RECEIPT" && m.referenceId === 1,
+    );
+    expect(grMovement).toBeDefined();
+    expect(grMovement.goodReceipt).toBeUndefined();
+    expect(grMovement.referenceDate).toBeDefined();
+    expect(new Date(grMovement.referenceDate).toISOString()).toBe(grDate.toISOString());
+
+    // Check for the Sales Order movement
+    const soMovement = movements.data.find(
+      (m) => m.referenceType === "SALES_ORDER" && m.referenceId === 1,
+    );
+    expect(soMovement).toBeDefined();
+    expect(soMovement.salesOrder).toBeUndefined();
+    expect(soMovement.referenceDate).toBeDefined();
+    expect(new Date(soMovement.referenceDate).toISOString()).toBe(soDate.toISOString());
+  });
+
+  it("should correctly update inventory quantity and averagePrice on supplier returns", async () => {
+    // 1. Create stock with Good Receipt (10 units @ 100)
+    await goodReceiptService.create({
+      supplierId: supplier0.id,
+      receiptDate: new Date(),
+      referenceNo: "GR-1",
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+    // Receive the good receipt to populate inventory
+    await goodReceiptService.update(1, {
+      status: "RECEIVED",
+      supplierId: supplier0.id,
+      receiptDate: new Date(),
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 100,
+        },
+      ],
+    });
+
+    // 2. Adjust inventory to have a different averagePrice. Let's do another GR with a different price (10 units @ 200)
+    // Total: 20 units. Average price should be (10*100 + 10*200) / 20 = 150.
+    await goodReceiptService.create({
+      supplierId: supplier0.id,
+      receiptDate: new Date(),
+      referenceNo: "GR-2",
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 200,
+        },
+      ],
+    });
+    await goodReceiptService.update(2, {
+      status: "RECEIVED",
+      supplierId: supplier0.id,
+      receiptDate: new Date(),
+      goodReceiptLines: [
+        {
+          combinationId: combination1.id,
+          quantity: 10,
+          purchasePrice: 200,
+        },
+      ],
+    });
+
+    const inventoryBefore = await sequelize.models.Inventory.findOne({
+      where: { combinationId: combination1.id },
+    });
+    expect(Number(inventoryBefore.quantity)).toBe(20);
+    expect(Number(inventoryBefore.averagePrice)).toBe(150);
+
+    // 3. Perform a supplier return of 5 units from the first GR (which had purchasePrice: 100).
+    // The returns function will subtract 5 units from inventory, and we want to recompute the average price.
+    // Remaining units: 15.
+    // Remaining total cost should be: 20 * 150 - 5 * 100 = 3000 - 500 = 2500.
+    // New average price should be: 2500 / 15 = 166.67.
+    await goodReceiptService.supplierReturns(1, [
+      {
+        combinationId: combination1.id,
+        quantity: 5,
+      },
+    ], "Defective");
+
+    const inventoryAfter = await sequelize.models.Inventory.findOne({
+      where: { combinationId: combination1.id },
+    });
+    expect(Number(inventoryAfter.quantity)).toBe(15);
+    expect(Number(inventoryAfter.averagePrice)).toBeCloseTo(166.67, 1);
+
+    // Also assert that the movement logged is negative (SUPPLIER_RETURN_OUT)
+    const latestMovement = await sequelize.models.InventoryMovement.findOne({
+      where: { combinationId: combination1.id, type: "SUPPLIER_RETURN_OUT" },
+      order: [["id", "DESC"]],
+    });
+    expect(latestMovement).toBeDefined();
+    expect(Number(latestMovement.quantity)).toBe(-5);
+  });
 });
