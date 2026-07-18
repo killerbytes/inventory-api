@@ -995,8 +995,8 @@ describe("Sales Order Service (Integration)", () => {
 
     const result = await salesOrderService.getPaginated({ page: 1, limit: 10 });
 
-    const amountSummary = result.summary.find((s) => s.label === "Total Amount");
-    const profitSummary = result.summary.find((s) => s.label === "Calculated Profit");
+    const amountSummary = result.summary.totalAmount;
+    const profitSummary = result.summary.totalProfitAmount;
 
     expect(amountSummary.value).toBe(1000);
     expect(profitSummary.value).toBe(5);

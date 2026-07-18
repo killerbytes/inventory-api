@@ -249,12 +249,36 @@ module.exports = {
           where.updatedAt[Op.lte] = end;
         }
       }
+      const includeCombination = {
+        model: ProductCombination,
+        as: "combination",
+        where: q
+          ? { name: { [Op.iLike]: `%${q}%` } }
+          : ids.length
+            ? { id: ids }
+            : undefined,
+        attributes: [], // Setting this to [] avoids the GROUP BY error on sum()
+        paranoid: false,
+      };
+
       totalAmount = await InventoryMovement.sum("totalCost", {
-        where: Object.keys(where).length ? where : undefined,
+        where: {
+          [Op.and]: [
+            Object.keys(where).length ? where : {},
+            { type: { [Op.ne]: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_OUT } },
+          ],
+        },
+        include: [includeCombination],
       });
 
       totalQuantity = await InventoryMovement.sum("quantity", {
-        where: Object.keys(where).length ? where : undefined,
+        where: {
+          [Op.and]: [
+            Object.keys(where).length ? where : {},
+            { type: { [Op.ne]: INVENTORY_MOVEMENT_TYPE.ADJUSTMENT_OUT } },
+          ],
+        },
+        include: [includeCombination],
       });
 
       const offset = (page - 1) * limit;
@@ -340,16 +364,16 @@ module.exports = {
           totalPages: Math.ceil(count / limit),
           currentPage: page,
         },
-        summary: [
-          {
+        summary: {
+          totalValue: {
             label: "Total Amount",
             value: totalAmount,
           },
-          {
+          totalQuantity: {
             label: "Total Quantity",
             value: totalQuantity,
           },
-        ],
+        },
       };
     } catch (error) {
       throw error;

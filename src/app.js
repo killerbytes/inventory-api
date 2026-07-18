@@ -55,6 +55,7 @@ app.use(
     genReqId: (req, res) => {
       return req.headers["x-request-id"] || randomUUID();
     },
+    redact: ["req.headers.authorization", "req.headers.token", "req.body.password", "req.body.token"],
   }),
 );
 

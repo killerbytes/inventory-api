@@ -616,28 +616,28 @@ AND (:endDate IS NULL OR so."orderDate" <= :endDate)
     },
   );
 
-  return [
-    {
+  return {
+    totalAmount: {
       label: "Total Amount",
       value:
         totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
     },
-    {
+    totalProfitAmount: {
       label: "Calculated Profit",
       value:
         Number(
           totalAmount - (totalReturnAmount || 0) + (totalExchangeAmount || 0),
         ) + Number(totalCost || 0),
     },
-    {
+    totalReturnAmount: {
       label: "Total Returns",
       value: totalReturnAmount,
     },
-    {
+    totalExchangeAmount: {
       label: "Total Exchange",
       value: totalExchangeAmount,
     },
-  ];
+  };
 };
 
 const processCompletedOrder = async (payload, salesOrder, transaction) => {

@@ -1,5 +1,7 @@
 const inventoryService = require("../services/inventory.service");
 const asyncHandler = require("express-async-handler");
+const Joi = require("joi");
+const ApiError = require("../services/ApiError");
 
 const inventoryController = {
   get: asyncHandler(async (req, res) => {
@@ -27,7 +29,18 @@ const inventoryController = {
     return res.status(204).send();
   }),
   getPaginated: asyncHandler(async (req, res) => {
-    const result = await inventoryService.getPaginated(req.query);
+    const schema = Joi.object({
+      limit: Joi.number().integer().min(1).max(100).default(10),
+      offset: Joi.number().integer().min(0).default(0),
+      page: Joi.number().integer().min(1).default(1),
+    }).unknown(true);
+
+    const { error, value } = schema.validate(req.query);
+    if (error) {
+      throw ApiError.badRequest(error.details[0].message);
+    }
+
+    const result = await inventoryService.getPaginated(value);
     return res.status(200).json(result);
   }),
 
