@@ -37,6 +37,46 @@ const {
 } = db;
 
 module.exports = {
+  async getDailySales() {
+    const timezone = "Asia/Manila";
+    const startDate = moment
+      .tz(timezone)
+      .subtract(7, "days")
+      .startOf("day")
+      .utc()
+      .toDate();
+
+    const sales = await SalesOrder.findAll({
+      attributes: ["orderDate", "totalAmount"],
+      where: {
+        status: { [Op.in]: [ORDER_STATUS.RECEIVED, ORDER_STATUS.COMPLETED] },
+        orderDate: { [Op.gte]: startDate },
+      },
+      raw: true,
+    });
+
+    const result = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = moment.tz(timezone).subtract(i, "days").format("MMM DD");
+      result.push({
+        name: d,
+        totalAmount: 0,
+        fullDate: moment.tz(timezone).subtract(i, "days").format("YYYY-MM-DD"),
+      });
+    }
+
+    sales.forEach((sale) => {
+      const localDate = moment(sale.orderDate)
+        .tz(timezone)
+        .format("YYYY-MM-DD");
+      const match = result.find((r) => r.fullDate === localDate);
+      if (match) {
+        match.totalAmount += parseFloat(sale.totalAmount);
+      }
+    });
+
+    return result.map((r) => ({ name: r.name, totalAmount: r.totalAmount }));
+  },
   async get(id) {
     try {
       const cacheKey = `salesOrder:${id}`;

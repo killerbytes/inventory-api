@@ -2,6 +2,7 @@ const express = require("express");
 const salesOrderController = require("../controllers/salesOrders.controller");
 const router = express.Router();
 
+router.get("/daily-sales", salesOrderController.getDailySales);
 router.get("/list", salesOrderController.list);
 router.get("/:id", salesOrderController.get);
 router.get("/", salesOrderController.getPaginated);

@@ -7,6 +7,10 @@ const salesOrderController = {
     const salesOrder = await salesOrderService.get(id);
     res.status(200).json(salesOrder);
   }),
+  getDailySales: asyncHandler(async (req, res) => {
+    const result = await salesOrderService.getDailySales();
+    res.status(200).json(result);
+  }),
   create: asyncHandler(async (req, res) => {
     const result = await salesOrderService.create(req.body);
     res.status(201).json(result);
