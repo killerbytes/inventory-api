@@ -50,6 +50,10 @@ module.exports = {
   },
 
   refreshAuth: async (refreshToken) => {
+    if (!refreshToken) {
+      throw ApiError.unauthorized("Refresh token is required");
+    }
+
     try {
       const decoded = jwt.verify(
         refreshToken,
