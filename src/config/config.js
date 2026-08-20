@@ -67,7 +67,6 @@ module.exports = {
       min: 0,
       acquire: 20000,
       idle: 5000,
-      evict: 1000,
     },
     logging: false,
   },

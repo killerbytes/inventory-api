@@ -7,6 +7,21 @@ const isMockEnv =
   process.env.NODE_ENV === "development" ||
   process.env.NODE_ENV === undefined;
 
+const getRedisOptions = () => ({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+  pingInterval: 0,
+  socket: {
+    keepAlive: false,
+    connectTimeout: 5000,
+    reconnectStrategy: (retries) => {
+      if (retries > 3) {
+        return new Error("Max Redis reconnection attempts reached");
+      }
+      return Math.min(retries * 100, 3000);
+    },
+  },
+});
+
 if (isMockEnv) {
   client = {
     get: async () => null,
@@ -20,14 +35,7 @@ if (isMockEnv) {
 
   console.log("Redis skipped in test/staging environment");
 } else {
-  client = createClient({
-    url: process.env.REDIS_URL || "redis://localhost:6379",
-    pingInterval: 0,
-    socket: {
-      keepAlive: false,
-      connectTimeout: 5000,
-    },
-  });
+  client = createClient(getRedisOptions());
 
   client.on("error", (err) => console.error("Redis Client Error", err));
 
@@ -95,4 +103,5 @@ module.exports = {
   redis: client,
   getCachedId,
   deleteByPattern,
+  getRedisOptions,
 };
