@@ -524,19 +524,28 @@ module.exports = {
     // SQLite: do nothing (or simple fallback)
     if (dialect === "sqlite") return;
 
-    await transaction.sequelize.query(
+    const queryTarget = transaction ? transaction.sequelize : sequelize;
+
+    await queryTarget.query(
       `
     UPDATE "Products"
     SET search_text =
       to_tsvector(
         'simple',
-        coalesce(name, '') || ' ' ||
-        coalesce(description, '') || ' ' ||
-        coalesce((
-          SELECT string_agg(pc.name, ' ')
-          FROM "ProductCombinations" pc
-          WHERE pc."productId" = "Products".id
-        ), '')
+        regexp_replace(
+          regexp_replace(
+            coalesce(name, '') || ' ' ||
+            coalesce(description, '') || ' ' ||
+            coalesce((
+              SELECT string_agg(pc.name, ' ')
+              FROM "ProductCombinations" pc
+              WHERE pc."productId" = "Products".id
+                AND pc."deletedAt" IS NULL
+            ), ''),
+            '[-()_/#.,]', ' ', 'g'
+          ),
+          '([a-zA-Z]+)\\s*([0-9]+)', '\\1 \\2 \\1\\2', 'g'
+        )
       )
     WHERE id = :productId
     `,

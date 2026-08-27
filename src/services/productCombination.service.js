@@ -574,7 +574,6 @@ module.exports = {
   async search(query) {
     const { search, noBreakPacks = null, limit = 50 } = query;
     const tsQuery = buildTsQuery(search);
-
     const results = await sequelize.query(
       `
 SELECT
@@ -649,7 +648,7 @@ LIMIT :limit;
       .trim()
       .toLowerCase()
       .replace(/['"]/g, "") // Remove all quotes to prevent tsquery syntax errors
-      .split(/[\s,;&|!():*]+/)
+      .split(/[\s,;&|!():*\-]+/)
       .filter((word) => word.length > 0 && word !== "-");
 
     if (words.length === 0) return [];
@@ -1257,7 +1256,7 @@ function buildTsQuery(search) {
     .trim()
     .toLowerCase()
     .replace(/['"#]/g, "") // Remove all quotes to prevent tsquery syntax errors
-    .split(/[\s,;&|!():*]+/)
+    .split(/[\s,;&|!():*\-]+/)
     .filter((word) => word.length > 0 && word !== "-");
 
   if (words.length === 0) return "";

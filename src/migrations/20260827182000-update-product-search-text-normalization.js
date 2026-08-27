@@ -2,11 +2,8 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn("Products", "search_text", {
-      type: Sequelize.TSVECTOR,
-      allowNull: false,
-      defaultValue: Sequelize.literal("''::tsvector"),
-    });
+    const dialect = queryInterface.sequelize.getDialect();
+    if (dialect === "sqlite") return;
 
     await queryInterface.sequelize.query(`
       UPDATE "Products" p
@@ -29,17 +26,9 @@ module.exports = {
           )
         );
     `);
-
-    await queryInterface.sequelize.query(`
-      CREATE INDEX idx_products_search_text ON "Products" USING GIN (search_text);
-    `);
   },
 
   async down(queryInterface) {
-    await queryInterface.sequelize.query(
-      `DROP INDEX IF EXISTS idx_products_search_text;`
-    );
-
-    await queryInterface.removeColumn("Products", "search_text");
+    // No-op down migration for search_text recalculation
   },
 };

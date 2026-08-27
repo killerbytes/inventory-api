@@ -61,6 +61,42 @@ describe("productCombinationService.search Unit Test", () => {
       })
     );
   });
+
+  it("should split hyphens cleanly into tsQuery terms for queries like neltex pipe (s-1000)", async () => {
+    const searchString = "neltex pipe (s-1000)";
+    await productCombinationService.search({ search: searchString });
+
+    expect(db.sequelize.query).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        replacements: expect.objectContaining({
+          tsQuery: "neltex:* & pipe:* & s:* & 1000:*"
+        })
+      })
+    );
+  });
+
+  it("should generate clean tsQuery for queries like neltex pipe 1000 and neltex pipe s1000", async () => {
+    await productCombinationService.search({ search: "neltex pipe 1000" });
+    expect(db.sequelize.query).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        replacements: expect.objectContaining({
+          tsQuery: "neltex:* & pipe:* & 1000:*"
+        })
+      })
+    );
+
+    await productCombinationService.search({ search: "neltex pipe s1000" });
+    expect(db.sequelize.query).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        replacements: expect.objectContaining({
+          tsQuery: "neltex:* & pipe:* & s1000:*"
+        })
+      })
+    );
+  });
 });
 
 describe("productCombinationService.searchSuggestion – tsQuery noise filtering", () => {
