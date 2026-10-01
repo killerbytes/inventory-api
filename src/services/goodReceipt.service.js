@@ -30,6 +30,7 @@ const {
 } = db;
 const { redis } = require("../utils/redis");
 const inventoryService = require("./inventory.service.js");
+const moment = require("moment-timezone");
 
 module.exports = {
   async get(id) {
@@ -295,21 +296,22 @@ module.exports = {
 
     if (startDate || endDate) {
       where.receiptDate = {};
+      const timezone = process.env.TIMEZONE || "Asia/Manila";
 
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.receiptDate[Op.gte] = start;
+        where.receiptDate[Op.gte] = moment
+          .tz(startDate, timezone)
+          .startOf("day")
+          .utc()
+          .toDate();
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.receiptDate[Op.lte] = end;
+        where.receiptDate[Op.lte] = moment
+          .tz(endDate, timezone)
+          .endOf("day")
+          .utc()
+          .toDate();
       }
-
-      totalAmount = await GoodReceipt.sum("totalAmount", {
-        where: Object.keys(where).length ? where : undefined,
-      });
     }
     const offset = (page - 1) * limit;
 
@@ -404,17 +406,22 @@ module.exports = {
     }
 
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.receiptDate = {};
+      const timezone = process.env.TIMEZONE || "Asia/Manila";
 
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        where.createdAt[Op.gte] = start;
+        where.receiptDate[Op.gte] = moment
+          .tz(startDate, timezone)
+          .startOf("day")
+          .utc()
+          .toDate();
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        where.createdAt[Op.lte] = end;
+        where.receiptDate[Op.lte] = moment
+          .tz(endDate, timezone)
+          .endOf("day")
+          .utc()
+          .toDate();
       }
     }
     const offset = (page - 1) * limit;
