@@ -695,7 +695,7 @@ module.exports = {
 const getSummary = async (where) => {
   let totalAmount = await GoodReceipt.sum("totalAmount", {
     where: {
-      status: { [Op.ne]: ORDER_STATUS.DRAFT },
+      status: { [Op.notIn]: [ORDER_STATUS.DRAFT, ORDER_STATUS.VOID] },
       ...where,
     },
   });
