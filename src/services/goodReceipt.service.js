@@ -713,7 +713,7 @@ const getSummary = async (where) => {
     raw: true,
   }).then((r) => r.map((o) => o.id));
 
-  let returnsWhere = { referenceId: { [Op.in]: orderIds } };
+  let returnsWhere = { referenceId: { [Op.in]: orderIds }, sourceType: "PURCHASE" };
 
   const totalReturnAmount = await db.ReturnTransaction.sum(
     "totalReturnAmount",
